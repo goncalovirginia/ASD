@@ -1,0 +1,54 @@
+Interface:
+	Requests:
+		rbBroadcast(m)
+	
+	Indications:
+		rbDeliver(pID, m)
+
+State:
+	deliveredMsgs		//set of delivered messages
+	pIDsActive	 		//set of active process ID's
+	pIDThis 			//this process's ID
+	pIDBroadcastedMsgs 	//map of broadcasted messages to each pID
+
+Upon Init(π, p) do
+	deliveredMsgs <- {}
+	pIDsActive <- π
+	pIDThis <- p
+
+	pIDBroadcastedMsgs <- {}
+	foreach pID ∈ pIDsActive do
+		pIDBroadcastedMsgs[pID] <- {}
+	
+Upon rbBroadcast(m) do
+	Trigger rbDeliver(pIDThis, m)
+	deliveredMsgs <- deliveredMsgs U {m}
+	pIDSmallest <- getSmallestPIDExcludingThis()
+	if pIDSmallest ≠ ⊥ then
+		Call sendMsgAndStoreAction(pIDSmallest, {pIDThis, m})
+
+Upon pp2pDeliver(pID, {pIDOriginal, m}) do
+	if m ∉ deliveredMsgs then
+		Trigger rbDeliver(pID, m)
+		deliveredMsgs <- deliveredMsgs U {m}
+		pIDNext <- getNextLargestPIDExcludingOriginal(pIDOriginal)
+		if pIDNext ≠ ⊥ then
+			Call sendMsgAndStoreAction(pIDNext, {pIDOriginal, m})
+
+Upon crash(pID) do
+	pIDsActive <- pIDsActive \ pID
+	foreach (pIDOriginal, m) ∈ pIDBroadcastedMsgs[pID] do
+		pIDNext <- getNextLargestPIDExcludingOriginal(pIDOriginal)
+		if pIDNext ≠ ⊥ then
+			Call sendMsgAndStoreAction(pIDNext, {pIDOriginal, m})
+	
+Procedure getSmallestPIDExcludingThis()
+	Return min(pIDsActive \ {pIDThis})
+
+Procedure getNextLargestPIDExcludingOriginal(pIDOriginal)
+	Return min(pID ∈ pIDsActive \ {pIDOriginal} : pID > pIDThis)
+
+Procedure sendMsgAndStoreAction(pID, {pIDOriginal, m})
+	Trigger pp2pSend(pID, {pIDOriginal, m})
+	pIDBroadcastedMsgs[pID] <- pIDBroadcastedMsgs[pID] U {pIDOriginal, mID}
+
