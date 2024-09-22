@@ -1,2 +1,1 @@
-# ASD
-Algoritmos de Sistemas Distribuídos (Distributed Systems Algorithms)
+# Algoritmos de Sistemas Distribuídos (Distributed Systems Algorithms)
