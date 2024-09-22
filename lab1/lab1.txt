@@ -50,5 +50,5 @@ Procedure getNextLargestPIDExcludingOriginal(pIDOriginal)
 
 Procedure sendMsgAndStoreAction(pID, {pIDOriginal, m})
 	Trigger pp2pSend(pID, {pIDOriginal, m})
-	pIDBroadcastedMsgs[pID] <- pIDBroadcastedMsgs[pID] U {pIDOriginal, mID}
+	pIDBroadcastedMsgs[pID] <- pIDBroadcastedMsgs[pID] U {(pIDOriginal, m)}
 
