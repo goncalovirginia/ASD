@@ -1,4 +1,4 @@
-package protocols.broadcast.flood.messages;
+package protocols.broadcast.gossip.messages;
 
 import io.netty.buffer.ByteBuf;
 import pt.unl.fct.di.novasys.babel.generic.ProtoMessage;
@@ -8,8 +8,8 @@ import pt.unl.fct.di.novasys.network.data.Host;
 import java.io.IOException;
 import java.util.UUID;
 
-public class FloodMessage extends ProtoMessage {
-	public static final short MSG_ID = 201;
+public class GossipMessage extends ProtoMessage {
+	public static final short MSG_ID = 401;
 
 	private final UUID mid;
 	private final Host sender;
@@ -24,7 +24,7 @@ public class FloodMessage extends ProtoMessage {
 				'}';
 	}
 
-	public FloodMessage(UUID mid, Host sender, short toDeliver, byte[] content) {
+	public GossipMessage(UUID mid, Host sender, short toDeliver, byte[] content) {
 		super(MSG_ID);
 		this.mid = mid;
 		this.sender = sender;
@@ -48,9 +48,9 @@ public class FloodMessage extends ProtoMessage {
 		return content;
 	}
 
-	public static ISerializer<FloodMessage> serializer = new ISerializer<>() {
+	public static ISerializer<GossipMessage> serializer = new ISerializer<>() {
 		@Override
-		public void serialize(FloodMessage floodMessage, ByteBuf out) throws IOException {
+		public void serialize(GossipMessage floodMessage, ByteBuf out) throws IOException {
 			out.writeLong(floodMessage.mid.getMostSignificantBits());
 			out.writeLong(floodMessage.mid.getLeastSignificantBits());
 			Host.serializer.serialize(floodMessage.sender, out);
@@ -62,7 +62,7 @@ public class FloodMessage extends ProtoMessage {
 		}
 
 		@Override
-		public FloodMessage deserialize(ByteBuf in) throws IOException {
+		public GossipMessage deserialize(ByteBuf in) throws IOException {
 			long firstLong = in.readLong();
 			long secondLong = in.readLong();
 			UUID mid = new UUID(firstLong, secondLong);
@@ -73,7 +73,7 @@ public class FloodMessage extends ProtoMessage {
 			if (size > 0)
 				in.readBytes(content);
 
-			return new FloodMessage(mid, sender, toDeliver, content);
+			return new GossipMessage(mid, sender, toDeliver, content);
 		}
 	};
 }

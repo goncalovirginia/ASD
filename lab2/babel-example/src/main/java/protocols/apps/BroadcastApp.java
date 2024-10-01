@@ -1,13 +1,7 @@
 package protocols.apps;
 
-import java.nio.charset.StandardCharsets;
-import java.util.Properties;
-import java.util.Random;
-import java.util.UUID;
-
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-
 import protocols.apps.timers.BroadcastTimer;
 import protocols.apps.timers.ExitTimer;
 import protocols.apps.timers.StartTimer;
@@ -17,6 +11,11 @@ import protocols.broadcast.common.DeliverNotification;
 import pt.unl.fct.di.novasys.babel.core.GenericProtocol;
 import pt.unl.fct.di.novasys.babel.exceptions.HandlerRegistrationException;
 import pt.unl.fct.di.novasys.network.data.Host;
+
+import java.nio.charset.StandardCharsets;
+import java.util.Properties;
+import java.util.Random;
+import java.util.UUID;
 
 public class BroadcastApp extends GenericProtocol {
 	private static final Logger logger = LogManager.getLogger(BroadcastApp.class);
@@ -66,7 +65,7 @@ public class BroadcastApp extends GenericProtocol {
 	public void init(Properties props) {
 		//Wait prepareTime seconds before starting
 		logger.info("Waiting...");
-		setupTimer(new StartTimer(), prepareTime * 1000);
+		setupTimer(new StartTimer(), prepareTime * 1000L);
 	}
 
 	private void uponStartTimer(StartTimer startTimer, long timerId) {
@@ -74,7 +73,7 @@ public class BroadcastApp extends GenericProtocol {
 		//Start broadcasting periodically
 		broadCastTimer = setupPeriodicTimer(new BroadcastTimer(), 0, broadcastInterval);
 		//And setup the stop timer
-		setupTimer(new StopTimer(), runTime * 1000);
+		setupTimer(new StopTimer(), runTime * 1000L);
 	}
 
 	private void uponBroadcastTimer(BroadcastTimer broadcastTimer, long timerId) {
@@ -98,7 +97,7 @@ public class BroadcastApp extends GenericProtocol {
 	private void uponStopTimer(StopTimer stopTimer, long timerId) {
 		logger.info("Stopping broadcasts");
 		this.cancelTimer(broadCastTimer);
-		setupTimer(new ExitTimer(), cooldownTime * 1000);
+		setupTimer(new ExitTimer(), cooldownTime * 1000L);
 	}
 
 	private void uponExitTimer(ExitTimer exitTimer, long timerId) {

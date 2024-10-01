@@ -1,9 +1,9 @@
 package protocols.broadcast.common;
 
-import java.util.UUID;
-
 import pt.unl.fct.di.novasys.babel.generic.ProtoRequest;
 import pt.unl.fct.di.novasys.network.data.Host;
+
+import java.util.UUID;
 
 public class BroadcastRequest extends ProtoRequest {
 

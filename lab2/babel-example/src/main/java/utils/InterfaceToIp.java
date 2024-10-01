@@ -16,6 +16,7 @@ public class InterfaceToIp {
 		InetAddress currentAddress;
 		while (inetAddress.hasMoreElements()) {
 			currentAddress = inetAddress.nextElement();
+			System.out.println(currentAddress);
 			if (currentAddress instanceof Inet4Address && !currentAddress.isLoopbackAddress()) {
 				return currentAddress.getHostAddress();
 			}

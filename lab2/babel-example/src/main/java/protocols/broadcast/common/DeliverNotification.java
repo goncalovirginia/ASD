@@ -1,9 +1,9 @@
 package protocols.broadcast.common;
 
-import java.util.UUID;
-
 import pt.unl.fct.di.novasys.babel.generic.ProtoNotification;
 import pt.unl.fct.di.novasys.network.data.Host;
+
+import java.util.UUID;
 
 public class DeliverNotification extends ProtoNotification {
 	public static final short NOTIFICATION_ID = 201;

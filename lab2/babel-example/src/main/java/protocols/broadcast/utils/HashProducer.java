@@ -1,9 +1,9 @@
 package protocols.broadcast.utils;
 
+import pt.unl.fct.di.novasys.network.data.Host;
+
 import java.nio.ByteBuffer;
 import java.util.Arrays;
-
-import pt.unl.fct.di.novasys.network.data.Host;
 
 public class HashProducer {
 	private final ByteBuffer append;
