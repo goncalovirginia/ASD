@@ -15,12 +15,12 @@ import pt.unl.fct.di.novasys.network.data.Host;
 
 import java.util.*;
 
-public class EagerPushEpidemicBroadcast extends GenericProtocol {
+public class EagerPushGossipBroadcast extends GenericProtocol {
 
-	private static final Logger logger = LogManager.getLogger(EagerPushEpidemicBroadcast.class);
+	private static final Logger logger = LogManager.getLogger(EagerPushGossipBroadcast.class);
 
 	//Protocol information, to register in babel
-	public static final String PROTOCOL_NAME = "EagerPushEpidemic";
+	public static final String PROTOCOL_NAME = "EagerPushGossip";
 	public static final short PROTOCOL_ID = 400;
 
 	private final Host myself;
@@ -28,7 +28,7 @@ public class EagerPushEpidemicBroadcast extends GenericProtocol {
 	private final Set<UUID> receivedMessages;
 	private boolean channelReady;
 
-	public EagerPushEpidemicBroadcast(Properties properties, Host myself) throws HandlerRegistrationException {
+	public EagerPushGossipBroadcast(Properties properties, Host myself) throws HandlerRegistrationException {
 		super(PROTOCOL_NAME, PROTOCOL_ID);
 		this.myself = myself;
 		neighbours = new HashSet<>();
@@ -56,12 +56,12 @@ public class EagerPushEpidemicBroadcast extends GenericProtocol {
 		//Create the message object.
 		GossipMessage msg = new GossipMessage(request.getMsgId(), request.getSender(), sourceProto, request.getMsg());
 
-		//Call the same handler as when receiving a new FloodMessage (since the logic is the same)
-		uponFloodMessage(msg, myself, getProtoId(), -1);
+		//Call the same handler as when receiving a new GossipMessage (since the logic is the same)
+		uponGossipMessage(msg, myself, getProtoId(), -1);
 	}
 
 	/*--------------------------------- Messages ---------------------------------------- */
-	private void uponFloodMessage(GossipMessage msg, Host from, short sourceProto, int channelId) {
+	private void uponGossipMessage(GossipMessage msg, Host from, short sourceProto, int channelId) {
 		logger.trace("Received {} from {}", msg, from);
 		//If we already received it once, do nothing (or we would end up with a nasty infinite loop)
 		if (!receivedMessages.add(msg.getMid())) return;
@@ -115,7 +115,7 @@ public class EagerPushEpidemicBroadcast extends GenericProtocol {
 		registerMessageSerializer(channelId, GossipMessage.MSG_ID, GossipMessage.serializer);
 		/*---------------------- Register Message Handlers -------------------------- */
 		try {
-			registerMessageHandler(channelId, GossipMessage.MSG_ID, this::uponFloodMessage, this::uponMsgFail);
+			registerMessageHandler(channelId, GossipMessage.MSG_ID, this::uponGossipMessage, this::uponMsgFail);
 		} catch (HandlerRegistrationException e) {
 			logger.error("Error registering message handler: " + e.getMessage());
 			e.printStackTrace();

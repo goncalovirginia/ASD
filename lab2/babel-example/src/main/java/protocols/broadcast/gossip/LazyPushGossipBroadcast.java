@@ -5,6 +5,7 @@ import org.apache.logging.log4j.Logger;
 import protocols.broadcast.common.BroadcastRequest;
 import protocols.broadcast.common.DeliverNotification;
 import protocols.broadcast.gossip.messages.GossipMessage;
+import protocols.broadcast.gossip.messages.LazyGossipMessage;
 import protocols.membership.common.notifications.ChannelCreated;
 import protocols.membership.common.notifications.NeighbourDown;
 import protocols.membership.common.notifications.NeighbourUp;
@@ -15,24 +16,24 @@ import pt.unl.fct.di.novasys.network.data.Host;
 
 import java.util.*;
 
-public class LazyPushEpidemicBroadcast extends GenericProtocol {
+public class LazyPushGossipBroadcast extends GenericProtocol {
 
-	private static final Logger logger = LogManager.getLogger(LazyPushEpidemicBroadcast.class);
+	private static final Logger logger = LogManager.getLogger(LazyPushGossipBroadcast.class);
 
 	//Protocol information, to register in babel
-	public static final String PROTOCOL_NAME = "EagerPushEpidemic";
-	public static final short PROTOCOL_ID = 400;
+	public static final String PROTOCOL_NAME = "LazyPushGossip";
+	public static final short PROTOCOL_ID = 500;
 
 	private final Host myself;
 	private final Set<Host> neighbours;
-	private final Set<UUID> receivedMessages;
+	private final Map<UUID, GossipMessage> receivedMessages;
 	private boolean channelReady;
 
-	public LazyPushEpidemicBroadcast(Properties properties, Host myself) throws HandlerRegistrationException {
+	public LazyPushGossipBroadcast(Properties properties, Host myself) throws HandlerRegistrationException {
 		super(PROTOCOL_NAME, PROTOCOL_ID);
 		this.myself = myself;
 		neighbours = new HashSet<>();
-		receivedMessages = new HashSet<>();
+		receivedMessages = new HashMap<>();
 		channelReady = false;
 
 		/*--------------------- Register Request Handlers ----------------------------- */
@@ -53,26 +54,45 @@ public class LazyPushEpidemicBroadcast extends GenericProtocol {
 	private void uponBroadcastRequest(BroadcastRequest request, short sourceProto) {
 		if (!channelReady) return; //Ideally we would buffer this message to transmit when the channel is ready :)
 
-		//Create the message object.
+		//Create the message object
 		GossipMessage msg = new GossipMessage(request.getMsgId(), request.getSender(), sourceProto, request.getMsg());
 
-		//Call the same handler as when receiving a new FloodMessage (since the logic is the same)
-		uponFloodMessage(msg, myself, getProtoId(), -1);
+		//Call the same handler as when receiving a new GossipMessage (since the logic is the same)
+		uponGossipMessage(msg, myself, getProtoId(), -1);
 	}
 
 	/*--------------------------------- Messages ---------------------------------------- */
-	private void uponFloodMessage(GossipMessage msg, Host from, short sourceProto, int channelId) {
-		logger.trace("Received {} from {}", msg, from);
+	private void uponGossipMessage(GossipMessage msg, Host from, short sourceProto, int channelId) {
+		logger.info("Received {} from {}", msg, from);
+
 		//If we already received it once, do nothing (or we would end up with a nasty infinite loop)
-		if (!receivedMessages.add(msg.getMid())) return;
+		if (receivedMessages.putIfAbsent(msg.getMid(), msg) != null) return;
 
 		//Deliver the message to the application (even if it came from it)
 		triggerNotification(new DeliverNotification(msg.getMid(), msg.getSender(), msg.getContent()));
 
-		//Send the message to ceil(ln(neighbours.size())) neighbours(who will then do the same)
+		//Create the lazy gossip message object to query the randomized neighbouring processes
+		LazyGossipMessage lazyGossipMessage = new LazyGossipMessage(msg.getMid(), msg.getSender(), sourceProto, LazyGossipMessage.LazyGossipAction.PUSH);
+
+		//Lazy push the message to ceil(ln(neighbours.size() + 1)) neighbours (who will then do the same)
 		for (Host neighbour : neighboursShuffleLnSublist(from)) {
-			sendMessage(msg, neighbour);
-			logger.trace("Sent {} to {}", msg, neighbour);
+			sendMessage(lazyGossipMessage, neighbour);
+			logger.info("Sent Lazy Gossip PUSH {} to {}", msg, neighbour);
+		}
+	}
+
+	private void uponLazyGossipMessage(LazyGossipMessage msg, Host from, short sourceProto, int channelId) {
+		logger.info("Received {} from {}", msg, from);
+
+		switch (msg.getAction()) {
+			case PUSH:
+				processLazyGossipMessagePush(msg, from, sourceProto, channelId);
+				break;
+			case PULL:
+				processLazyGossipMessagePull(msg, from, sourceProto, channelId);
+				break;
+			default:
+				logger.error("Invalid Lazy Gossip Message action {} from {}", msg, from);
 		}
 	}
 
@@ -81,6 +101,26 @@ public class LazyPushEpidemicBroadcast extends GenericProtocol {
 		neighboursList.remove(from);
 		Collections.shuffle(neighboursList);
 		return neighboursList.subList(0, (int) Math.ceil(Math.log(neighboursList.size() + 1)));
+	}
+
+	private void processLazyGossipMessagePush(LazyGossipMessage msg, Host from, short sourceProto, int channelId) {
+		//If we already received the message once, we don't need to PULL it again
+		if (receivedMessages.containsKey(msg.getMid())) return;
+
+		//Send PULL message back to the sender, requesting the actual GossipMessage with the contents
+		LazyGossipMessage lazyGossipMessage = new LazyGossipMessage(msg.getMid(), myself, sourceProto, LazyGossipMessage.LazyGossipAction.PULL);
+		sendMessage(lazyGossipMessage, from);
+		logger.info("Sent Lazy Gossip PULL {} to {}", msg, from);
+	}
+
+	private void processLazyGossipMessagePull(LazyGossipMessage msg, Host from, short sourceProto, int channelId) {
+		//Check if the requested message doesn't exist, just in case, in order to avoid a potential error
+		GossipMessage requestedMessage = receivedMessages.get(msg.getMid());
+		if (requestedMessage == null) return;
+
+		//Send full GossipMessage back to the sender that pulled it
+		sendMessage(requestedMessage, from);
+		logger.info("Sent {} to {}", requestedMessage, from);
 	}
 
 	private void uponMsgFail(ProtoMessage msg, Host host, short destProto, Throwable throwable, int channelId) {
@@ -113,9 +153,11 @@ public class LazyPushEpidemicBroadcast extends GenericProtocol {
 		registerSharedChannel(channelId);
 		/*---------------------- Register Message Serializers ---------------------- */
 		registerMessageSerializer(channelId, GossipMessage.MSG_ID, GossipMessage.serializer);
+		registerMessageSerializer(channelId, LazyGossipMessage.MSG_ID, LazyGossipMessage.serializer);
 		/*---------------------- Register Message Handlers -------------------------- */
 		try {
-			registerMessageHandler(channelId, GossipMessage.MSG_ID, this::uponFloodMessage, this::uponMsgFail);
+			registerMessageHandler(channelId, GossipMessage.MSG_ID, this::uponGossipMessage, this::uponMsgFail);
+			registerMessageHandler(channelId, LazyGossipMessage.MSG_ID, this::uponLazyGossipMessage, this::uponMsgFail);
 		} catch (HandlerRegistrationException e) {
 			logger.error("Error registering message handler: " + e.getMessage());
 			e.printStackTrace();
@@ -123,6 +165,12 @@ public class LazyPushEpidemicBroadcast extends GenericProtocol {
 		}
 		//Now we can start sending messages
 		channelReady = true;
+	}
+
+	public void printReceivedMessages() {
+		for (UUID uuid : receivedMessages.keySet()) {
+			System.out.println(uuid);
+		}
 	}
 
 }

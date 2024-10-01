@@ -19,7 +19,7 @@ public class GossipMessage extends ProtoMessage {
 
 	@Override
 	public String toString() {
-		return "FloodMessage{" +
+		return "GossipMessage{" +
 				"mid=" + mid +
 				'}';
 	}
@@ -50,14 +50,14 @@ public class GossipMessage extends ProtoMessage {
 
 	public static ISerializer<GossipMessage> serializer = new ISerializer<>() {
 		@Override
-		public void serialize(GossipMessage floodMessage, ByteBuf out) throws IOException {
-			out.writeLong(floodMessage.mid.getMostSignificantBits());
-			out.writeLong(floodMessage.mid.getLeastSignificantBits());
-			Host.serializer.serialize(floodMessage.sender, out);
-			out.writeShort(floodMessage.toDeliver);
-			out.writeInt(floodMessage.content.length);
-			if (floodMessage.content.length > 0) {
-				out.writeBytes(floodMessage.content);
+		public void serialize(GossipMessage gossipMessage, ByteBuf out) throws IOException {
+			out.writeLong(gossipMessage.mid.getMostSignificantBits());
+			out.writeLong(gossipMessage.mid.getLeastSignificantBits());
+			Host.serializer.serialize(gossipMessage.sender, out);
+			out.writeShort(gossipMessage.toDeliver);
+			out.writeInt(gossipMessage.content.length);
+			if (gossipMessage.content.length > 0) {
+				out.writeBytes(gossipMessage.content);
 			}
 		}
 

@@ -1,7 +1,8 @@
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import protocols.apps.BroadcastApp;
-import protocols.broadcast.gossip.EagerPushEpidemicBroadcast;
+import protocols.broadcast.gossip.EagerPushGossipBroadcast;
+import protocols.broadcast.gossip.LazyPushGossipBroadcast;
 import protocols.membership.full.GossipBasedFullMembership;
 import pt.unl.fct.di.novasys.babel.core.Babel;
 import pt.unl.fct.di.novasys.network.data.Host;
@@ -44,9 +45,9 @@ public class Main {
 		logger.info("Hello, I am {}", myself);
 
 		// Application
-		BroadcastApp broadcastApp = new BroadcastApp(myself, props, EagerPushEpidemicBroadcast.PROTOCOL_ID);
+		BroadcastApp broadcastApp = new BroadcastApp(myself, props, LazyPushGossipBroadcast.PROTOCOL_ID);
 		// Broadcast Protocol
-		EagerPushEpidemicBroadcast broadcast = new EagerPushEpidemicBroadcast(props, myself);
+		LazyPushGossipBroadcast broadcast = new LazyPushGossipBroadcast(props, myself);
 		// Membership Protocol
 		GossipBasedFullMembership membership = new GossipBasedFullMembership(props, myself);
 
@@ -64,7 +65,10 @@ public class Main {
 		//Start babel and protocol threads
 		babel.start();
 
-		Runtime.getRuntime().addShutdownHook(new Thread(() -> logger.info("Goodbye")));
+		Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+			broadcast.printReceivedMessages();
+			logger.info("Goodbye");
+		}));
 
 	}
 
