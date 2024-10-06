@@ -8,10 +8,11 @@ Questions should be sent to João Leitão
 
 Use the command
 
-''' 
+'''
 mvn clean compile package
 '''
 
 to generate in the target folder a asdProj.jar. This jar contains all classes and dependencias.
 
-The properties file must be adjusted for all required properties. You can complement properties on that file with additional options on the command line.
+The properties file must be adjusted for all required properties. You can complement properties on that file with
+additional options on the command line.
