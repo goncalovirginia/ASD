@@ -1,4 +1,4 @@
-package protocols.dht.replies;
+package protocols.dht.chord.replies;
 
 import org.apache.commons.lang3.tuple.Pair;
 import pt.unl.fct.di.novasys.babel.generic.ProtoReply;
@@ -44,11 +44,11 @@ public class LookupReply extends ProtoReply {
 	}
 
 	public String toString() {
-		String reply = "LookupReply for " + this.getPeerIDHex() + " containing set (" + this.peers.size() + " elements):\n";
+		StringBuilder reply = new StringBuilder("LookupReply for " + this.getPeerIDHex() + " containing set (" + this.peers.size() + " elements):\n");
 		for (Pair<byte[], Host> p : this.peers) {
-			reply += "\t" + HashProducer.toNumberFormat(p.getLeft()).toString(16) + "::" + p.getRight().toString() + "\n";
+			reply.append("\t").append(HashProducer.toNumberFormat(p.getLeft()).toString(16)).append("::").append(p.getRight().toString()).append("\n");
 		}
-		return reply;
+		return reply.toString();
 	}
 
 }

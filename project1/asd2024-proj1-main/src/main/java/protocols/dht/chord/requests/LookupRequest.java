@@ -1,17 +1,17 @@
-package protocols.dht.requests;
+package protocols.dht.chord.requests;
 
 import pt.unl.fct.di.novasys.babel.generic.ProtoRequest;
 import utils.HashProducer;
 
 import java.math.BigInteger;
 
-public class Lookup extends ProtoRequest {
+public class LookupRequest extends ProtoRequest {
 
 	public final static short REQUEST_ID = 501;
 
 	private final byte[] peerID;
 
-	public Lookup(byte[] peerID) {
+	public LookupRequest(byte[] peerID) {
 		super(REQUEST_ID);
 		this.peerID = peerID.clone();
 	}
