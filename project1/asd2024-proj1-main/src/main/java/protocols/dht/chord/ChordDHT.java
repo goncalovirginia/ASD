@@ -67,6 +67,16 @@ public class ChordDHT extends GenericProtocol {
 		tcpChannelProperties.setProperty(TCPChannel.CONNECT_TIMEOUT_KEY, "1000"); //TCP connect timeout
 		tcpChannelId = createChannel(TCPChannel.NAME, tcpChannelProperties); //Create the channel with the given properties
 
+		//register TCP channel events
+		registerChannelEventHandler(tcpChannelId, OutConnectionUp.EVENT_ID, this::uponOutConnectionUp);
+		registerChannelEventHandler(tcpChannelId, OutConnectionDown.EVENT_ID, this::uponOutConnectionDown);
+		registerChannelEventHandler(tcpChannelId, OutConnectionFailed.EVENT_ID, this::uponOutConnectionFailed);
+		registerChannelEventHandler(tcpChannelId, InConnectionUp.EVENT_ID, this::uponInConnectionUp);
+		registerChannelEventHandler(tcpChannelId, InConnectionDown.EVENT_ID, this::uponInConnectionDown);
+
+		//register request handlers
+		registerRequestHandler(LookupRequest.REQUEST_ID, this::uponLookupRequest);
+
 		//register message serializers
 		registerMessageSerializer(tcpChannelId, JoinMessage.MSG_ID, JoinMessage.serializer);
 		registerMessageSerializer(tcpChannelId, LookupMessage.MSG_ID, LookupMessage.serializer);
@@ -77,13 +87,6 @@ public class ChordDHT extends GenericProtocol {
 
 		//register timer handlers
 		registerTimerHandler(RetryTCPConnectionsTimer.TIMER_ID, this::retryTCPConnections);
-
-		//register TCP channel events
-		registerChannelEventHandler(tcpChannelId, OutConnectionUp.EVENT_ID, this::uponOutConnectionUp);
-		registerChannelEventHandler(tcpChannelId, OutConnectionDown.EVENT_ID, this::uponOutConnectionDown);
-		registerChannelEventHandler(tcpChannelId, OutConnectionFailed.EVENT_ID, this::uponOutConnectionFailed);
-		registerChannelEventHandler(tcpChannelId, InConnectionUp.EVENT_ID, this::uponInConnectionUp);
-		registerChannelEventHandler(tcpChannelId, InConnectionDown.EVENT_ID, this::uponInConnectionDown);
 	}
 
 	@Override
