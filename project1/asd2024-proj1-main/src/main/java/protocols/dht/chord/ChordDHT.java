@@ -37,7 +37,7 @@ public class ChordDHT extends GenericProtocol {
 
 	private ChordNode predecessorNode;
 	private final ChordNode thisNode;
-	private final ChordNode[] fingers;
+	private final Finger[] fingers;
 
 	public ChordDHT(Properties properties, Host thisHost) throws IOException, HandlerRegistrationException {
 		super(PROTOCOL_NAME, PROTOCOL_ID);
@@ -52,8 +52,14 @@ public class ChordDHT extends GenericProtocol {
 
 		//initialize fingers
 		int numFingers = AuxCalcs.log2Ceil(Integer.parseInt(properties.getProperty("id_bits")));
-		fingers = new ChordNode[numFingers];
-		Arrays.fill(fingers, thisNode);
+		fingers = new Finger[numFingers];
+		BigInteger fingerEnd = thisNode.getPeerID().add(BigInteger.valueOf(2).pow(fingers.length)).mod(BigInteger.valueOf(2).pow(fingers.length));
+		for (int i = fingers.length-1; i >= 0; i--) {
+			//(thisNode.getPeerID() + 2^i) mod 2^fingers.length
+			BigInteger fingerStart = thisNode.getPeerID().add(BigInteger.valueOf(2).pow(i)).mod(BigInteger.valueOf(2).pow(fingers.length));
+			fingers[i] = new Finger(fingerStart, fingerEnd, thisNode);
+			fingerEnd = fingerStart;
+		}
 
 		//register TCP channel
 		Properties tcpChannelProperties = new Properties();
@@ -145,7 +151,7 @@ public class ChordDHT extends GenericProtocol {
 	}
 
 	private boolean isSoloNode() {
-		return fingers[0] == thisNode;
+		return fingers[0].getChordNode() == thisNode;
 	}
 
 	/*--------------------------------- Requests ---------------------------------------- */
