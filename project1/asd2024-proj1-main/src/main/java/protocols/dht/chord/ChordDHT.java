@@ -52,8 +52,8 @@ public class ChordDHT extends GenericProtocol {
 		//initialize predecessorNode
 		predecessorNode = thisNode;
 
-		//initialize fingers array
-		int numFingers = Calculations.log2Ceil(Integer.parseInt(properties.getProperty("max_peers")));
+		//initialize fingers table
+		int numFingers = Calculations.log2Ceil(Integer.parseInt(properties.getProperty("n_peers")));
 		fingers = new ChordNode[numFingers];
 		Arrays.fill(fingers, thisNode);
 
@@ -94,15 +94,14 @@ public class ChordDHT extends GenericProtocol {
 		//inform the point2point algorithm above about the TCP channel to use
 		triggerNotification(new TCPChannelCreatedNotification(tcpChannelId));
 
-		//establish TCP connection to contact host
-		if (props.containsKey("contact")) {
-			connectToHost(props.getProperty("contact"));
-		}
-
 		//initiate timers
 		setupPeriodicTimer(new RetryTCPConnectionsTimer(), 1000, 1000);
 
-		while (isSoloNode());
+		//establish TCP connection to contact host
+		if (props.containsKey("contact")) {
+			connectToHost(props.getProperty("contact"));
+			while (isSoloNode());
+		}
 	}
 
 	private void connectToHost(String contact) {
@@ -119,17 +118,31 @@ public class ChordDHT extends GenericProtocol {
 		}
 	}
 
-	private void addFinger(Host host) {
-		if (isSoloNode()) {
-			joinRing(host);
+	private void processConnection(Host host) {
+		if (this.isSoloNode()) {
+			joinNetwork(host);
 		}
 	}
 
-	private void joinRing(Host host) {
+	private void joinNetwork(Host host) {
+		initializeFingerTable(host);
+		updateOtherNodes();
+		moveKeysFromSuccessor();
+	}
+
+	private void initializeFingerTable(Host host) {
 
 	}
 
-	private void removeFinger(Host host) {
+	private void updateOtherNodes() {
+
+	}
+
+	private void moveKeysFromSuccessor() {
+
+	}
+
+	private void processDisconnection(Host host) {
 
 	}
 
@@ -180,7 +193,7 @@ public class ChordDHT extends GenericProtocol {
 		Host peer = event.getNode();
 		logger.debug("Connection to {} is up", peer);
 		pendingHostConnections.remove(peer);
-		addFinger(peer);
+		processConnection(peer);
 	}
 
 	//If an established connection is disconnected, remove the peer from the membership and inform the Dissemination
@@ -188,7 +201,7 @@ public class ChordDHT extends GenericProtocol {
 	private void uponOutConnectionDown(OutConnectionDown event, int channelId) {
 		Host peer = event.getNode();
 		logger.debug("Connection to {} is down cause {}", peer, event.getCause());
-		removeFinger(peer);
+		processDisconnection(peer);
 	}
 
 	//If a connection fails to be established, this event is triggered. In this protocol, we simply remove from the
