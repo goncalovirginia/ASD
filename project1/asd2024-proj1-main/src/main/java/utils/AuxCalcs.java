@@ -1,6 +1,6 @@
 package utils;
 
-public class Calculations {
+public class AuxCalcs {
 
 	public static int log2Ceil(int maxPeers) {
 		--maxPeers;

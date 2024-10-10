@@ -1,10 +1,7 @@
 package protocols.apps;
 
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
-import java.util.Properties;
-import java.util.Random;
-import java.util.UUID;
+import java.util.*;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -37,12 +34,13 @@ public class AutomatedApp extends GenericProtocol {
     //Time to wait until starting sending messages
     private final int cooldownTime;
     //Interval between each broadcast
-    private final int disseminationInterval;
-    //Number of different peers to be considered;
-    private final int nPeers;
-    
+    private final int broadcastInterval;
     //random seed for topic generation
     private final int randomSeed;
+    //Number of different peers to be considered
+    private final int nPeers;
+    //Number of bits used for peer ID's
+    private final int idBits;
     
     private final int processSequenceNumber;
 
@@ -66,19 +64,20 @@ public class AutomatedApp extends GenericProtocol {
         this.prepareTime = Integer.parseInt(properties.getProperty("prepare_time")); //in seconds
         this.cooldownTime = Integer.parseInt(properties.getProperty("cooldown_time")); //in seconds
         this.runTime = Integer.parseInt(properties.getProperty("run_time")); //in seconds
-        this.disseminationInterval = Integer.parseInt(properties.getProperty("broadcast_interval")); //in milliseconds
-        this.nPeers = Integer.parseInt(properties.getProperty("n_peers")); 
+        this.broadcastInterval = Integer.parseInt(properties.getProperty("broadcast_interval")); //in milliseconds
         this.randomSeed = Integer.parseInt(properties.getProperty("random_seed","10000"));
+        this.nPeers = Integer.parseInt(properties.getProperty("n_peers"));
+        this.idBits = Integer.parseInt(properties.getProperty("id_bits"));
         
-        this.peerIDsHex = new ArrayList<String>(nPeers);
-        this.peerIDs = new ArrayList<byte[]>(nPeers);
+        this.peerIDsHex = new ArrayList<>(nPeers);
+        this.peerIDs = new ArrayList<>(nPeers);
        
         //Generate Topics
         r = new Random(this.randomSeed);
-        for(int i = 0; i < this.nPeers; i++) {
-        	byte[] value = new byte[100];  
+        for (int i = 0; i < this.nPeers; i++) {
+        	byte[] value = new byte[100];
         	r.nextBytes(value);
-        	byte[] id = HashProducer.hashValue("Node" + i + value.toString());
+        	byte[] id = HashProducer.hashValue("Node" + i + Arrays.toString(value), this.idBits);
         	this.peerIDs.add(id);
         	this.peerIDsHex.add(HashProducer.toNumberFormat(id).toString(16));
         }
@@ -118,7 +117,7 @@ public class AutomatedApp extends GenericProtocol {
     private void uponStartTimer(StartTimer startTimer, long timerId) {
         logger.info("Starting publications");
         //Start broadcasting periodically
-        sendMessageTimer = setupPeriodicTimer(new SendMessageTimer(), 0, disseminationInterval);
+        sendMessageTimer = setupPeriodicTimer(new SendMessageTimer(), 0, broadcastInterval);
         //And setup the stop timer
         setupTimer(new StopTimer(), runTime * 1000L);
     }

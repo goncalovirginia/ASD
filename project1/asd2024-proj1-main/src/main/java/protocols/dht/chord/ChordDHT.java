@@ -15,7 +15,7 @@ import pt.unl.fct.di.novasys.babel.generic.ProtoMessage;
 import pt.unl.fct.di.novasys.channel.tcp.TCPChannel;
 import pt.unl.fct.di.novasys.channel.tcp.events.*;
 import pt.unl.fct.di.novasys.network.data.Host;
-import utils.Calculations;
+import utils.AuxCalcs;
 
 import java.io.IOException;
 import java.math.BigInteger;
@@ -44,16 +44,14 @@ public class ChordDHT extends GenericProtocol {
 
 		pendingHostConnections = new HashSet<>();
 
-		//initialize thisNode
+		//initialize thisNode and predecessorNode
 		String myPeerIDHex = properties.getProperty(AutomatedApp.PROPERTY_NODE_ID);
 		BigInteger myPeerID = new BigInteger(myPeerIDHex, 16);
 		thisNode = new ChordNode(myPeerID, thisHost);
-
-		//initialize predecessorNode
 		predecessorNode = thisNode;
 
-		//initialize fingers table
-		int numFingers = Calculations.log2Ceil(Integer.parseInt(properties.getProperty("n_peers")));
+		//initialize fingers
+		int numFingers = AuxCalcs.log2Ceil(Integer.parseInt(properties.getProperty("id_bits")));
 		fingers = new ChordNode[numFingers];
 		Arrays.fill(fingers, thisNode);
 

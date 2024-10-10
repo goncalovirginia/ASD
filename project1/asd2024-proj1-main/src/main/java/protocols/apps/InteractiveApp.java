@@ -1,10 +1,6 @@
 package protocols.apps;
 
-import java.util.ArrayList;
-import java.util.Properties;
-import java.util.Random;
-import java.util.Scanner;
-import java.util.UUID;
+import java.util.*;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -26,6 +22,9 @@ public class InteractiveApp extends GenericProtocol {
 
     //Number of different peers to be considered;
     private final int nPeers;
+
+	//Number of bits used for peer ID's
+	private final int idBits;
     
     //random seed for topic generation
     private final int randomSeed;
@@ -48,7 +47,8 @@ public class InteractiveApp extends GenericProtocol {
         this.commProtoId = commProtoId;
 
         //Read configurations
-        this.nPeers = Integer.parseInt(properties.getProperty("n_peers")); 
+        this.nPeers = Integer.parseInt(properties.getProperty("n_peers"));
+	    this.idBits = Integer.parseInt(properties.getProperty("id_bits"));
         this.randomSeed = Integer.parseInt(properties.getProperty("random_seed","10000"));
         
         this.peerIDsHex = new ArrayList<String>(nPeers);
@@ -59,7 +59,7 @@ public class InteractiveApp extends GenericProtocol {
         for(int i = 0; i < this.nPeers; i++) {
         	byte[] value = new byte[100];  
         	r.nextBytes(value);
-        	byte[] id = HashProducer.hashValue("Node" + i + value.toString());
+        	byte[] id = HashProducer.hashValue("Node" + i + Arrays.toString(value), idBits);
         	this.peerIDs.add(id);
         	this.peerIDsHex.add(HashProducer.toNumberFormat(id).toString(16));
         }

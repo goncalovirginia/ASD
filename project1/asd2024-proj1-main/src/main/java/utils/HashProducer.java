@@ -40,9 +40,16 @@ public class HashProducer {
     public static BigInteger toNumberFormat(byte[] peerID) { 	
     	return new BigInteger(peerID);
     }
-    
+
     public static byte[] hashValue(String value) {
-    	return Hashing.sha256().hashString(value, StandardCharsets.UTF_8).asBytes();       	
+        return Hashing.sha256().hashString(value, StandardCharsets.UTF_8).asBytes();
+    }
+
+    public static byte[] hashValue(String value, int numBits) {
+	    if (numBits == 512) {
+		    return Hashing.sha512().hashString(value, StandardCharsets.UTF_8).asBytes();
+	    }
+	    return Hashing.sha256().hashString(value, StandardCharsets.UTF_8).asBytes();
     }
     
     public static int randomInitializer(byte[] peerID) {

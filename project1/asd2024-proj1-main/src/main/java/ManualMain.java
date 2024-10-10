@@ -6,7 +6,7 @@ import org.apache.logging.log4j.Logger;
 
 import protocols.apps.InteractiveApp;
 import protocols.dht.chord.ChordDHT;
-import protocols.point2point.EmptyPoint2PointComm;
+import protocols.point2point.Point2PointCommunicator;
 import pt.unl.fct.di.novasys.babel.core.Babel;
 import pt.unl.fct.di.novasys.network.data.Host;
 import utils.InterfaceToIp;
@@ -48,10 +48,10 @@ public class ManualMain {
         logger.info("Hello, I am {}", dhtHost);
 
         // Application
-        InteractiveApp interactiveApp = new InteractiveApp(props, EmptyPoint2PointComm.PROTOCOL_ID);
+        InteractiveApp interactiveApp = new InteractiveApp(props, Point2PointCommunicator.PROTOCOL_ID);
         
       //Point-to-Point Communication Protocol
-        EmptyPoint2PointComm commProto = new EmptyPoint2PointComm(commHost, ChordDHT.PROTOCOL_ID);
+        Point2PointCommunicator commProto = new Point2PointCommunicator(commHost, ChordDHT.PROTOCOL_ID);
         
         //DHT Protocol
         ChordDHT dhtProto = new ChordDHT(props, dhtHost);
