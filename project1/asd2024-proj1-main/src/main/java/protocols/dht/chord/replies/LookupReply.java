@@ -9,18 +9,21 @@ import java.math.BigInteger;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Set;
+import java.util.UUID;
 
 public class LookupReply extends ProtoReply {
 
 	public final static short REPLY_ID = 502;
 
 	private final byte[] peerID;
+	private final UUID mid;
 	private final Set<Pair<byte[], Host>> peers;
 
-	public LookupReply(byte[] peerID) {
+	public LookupReply(byte[] peerID, UUID mid) {
 		super(REPLY_ID);
 		this.peerID = peerID.clone();
-		this.peers = new HashSet<Pair<byte[], Host>>();
+		this.mid = mid;
+		this.peers = new HashSet<>();
 	}
 
 	public byte[] getPeerID() {
@@ -33,6 +36,10 @@ public class LookupReply extends ProtoReply {
 
 	public String getPeerIDHex() {
 		return HashProducer.toNumberFormat(peerID).toString(16);
+	}
+
+	public UUID getMid() {
+		return this.mid;
 	}
 
 	public Iterator<Pair<byte[], Host>> getPeersIterator() {

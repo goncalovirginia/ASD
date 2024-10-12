@@ -3,6 +3,7 @@ package protocols.point2point.notifications;
 import java.math.BigInteger;
 import java.util.UUID;
 
+import protocols.point2point.messages.Point2PointMessage;
 import pt.unl.fct.di.novasys.babel.generic.ProtoNotification;
 import utils.HashProducer;
 
@@ -19,6 +20,13 @@ public class Deliver extends ProtoNotification {
 		this.senderID = senderID.clone();
 		this.messageID = mid;
 		this.messagePayload = mPayload.clone();
+	}
+
+	public Deliver(Point2PointMessage point2PointMessage) {
+		super(NOTIFICATION_ID);
+		this.senderID = point2PointMessage.getSenderPeerID();
+		this.messageID = point2PointMessage.getMid();
+		this.messagePayload = point2PointMessage.getContent();
 	}
 
 	

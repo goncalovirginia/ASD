@@ -3,8 +3,8 @@ package protocols.dht.chord;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import protocols.apps.AutomatedApp;
-import protocols.dht.chord.messages.JoinMessage;
-import protocols.dht.chord.messages.LookupMessage;
+import protocols.dht.chord.messages.FindSuccessorMessage;
+import protocols.dht.chord.messages.FoundSuccessorMessage;
 import protocols.dht.chord.notifications.TCPChannelCreatedNotification;
 import protocols.dht.chord.requests.LookupRequest;
 import protocols.dht.chord.replies.LookupReply;
@@ -20,7 +20,6 @@ import utils.AuxCalcs;
 import java.io.IOException;
 import java.math.BigInteger;
 import java.net.InetAddress;
-import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Properties;
 import java.util.Set;
@@ -39,10 +38,13 @@ public class ChordDHT extends GenericProtocol {
 	private final ChordNode thisNode;
 	private final Finger[] fingers;
 
+	private final Set<LookupRequest> pendingLookupRequests;
+
 	public ChordDHT(Properties properties, Host thisHost) throws IOException, HandlerRegistrationException {
 		super(PROTOCOL_NAME, PROTOCOL_ID);
 
 		pendingHostConnections = new HashSet<>();
+		pendingLookupRequests = new HashSet<>();
 
 		//initialize thisNode and predecessorNode
 		String myPeerIDHex = properties.getProperty(AutomatedApp.PROPERTY_NODE_ID);
@@ -82,12 +84,12 @@ public class ChordDHT extends GenericProtocol {
 		registerRequestHandler(LookupRequest.REQUEST_ID, this::uponLookupRequest);
 
 		//register message serializers
-		registerMessageSerializer(tcpChannelId, JoinMessage.MSG_ID, JoinMessage.serializer);
-		registerMessageSerializer(tcpChannelId, LookupMessage.MSG_ID, LookupMessage.serializer);
+		registerMessageSerializer(tcpChannelId, FindSuccessorMessage.MSG_ID, FindSuccessorMessage.serializer);
+		registerMessageSerializer(tcpChannelId, FoundSuccessorMessage.MSG_ID, FoundSuccessorMessage.serializer);
 
 		//register message handlers
-		registerMessageHandler(tcpChannelId, JoinMessage.MSG_ID, this::uponJoinMessage, this::uponMessageFail);
-		registerMessageHandler(tcpChannelId, LookupMessage.MSG_ID, this::uponLookupMessage, this::uponMessageFail);
+		registerMessageHandler(tcpChannelId, FindSuccessorMessage.MSG_ID, this::uponFindSuccessorMessage, this::uponMessageFail);
+		registerMessageHandler(tcpChannelId, FoundSuccessorMessage.MSG_ID, this::uponFoundSuccessorMessage, this::uponMessageFail);
 
 		//register timer handlers
 		registerTimerHandler(RetryTCPConnectionsTimer.TIMER_ID, this::retryTCPConnections);
@@ -122,12 +124,6 @@ public class ChordDHT extends GenericProtocol {
 		}
 	}
 
-	private void processConnection(Host host) {
-		if (this.isSoloNode()) {
-			joinNetwork(host);
-		}
-	}
-
 	private void joinNetwork(Host host) {
 		initializeFingerTable(host);
 		updateOtherNodes();
@@ -154,26 +150,46 @@ public class ChordDHT extends GenericProtocol {
 		return fingers[0].getChordNode() == thisNode;
 	}
 
+	private ChordNode closestPrecedingNode(BigInteger peerID) {
+		for (int i = fingers.length-1; i >= 0 ; i--) {
+			if (fingers[i].isInInterval(peerID)) {
+				return fingers[i].getChordNode();
+			}
+		}
+		return thisNode;
+	}
+
 	/*--------------------------------- Requests ---------------------------------------- */
 
 	private void uponLookupRequest(LookupRequest request, short protoID) {
 		logger.info("Received LookupRequest: " + request.toString());
 
-		LookupReply lookupReply = new LookupReply(request.getPeerID());
-
-		lookupReply.addElementToPeers(thisNode.getPeerIDBytes(), thisNode.getHost());
-
-		sendReply(lookupReply, protoID);
+		FindSuccessorMessage findSuccessorMessage = new FindSuccessorMessage();
+		uponFindSuccessorMessage();
 	}
 
 	/*--------------------------------- Messages ---------------------------------------- */
 
-	private void uponJoinMessage(JoinMessage joinMessage, Host from, short sourceProto, int channelId) {
-		logger.info("Received JoinMessage: " + joinMessage.toString());
+	private void uponFindSuccessorMessage(FindSuccessorMessage findSuccessorMessage, Host from, short sourceProto, int channelId) {
+		logger.info("Received LookupMessage: " + findSuccessorMessage.toString());
+
+		if (Finger.belongsToSuccessor(thisNode.getPeerID(), fingers[0].getChordNode().getPeerID(), findSuccessorMessage.getPeerID())) {
+			FoundSuccessorMessage foundSuccessorMessage = new FoundSuccessorMessage(findSuccessorMessage, thisNode.getHost());
+			sendMessage(foundSuccessorMessage, foundSuccessorMessage.getOriginalSender());
+			return;
+		}
+
+		ChordNode closestPrecedingNode = closestPrecedingNode(findSuccessorMessage.getPeerID());
+		FindSuccessorMessage findSuccessorMessage2 = new FindSuccessorMessage(findSuccessorMessage, thisNode.getHost());
+		sendMessage(findSuccessorMessage2, closestPrecedingNode.getHost());
 	}
 
-	private void uponLookupMessage(LookupMessage lookupMessage, Host from, short sourceProto, int channelId) {
-		logger.info("Received LookupMessage: " + lookupMessage.toString());
+	private void uponFoundSuccessorMessage(FoundSuccessorMessage foundSuccessorMessage, Host from, short sourceProto, int channelId) {
+		logger.info("Received FoundSuccessorMessage: " + foundSuccessorMessage.toString());
+
+		LookupReply lookupReply = new LookupReply(request.getPeerID());
+		lookupReply.addElementToPeers(thisNode.getPeerIDBytes(), thisNode.getHost());
+		sendReply(lookupReply, protoID);
 	}
 
 	private void uponMessageFail(ProtoMessage msg, Host host, short destProto, Throwable throwable, int channelId) {
@@ -197,7 +213,10 @@ public class ChordDHT extends GenericProtocol {
 		Host peer = event.getNode();
 		logger.debug("Connection to {} is up", peer);
 		pendingHostConnections.remove(peer);
-		processConnection(peer);
+
+		if (this.isSoloNode()) {
+			joinNetwork(peer);
+		}
 	}
 
 	//If an established connection is disconnected, remove the peer from the membership and inform the Dissemination
