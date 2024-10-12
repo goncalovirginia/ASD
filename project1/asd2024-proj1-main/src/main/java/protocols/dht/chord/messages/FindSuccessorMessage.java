@@ -16,7 +16,7 @@ public class FindSuccessorMessage extends ProtoMessage {
 	private final Host originalSender, sender;
 
 	private final short toDeliver;
-	private final BigInteger peerID;
+	private final BigInteger key;
 
 	@Override
 	public String toString() {
@@ -25,13 +25,13 @@ public class FindSuccessorMessage extends ProtoMessage {
 				'}';
 	}
 
-	public FindSuccessorMessage(UUID mid, Host originalSender, Host sender, short toDeliver, BigInteger peerID) {
+	public FindSuccessorMessage(UUID mid, Host originalSender, Host sender, short toDeliver, BigInteger key) {
 		super(MSG_ID);
 		this.mid = mid;
 		this.originalSender = originalSender;
 		this.sender = sender;
 		this.toDeliver = toDeliver;
-		this.peerID = peerID;
+		this.key = key;
 	}
 
 	public FindSuccessorMessage(FindSuccessorMessage findSuccessorMessage, Host sender) {
@@ -40,7 +40,7 @@ public class FindSuccessorMessage extends ProtoMessage {
 		this.originalSender = findSuccessorMessage.getOriginalSender();
 		this.sender = sender;
 		this.toDeliver = findSuccessorMessage.getToDeliver();
-		this.peerID = findSuccessorMessage.getPeerID();
+		this.key = findSuccessorMessage.getKey();
 	}
 
 	public Host getOriginalSender() {
@@ -59,8 +59,8 @@ public class FindSuccessorMessage extends ProtoMessage {
 		return toDeliver;
 	}
 
-	public BigInteger getPeerID() {
-		return peerID;
+	public BigInteger getKey() {
+		return key;
 	}
 
 	public static ISerializer<FindSuccessorMessage> serializer = new ISerializer<>() {
@@ -71,7 +71,7 @@ public class FindSuccessorMessage extends ProtoMessage {
 			Host.serializer.serialize(findSuccessorMessage.originalSender, out);
 			Host.serializer.serialize(findSuccessorMessage.sender, out);
 			out.writeShort(findSuccessorMessage.toDeliver);
-			byte[] peerIDByteArray = findSuccessorMessage.peerID.toByteArray();
+			byte[] peerIDByteArray = findSuccessorMessage.key.toByteArray();
 			out.writeInt(peerIDByteArray.length);
 			out.writeBytes(peerIDByteArray);
 		}

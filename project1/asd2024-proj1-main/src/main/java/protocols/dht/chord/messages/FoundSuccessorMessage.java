@@ -1,6 +1,7 @@
 package protocols.dht.chord.messages;
 
 import io.netty.buffer.ByteBuf;
+import protocols.dht.chord.ChordNode;
 import pt.unl.fct.di.novasys.babel.generic.ProtoMessage;
 import pt.unl.fct.di.novasys.network.ISerializer;
 import pt.unl.fct.di.novasys.network.data.Host;
@@ -16,7 +17,7 @@ public class FoundSuccessorMessage extends ProtoMessage {
 	private final Host originalSender, sender;
 
 	private final short toDeliver;
-	private final BigInteger peerID;
+	private final BigInteger key, senderPeerID;
 
 	@Override
 	public String toString() {
@@ -25,22 +26,24 @@ public class FoundSuccessorMessage extends ProtoMessage {
 				'}';
 	}
 
-	public FoundSuccessorMessage(UUID mid, Host originalSender, Host sender, short toDeliver, BigInteger peerID) {
+	public FoundSuccessorMessage(UUID mid, Host originalSender, Host sender, short toDeliver, BigInteger key, BigInteger senderPeerID) {
 		super(MSG_ID);
 		this.mid = mid;
 		this.originalSender = originalSender;
 		this.sender = sender;
 		this.toDeliver = toDeliver;
-		this.peerID = peerID;
+		this.key = key;
+		this.senderPeerID = senderPeerID;
 	}
 
-	public FoundSuccessorMessage(FindSuccessorMessage findSuccessorMessage, Host sender) {
+	public FoundSuccessorMessage(FindSuccessorMessage findSuccessorMessage, ChordNode thisNode) {
 		super(MSG_ID);
 		this.mid = findSuccessorMessage.getMid();
 		this.originalSender = findSuccessorMessage.getOriginalSender();
-		this.sender = sender;
+		this.sender = thisNode.getHost();
 		this.toDeliver = findSuccessorMessage.getToDeliver();
-		this.peerID = findSuccessorMessage.getPeerID();
+		this.key = findSuccessorMessage.getKey();
+		this.senderPeerID = thisNode.getPeerID();
 	}
 
 	public Host getOriginalSender() {
@@ -59,8 +62,12 @@ public class FoundSuccessorMessage extends ProtoMessage {
 		return toDeliver;
 	}
 
-	public BigInteger getPeerID() {
-		return peerID;
+	public BigInteger getKey() {
+		return key;
+	}
+
+	public BigInteger getSenderPeerID() {
+		return senderPeerID;
 	}
 
 	public static ISerializer<FoundSuccessorMessage> serializer = new ISerializer<>() {
@@ -71,9 +78,12 @@ public class FoundSuccessorMessage extends ProtoMessage {
 			Host.serializer.serialize(foundSuccessorMessage.originalSender, out);
 			Host.serializer.serialize(foundSuccessorMessage.sender, out);
 			out.writeShort(foundSuccessorMessage.toDeliver);
-			byte[] peerIDByteArray = foundSuccessorMessage.peerID.toByteArray();
-			out.writeInt(peerIDByteArray.length);
-			out.writeBytes(peerIDByteArray);
+			byte[] keyByteArray = foundSuccessorMessage.key.toByteArray();
+			out.writeInt(keyByteArray.length);
+			out.writeBytes(keyByteArray);
+			byte[] senderPeerIDByteArray = foundSuccessorMessage.senderPeerID.toByteArray();
+			out.writeInt(senderPeerIDByteArray.length);
+			out.writeBytes(senderPeerIDByteArray);
 		}
 
 		@Override
@@ -84,11 +94,14 @@ public class FoundSuccessorMessage extends ProtoMessage {
 			Host originalSender = Host.serializer.deserialize(in);
 			Host sender = Host.serializer.deserialize(in);
 			short toDeliver = in.readShort();
-			int size = in.readInt();
-			byte[] peerIDByteArray = new byte[size];
-			in.readBytes(peerIDByteArray);
+			int keySize = in.readInt();
+			byte[] keyByteArray = new byte[keySize];
+			in.readBytes(keyByteArray);
+			int senderPeerIDSize = in.readInt();
+			byte[] senderPeerIDByteArray = new byte[senderPeerIDSize];
+			in.readBytes(senderPeerIDByteArray);
 
-			return new FoundSuccessorMessage(mid, originalSender, sender, toDeliver, new BigInteger(peerIDByteArray));
+			return new FoundSuccessorMessage(mid, originalSender, sender, toDeliver, new BigInteger(keyByteArray), new BigInteger(senderPeerIDByteArray));
 		}
 	};
 }

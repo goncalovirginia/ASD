@@ -1,6 +1,7 @@
 package protocols.dht.chord.replies;
 
 import org.apache.commons.lang3.tuple.Pair;
+import protocols.dht.chord.messages.FoundSuccessorMessage;
 import pt.unl.fct.di.novasys.babel.generic.ProtoReply;
 import pt.unl.fct.di.novasys.network.data.Host;
 import utils.HashProducer;
@@ -15,27 +16,27 @@ public class LookupReply extends ProtoReply {
 
 	public final static short REPLY_ID = 502;
 
-	private final byte[] peerID;
+	private final byte[] key;
 	private final UUID mid;
 	private final Set<Pair<byte[], Host>> peers;
 
-	public LookupReply(byte[] peerID, UUID mid) {
+	public LookupReply(FoundSuccessorMessage foundSuccessorMessage) {
 		super(REPLY_ID);
-		this.peerID = peerID.clone();
-		this.mid = mid;
+		this.key = foundSuccessorMessage.getKey().toByteArray().clone();
+		this.mid = foundSuccessorMessage.getMid();
 		this.peers = new HashSet<>();
 	}
 
-	public byte[] getPeerID() {
-		return this.peerID.clone();
+	public byte[] getKey() {
+		return this.key.clone();
 	}
 
 	public BigInteger getPeerIDNumerical() {
-		return HashProducer.toNumberFormat(peerID);
+		return HashProducer.toNumberFormat(key);
 	}
 
 	public String getPeerIDHex() {
-		return HashProducer.toNumberFormat(peerID).toString(16);
+		return HashProducer.toNumberFormat(key).toString(16);
 	}
 
 	public UUID getMid() {

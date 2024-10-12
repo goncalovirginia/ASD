@@ -31,6 +31,8 @@ public class ChordDHT extends GenericProtocol {
 	public static final short PROTOCOL_ID = 500;
 	public static final String PROTOCOL_NAME = "ChordDHT";
 
+	private final short COMM_PROTOCOL_ID;
+
 	private final int tcpChannelId;
 	private final Set<Host> pendingHostConnections;
 
@@ -40,8 +42,10 @@ public class ChordDHT extends GenericProtocol {
 
 	private final Set<LookupRequest> pendingLookupRequests;
 
-	public ChordDHT(Properties properties, Host thisHost) throws IOException, HandlerRegistrationException {
+	public ChordDHT(Properties properties, Host thisHost, short commProtocolID) throws IOException, HandlerRegistrationException {
 		super(PROTOCOL_NAME, PROTOCOL_ID);
+
+		COMM_PROTOCOL_ID = commProtocolID;
 
 		pendingHostConnections = new HashSet<>();
 		pendingLookupRequests = new HashSet<>();
@@ -164,8 +168,8 @@ public class ChordDHT extends GenericProtocol {
 	private void uponLookupRequest(LookupRequest request, short protoID) {
 		logger.info("Received LookupRequest: " + request.toString());
 
-		FindSuccessorMessage findSuccessorMessage = new FindSuccessorMessage();
-		uponFindSuccessorMessage();
+		FindSuccessorMessage findSuccessorMessage = new FindSuccessorMessage(request.getMid(), thisNode.getHost(), thisNode.getHost(), PROTOCOL_ID, request.getPeerIDNumerical());
+		uponFindSuccessorMessage(findSuccessorMessage, thisNode.getHost(), PROTOCOL_ID, tcpChannelId);
 	}
 
 	/*--------------------------------- Messages ---------------------------------------- */
@@ -173,13 +177,13 @@ public class ChordDHT extends GenericProtocol {
 	private void uponFindSuccessorMessage(FindSuccessorMessage findSuccessorMessage, Host from, short sourceProto, int channelId) {
 		logger.info("Received LookupMessage: " + findSuccessorMessage.toString());
 
-		if (Finger.belongsToSuccessor(thisNode.getPeerID(), fingers[0].getChordNode().getPeerID(), findSuccessorMessage.getPeerID())) {
-			FoundSuccessorMessage foundSuccessorMessage = new FoundSuccessorMessage(findSuccessorMessage, thisNode.getHost());
+		if (Finger.belongsToSuccessor(thisNode.getPeerID(), fingers[0].getChordNode().getPeerID(), findSuccessorMessage.getKey())) {
+			FoundSuccessorMessage foundSuccessorMessage = new FoundSuccessorMessage(findSuccessorMessage, thisNode);
 			sendMessage(foundSuccessorMessage, foundSuccessorMessage.getOriginalSender());
 			return;
 		}
 
-		ChordNode closestPrecedingNode = closestPrecedingNode(findSuccessorMessage.getPeerID());
+		ChordNode closestPrecedingNode = closestPrecedingNode(findSuccessorMessage.getKey());
 		FindSuccessorMessage findSuccessorMessage2 = new FindSuccessorMessage(findSuccessorMessage, thisNode.getHost());
 		sendMessage(findSuccessorMessage2, closestPrecedingNode.getHost());
 	}
@@ -187,9 +191,9 @@ public class ChordDHT extends GenericProtocol {
 	private void uponFoundSuccessorMessage(FoundSuccessorMessage foundSuccessorMessage, Host from, short sourceProto, int channelId) {
 		logger.info("Received FoundSuccessorMessage: " + foundSuccessorMessage.toString());
 
-		LookupReply lookupReply = new LookupReply(request.getPeerID());
-		lookupReply.addElementToPeers(thisNode.getPeerIDBytes(), thisNode.getHost());
-		sendReply(lookupReply, protoID);
+		LookupReply lookupReply = new LookupReply(foundSuccessorMessage);
+		lookupReply.addElementToPeers(foundSuccessorMessage.getSenderPeerID().toByteArray(), foundSuccessorMessage.getSender());
+		sendReply(lookupReply, COMM_PROTOCOL_ID);
 	}
 
 	private void uponMessageFail(ProtoMessage msg, Host host, short destProto, Throwable throwable, int channelId) {
