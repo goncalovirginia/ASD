@@ -23,6 +23,7 @@ import java.net.InetAddress;
 import java.util.HashSet;
 import java.util.Properties;
 import java.util.Set;
+import java.util.UUID;
 
 public class ChordDHT extends GenericProtocol {
 
@@ -128,14 +129,14 @@ public class ChordDHT extends GenericProtocol {
 		}
 	}
 
-	private void joinNetwork(Host host) {
-		initializeFingerTable(host);
+	private void joinNetwork(Host contactHost) {
+		initializeFingerTable(contactHost);
 		updateOtherNodes();
 		moveKeysFromSuccessor();
 	}
 
-	private void initializeFingerTable(Host host) {
-
+	private void initializeFingerTable(Host contactHost) {
+		uponLookupRequest(new LookupRequest(thisNode.getPeerIDBytes(), UUID.randomUUID()), PROTOCOL_ID);
 	}
 
 	private void updateOtherNodes() {
@@ -168,8 +169,8 @@ public class ChordDHT extends GenericProtocol {
 	private void uponLookupRequest(LookupRequest request, short protoID) {
 		logger.info("Received LookupRequest: " + request.toString());
 
-		FindSuccessorMessage findSuccessorMessage = new FindSuccessorMessage(request.getMid(), thisNode.getHost(), thisNode.getHost(), PROTOCOL_ID, request.getPeerIDNumerical());
-		uponFindSuccessorMessage(findSuccessorMessage, thisNode.getHost(), PROTOCOL_ID, tcpChannelId);
+		FindSuccessorMessage findSuccessorMessage = new FindSuccessorMessage(request.getMid(), thisNode.getHost(), thisNode.getHost(), protoID, request.getPeerIDNumerical());
+		uponFindSuccessorMessage(findSuccessorMessage, thisNode.getHost(), protoID, tcpChannelId);
 	}
 
 	/*--------------------------------- Messages ---------------------------------------- */
@@ -214,12 +215,12 @@ public class ChordDHT extends GenericProtocol {
 	//If a connection is successfully established, this event is triggered. In this protocol, we want to add the
 	//respective peer to the membership, and inform the Dissemination protocol via a notification.
 	private void uponOutConnectionUp(OutConnectionUp event, int channelId) {
-		Host peer = event.getNode();
-		logger.debug("Connection to {} is up", peer);
-		pendingHostConnections.remove(peer);
+		Host peerHost = event.getNode();
+		logger.debug("Connection to {} is up", peerHost);
+		pendingHostConnections.remove(peerHost);
 
 		if (this.isSoloNode()) {
-			joinNetwork(peer);
+			joinNetwork(peerHost);
 		}
 	}
 
