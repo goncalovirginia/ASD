@@ -20,7 +20,7 @@ public class FindSuccessorMessage extends ProtoMessage {
 
 	@Override
 	public String toString() {
-		return "LookupMessage{" +
+		return "FindSuccessorMessage{" +
 				"mid=" + mid +
 				'}';
 	}
