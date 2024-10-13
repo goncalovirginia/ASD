@@ -42,6 +42,8 @@ public class ChordDHT extends GenericProtocol {
 	private final Set<UUID> pendingLookupRequests;
 	private final Map<UUID, Finger> fingersPendingSuccessor;
 
+	private final boolean isInitialized;
+
 	public ChordDHT(Properties properties, Host thisHost, short commProtocolID) throws IOException, HandlerRegistrationException {
 		super(PROTOCOL_NAME, PROTOCOL_ID);
 
@@ -50,6 +52,7 @@ public class ChordDHT extends GenericProtocol {
 		pendingHostConnections = new HashSet<>();
 		pendingLookupRequests = new HashSet<>();
 		fingersPendingSuccessor = new HashMap<>();
+		isInitialized = false;
 
 		//initialize thisNode and predecessorNode
 		String myPeerIDHex = properties.getProperty(AutomatedApp.PROPERTY_NODE_ID);
@@ -60,10 +63,10 @@ public class ChordDHT extends GenericProtocol {
 		//initialize fingers
 		int numFingers = AuxCalcs.log2Ceil(Integer.parseInt(properties.getProperty("id_bits")));
 		fingers = new Finger[numFingers];
-		BigInteger fingerEnd = thisNode.getPeerID().add(BigInteger.valueOf(2).pow(fingers.length)).mod(BigInteger.valueOf(2).pow(fingers.length));
+		BigInteger fingerEnd = thisNode.getPeerID().add(BigInteger.TWO.pow(fingers.length)).mod(BigInteger.TWO.pow(fingers.length));
 		for (int i = fingers.length-1; i >= 0; i--) {
 			//(thisNode.getPeerID() + 2^i) mod 2^fingers.length
-			BigInteger fingerStart = thisNode.getPeerID().add(BigInteger.valueOf(2).pow(i)).mod(BigInteger.valueOf(2).pow(fingers.length));
+			BigInteger fingerStart = thisNode.getPeerID().add(BigInteger.TWO.pow(i)).mod(BigInteger.TWO.pow(fingers.length));
 			fingers[i] = new Finger(fingerStart, fingerEnd, thisNode);
 			fingerEnd = fingerStart;
 		}
@@ -113,7 +116,7 @@ public class ChordDHT extends GenericProtocol {
 		//establish TCP connection to contact host
 		if (props.containsKey("contact")) {
 			connectToHost(props.getProperty("contact"));
-			while (this.isSoloNode());
+			while (!isInitialized);
 		}
 	}
 
@@ -129,13 +132,6 @@ public class ChordDHT extends GenericProtocol {
 			e.printStackTrace();
 			System.exit(-1);
 		}
-	}
-
-	private void joinNetwork(Host contactHost) {
-		initializeFingerTableStep1(contactHost);
-		while (this.isSoloNode());
-		updateOtherNodes();
-		moveKeysFromSuccessor();
 	}
 
 	private void initializeFingerTableStep1(Host contactHost) {
@@ -162,28 +158,41 @@ public class ChordDHT extends GenericProtocol {
 				fingersPendingSuccessor.put(findSuccessorMessage.getMid(), fingers[i]);
 			}
 		}
+
+		while (!fingersPendingSuccessor.isEmpty());
+		updateOtherNodes();
 	}
 
-	private void updateFingerSuccessor(FoundSuccessorMessage foundSuccessorMessage) {
+	private void updateFingerNode(FoundSuccessorMessage foundSuccessorMessage) {
 		ChordNode newSuccessorNode = new ChordNode(foundSuccessorMessage.getSenderPeerID(), foundSuccessorMessage.getSenderHost());
-		fingersPendingSuccessor.get(foundSuccessorMessage.getMid()).setChordNode(newSuccessorNode);
-		fingersPendingSuccessor.remove(foundSuccessorMessage.getMid());
+		fingersPendingSuccessor.remove(foundSuccessorMessage.getMid()).setChordNode(newSuccessorNode);;
 	}
 
 	private void updateOtherNodes() {
-
+		for (int i = 0; i < fingers.length; i++) {
+			//TODO: I want to reuse the logic inside uponFindSuccessorMessage for any type of action, probably by extending the FindSuccessorMessage class
+			//TODO: add some sort of Enum and optional data field(s) to FindSuccessorMessage, to encode what type of action we want to do when the predecessor is found
+			//TODO: in this case, we want to send the finger index, and, we don't need a response from the node, we just need it to update itself with the data sent, just like in the pseudocode
+			FindSuccessorMessage updateFingerTableMessage = new FindSuccessorMessage(UUID.randomUUID(), thisNode.getHost(), thisNode.getHost(), PROTOCOL_ID, thisNode.getPeerID().subtract(BigInteger.TWO.pow(i)));
+			uponFindSuccessorMessage(updateFingerTableMessage, thisNode.getHost(), PROTOCOL_ID, tcpChannelId);
+		}
 	}
 
+	//TODO: after parsing the "UPDATE_FINGER_TABLE" Enum inside uponFindSuccessorMessage, we come to this method, and do the update_finger_table(s, i) just like in the pseudocode
+	//TODO: update FindSuccessorMessage to include the byte[] originalSenderPeerID and int fingerIndex, known as s and i, in the pseudocode
+	private void updateFingerTable(FindSuccessorMessage updateFingerTableMessage) {
+		if (Finger.belongsToClosedOpenInterval(thisNode.getPeerID(), fingers[updateFingerTableMessage.getFingerIndex()], updateFingerTableMessage.getOriginalSenderPeerID())) {
+			ChordNode originalSenderNode = new ChordNode(updateFingerTableMessage.getOriginalSenderPeerID(), updateFingerTableMessage.getOriginalSender());
+			fingers[updateFingerTableMessage.getFingerIndex()].setChordNode(originalSenderNode);
+			sendMessage(updateFingerTableMessage, predecessorNode.getHost());
+		}
+	}
+
+	//TODO: kind of optional, but good to have:
+	//TODO: after the node is inserted in the network and the finger tables are stabalized, do the last step and move any outdated (key, value) pairs..
+	//TODO: ..stored in the node's immediate successor, to this node (deleting them in the successor)
 	private void moveKeysFromSuccessor() {
 
-	}
-
-	private void processDisconnection(Host host) {
-
-	}
-
-	private boolean isSoloNode() {
-		return fingers[0].getChordNode() == thisNode;
 	}
 
 	private ChordNode closestPrecedingNode(BigInteger peerID) {
@@ -225,12 +234,12 @@ public class ChordDHT extends GenericProtocol {
 	private void uponFoundSuccessorMessage(FoundSuccessorMessage foundSuccessorMessage, Host from, short sourceProto, int channelId) {
 		logger.info("Received FoundSuccessorMessage: " + foundSuccessorMessage.toString());
 
-		if (this.isSoloNode()) {
+		if (!isInitialized) {
 			initializeFingerTableStep2(foundSuccessorMessage);
 			return;
 		}
 		if (fingersPendingSuccessor.containsKey(foundSuccessorMessage.getMid())) {
-			updateFingerSuccessor(foundSuccessorMessage);
+			updateFingerNode(foundSuccessorMessage);
 			return;
 		}
 
@@ -267,8 +276,8 @@ public class ChordDHT extends GenericProtocol {
 		logger.debug("Connection to {} is up", peerHost);
 		pendingHostConnections.remove(peerHost);
 
-		if (this.isSoloNode()) {
-			joinNetwork(peerHost);
+		if (!isInitialized) {
+			initializeFingerTableStep1(peerHost);
 		}
 	}
 
@@ -277,7 +286,6 @@ public class ChordDHT extends GenericProtocol {
 	private void uponOutConnectionDown(OutConnectionDown event, int channelId) {
 		Host peer = event.getNode();
 		logger.debug("Connection to {} is down cause {}", peer, event.getCause());
-		processDisconnection(peer);
 	}
 
 	//If a connection fails to be established, this event is triggered. In this protocol, we simply remove from the
