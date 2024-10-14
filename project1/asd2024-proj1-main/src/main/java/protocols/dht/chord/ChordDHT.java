@@ -10,6 +10,7 @@ import protocols.dht.chord.notifications.TCPChannelCreatedNotification;
 import protocols.dht.chord.requests.LookupRequest;
 import protocols.dht.chord.replies.LookupReply;
 import protocols.dht.chord.timers.RetryTCPConnectionsTimer;
+import protocols.point2point.notifications.DHTInitializedNotification;
 import pt.unl.fct.di.novasys.babel.core.GenericProtocol;
 import pt.unl.fct.di.novasys.babel.exceptions.HandlerRegistrationException;
 import pt.unl.fct.di.novasys.babel.generic.ProtoMessage;
@@ -116,7 +117,6 @@ public class ChordDHT extends GenericProtocol {
 		//establish TCP connection to contact host
 		if (props.containsKey("contact")) {
 			connectToHost(props.getProperty("contact"));
-			while (!isInitialized);
 		}
 	}
 
@@ -158,9 +158,6 @@ public class ChordDHT extends GenericProtocol {
 				fingersPendingSuccessor.put(findSuccessorMessage.getMid(), fingers[i]);
 			}
 		}
-
-		while (!fingersPendingSuccessor.isEmpty());
-		updateOtherNodes();
 	}
 
 	private void updateFingerNode(FoundSuccessorMessage foundSuccessorMessage) {
@@ -176,16 +173,19 @@ public class ChordDHT extends GenericProtocol {
 			FindSuccessorMessage updateFingerTableMessage = new FindSuccessorMessage(UUID.randomUUID(), thisNode.getHost(), thisNode.getHost(), PROTOCOL_ID, thisNode.getPeerID().subtract(BigInteger.TWO.pow(i)));
 			uponFindSuccessorMessage(updateFingerTableMessage, thisNode.getHost(), PROTOCOL_ID, tcpChannelId);
 		}
+
+		//TODO: pass this trigger notification to the eventual state machine method
+		triggerNotification(new DHTInitializedNotification());
 	}
 
 	//TODO: after parsing the "UPDATE_FINGER_TABLE" Enum inside uponFindSuccessorMessage, we come to this method, and do the update_finger_table(s, i) just like in the pseudocode
 	//TODO: update FindSuccessorMessage to include the byte[] originalSenderPeerID and int fingerIndex, known as s and i, in the pseudocode
 	private void updateFingerTable(FindSuccessorMessage updateFingerTableMessage) {
-		if (Finger.belongsToClosedOpenInterval(thisNode.getPeerID(), fingers[updateFingerTableMessage.getFingerIndex()], updateFingerTableMessage.getOriginalSenderPeerID())) {
+		/* if (Finger.belongsToClosedOpenInterval(thisNode.getPeerID(), fingers[updateFingerTableMessage.getFingerIndex()], updateFingerTableMessage.getOriginalSenderPeerID())) {
 			ChordNode originalSenderNode = new ChordNode(updateFingerTableMessage.getOriginalSenderPeerID(), updateFingerTableMessage.getOriginalSender());
 			fingers[updateFingerTableMessage.getFingerIndex()].setChordNode(originalSenderNode);
 			sendMessage(updateFingerTableMessage, predecessorNode.getHost());
-		}
+		} */
 	}
 
 	//TODO: kind of optional, but good to have:
@@ -234,6 +234,8 @@ public class ChordDHT extends GenericProtocol {
 	private void uponFoundSuccessorMessage(FoundSuccessorMessage foundSuccessorMessage, Host from, short sourceProto, int channelId) {
 		logger.info("Received FoundSuccessorMessage: " + foundSuccessorMessage.toString());
 
+		//TODO: make state machine method handle these conditions something like:
+		// if (!isInitialized) { processNextInitStep(foundSuccessorMessage); return; }
 		if (!isInitialized) {
 			initializeFingerTableStep2(foundSuccessorMessage);
 			return;

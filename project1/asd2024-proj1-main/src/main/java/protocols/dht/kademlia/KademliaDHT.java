@@ -43,11 +43,11 @@ public class KademliaDHT extends GenericProtocol {
 	private void uponLookup(LookupRequest request, short protoID) {
 		logger.info("Received LookupRequest: " + request.toString());
 
-		LookupReply lr = new LookupReply(request.getPeerID());
+		/* LookupReply lr = new LookupReply(request.getPeerID());
 
 		lr.addElementToPeers(myPeerID, myself);
 
-		sendReply(lr, protoID);
+		sendReply(lr, protoID); */
 	}
 
 }

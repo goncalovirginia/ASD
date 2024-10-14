@@ -6,6 +6,7 @@ import protocols.dht.chord.notifications.TCPChannelCreatedNotification;
 import protocols.dht.chord.replies.LookupReply;
 import protocols.dht.chord.requests.LookupRequest;
 import protocols.point2point.messages.Point2PointMessage;
+import protocols.point2point.notifications.DHTInitializedNotification;
 import protocols.point2point.notifications.Deliver;
 import protocols.point2point.requests.Send;
 import pt.unl.fct.di.novasys.babel.core.GenericProtocol;
@@ -25,15 +26,20 @@ public class Point2PointCommunicator extends GenericProtocol {
 	private final Host thisHost;
 	private final short DHT_PROTO_ID;
 
-	private final Map<UUID, Send> pendingLookupReply;
+	private final Set<Send> messagesPendingLookup;
+	private final Map<UUID, Send> messagesPendingLookupReply;
 	private final Set<UUID> receivedMessages;
+
+    private boolean isDHTInitialized;
 
 	public Point2PointCommunicator(Host thisHost, short DHT_Proto_ID) throws HandlerRegistrationException {
 		super(PROTOCOL_NAME, PROTOCOL_ID);
 		this.thisHost = thisHost;
 		this.DHT_PROTO_ID = DHT_Proto_ID;
-		this.pendingLookupReply = new HashMap<>();
+		this.messagesPendingLookup = new HashSet<>();
+		this.messagesPendingLookupReply = new HashMap<>();
 		this.receivedMessages = new HashSet<>();
+		this.isDHTInitialized = false;
 
 		//register request handlers
 		registerRequestHandler(Send.REQUEST_ID, this::uponSendRequest);
@@ -43,6 +49,7 @@ public class Point2PointCommunicator extends GenericProtocol {
 
 		//register notification handlers
 		subscribeNotification(TCPChannelCreatedNotification.NOTIFICATION_ID, this::uponChannelCreated);
+		subscribeNotification(DHTInitializedNotification.NOTIFICATION_ID, this::uponDHTInitialized);
 	}
 
 	@Override
@@ -53,11 +60,17 @@ public class Point2PointCommunicator extends GenericProtocol {
 	/*--------------------------------- Requests ---------------------------------------- */
 
 	private void uponSendRequest(Send request, short protoID) {
-		logger.info("Received Send Request: " + request.toString());
+		logger.info("Received SendRequest: " + request.getMessageID());
+
+        if (!isDHTInitialized) {
+            logger.info("DHT protocol is not initialized yet, storing message: " + request.getMessageID());
+            messagesPendingLookup.add(request);
+			return;
+        }
 
 		LookupRequest lookupRequest = new LookupRequest(request.getDestinationPeerID(), request.getMessageID());
 		sendRequest(lookupRequest, DHT_PROTO_ID);
-		pendingLookupReply.put(request.getMessageID(), request);
+		messagesPendingLookupReply.put(request.getMessageID(), request);
 	}
 
 	/*--------------------------------- Messages ---------------------------------------- */
@@ -80,14 +93,14 @@ public class Point2PointCommunicator extends GenericProtocol {
 	private void uponLookupReply(LookupReply reply, short protoID) {
 		logger.info("Received Lookup Reply: " + reply.toString());
 
-		Send send = pendingLookupReply.get(reply.getMid());
+		Send send = messagesPendingLookupReply.get(reply.getMid());
 		if (send == null) return;
 
 		Point2PointMessage point2PointMessage = new Point2PointMessage(send, thisHost, PROTOCOL_ID);
 		Host destinationHost = reply.getPeersIterator().next().getRight();
 		sendMessage(point2PointMessage, destinationHost);
 
-		pendingLookupReply.remove(reply.getMid());
+		messagesPendingLookupReply.remove(reply.getMid());
 	}
 
 	//Upon receiving the channelId from the DHT algorithm, register our own callbacks and serializers
@@ -107,5 +120,15 @@ public class Point2PointCommunicator extends GenericProtocol {
 			System.exit(1);
 		}
 	}
+
+    private void uponDHTInitialized(DHTInitializedNotification notification, short sourceProto) {
+        logger.info("DHT is now initialized.");
+
+	    for (Send pendingMessage : messagesPendingLookup) {
+		    uponSendRequest(pendingMessage, PROTOCOL_ID);
+	    }
+	    messagesPendingLookup.clear();
+        isDHTInitialized = true;
+    }
 
 }
