@@ -20,13 +20,13 @@ public class Point2PointCommunicator extends GenericProtocol {
 
 	private static final Logger logger = LogManager.getLogger(Point2PointCommunicator.class);
 
-	public final static String PROTOCOL_NAME = "EmptyPoint2PotinComm";
+	public final static String PROTOCOL_NAME = "EmptyPoint2PointComm";
 	public final static short PROTOCOL_ID = 400;
 
 	private final Host thisHost;
 	private final short DHT_PROTO_ID;
 
-	private final Set<Send> messagesPendingLookup;
+	private final List<Send> messagesPendingLookup;
 	private final Map<UUID, Send> messagesPendingLookupReply;
 	private final Set<UUID> receivedMessages;
 
@@ -36,7 +36,7 @@ public class Point2PointCommunicator extends GenericProtocol {
 		super(PROTOCOL_NAME, PROTOCOL_ID);
 		this.thisHost = thisHost;
 		this.DHT_PROTO_ID = DHT_Proto_ID;
-		this.messagesPendingLookup = new HashSet<>();
+		this.messagesPendingLookup = new LinkedList<>();
 		this.messagesPendingLookupReply = new HashMap<>();
 		this.receivedMessages = new HashSet<>();
 		this.isDHTInitialized = false;
@@ -124,11 +124,11 @@ public class Point2PointCommunicator extends GenericProtocol {
     private void uponDHTInitialized(DHTInitializedNotification notification, short sourceProto) {
         logger.info("DHT is now initialized.");
 
+		isDHTInitialized = true;
 	    for (Send pendingMessage : messagesPendingLookup) {
 		    uponSendRequest(pendingMessage, PROTOCOL_ID);
 	    }
 	    messagesPendingLookup.clear();
-        isDHTInitialized = true;
     }
 
 }

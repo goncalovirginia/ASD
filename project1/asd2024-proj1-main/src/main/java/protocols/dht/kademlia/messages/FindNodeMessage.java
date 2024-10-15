@@ -1,6 +1,7 @@
 package protocols.dht.kademlia.messages;
 
 import io.netty.buffer.ByteBuf;
+import protocols.dht.kademlia.KademliaNode;
 import pt.unl.fct.di.novasys.babel.generic.ProtoMessage;
 import pt.unl.fct.di.novasys.network.ISerializer;
 import pt.unl.fct.di.novasys.network.data.Host;
@@ -15,7 +16,7 @@ public class FindNodeMessage extends ProtoMessage {
 
 	private final UUID messageID;
 	private final Host sender;
-	private final BigInteger key;
+	private final BigInteger senderID, key;
 
 	@Override
 	public String toString() {
@@ -24,10 +25,11 @@ public class FindNodeMessage extends ProtoMessage {
 				'}';
 	}
 
-	public FindNodeMessage(UUID messageID, Host sender, BigInteger key) {
+	public FindNodeMessage(UUID messageID, KademliaNode thisNode, BigInteger key) {
 		super(MSG_ID);
 		this.messageID = messageID;
-		this.sender = sender;
+		this.sender = thisNode.getHost();
+		this.senderID = thisNode.getPeerID();
 		this.key = key;
 	}
 
@@ -49,6 +51,9 @@ public class FindNodeMessage extends ProtoMessage {
 			out.writeLong(findNodeMessage.messageID.getMostSignificantBits());
 			out.writeLong(findNodeMessage.messageID.getLeastSignificantBits());
 			Host.serializer.serialize(findNodeMessage.sender, out);
+			byte[] senderIDByteArray = findNodeMessage.senderID.toByteArray();
+			out.writeInt(senderIDByteArray.length);
+			out.writeBytes(senderIDByteArray);
 			byte[] keyByteArray = findNodeMessage.key.toByteArray();
 			out.writeInt(keyByteArray.length);
 			out.writeBytes(keyByteArray);
@@ -61,10 +66,13 @@ public class FindNodeMessage extends ProtoMessage {
 			UUID mid = new UUID(firstLong, secondLong);
 			Host sender = Host.serializer.deserialize(in);
 			int size = in.readInt();
+			byte[] senderIDByteArray = new byte[size];
+			in.readBytes(senderIDByteArray);
+			size = in.readInt();
 			byte[] keyByteArray = new byte[size];
 			in.readBytes(keyByteArray);
 
-			return new FindNodeMessage(mid, sender, new BigInteger(keyByteArray));
+			return new FindNodeMessage(mid, new KademliaNode(new BigInteger(senderIDByteArray), sender), new BigInteger(keyByteArray));
 		}
 	};
 }

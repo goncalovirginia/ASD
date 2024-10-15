@@ -119,7 +119,7 @@ public class KademliaDHT extends GenericProtocol {
 	private void uponLookupRequest(LookupRequest request, short protoID) {
 		logger.info("Received LookupRequest: " + request.toString());
 
-		FindNodeMessage findNodeMessage = new FindNodeMessage(request.getMid(), bucket.getThisNode().getHost(), request.getPeerIDNumerical());
+		FindNodeMessage findNodeMessage = new FindNodeMessage(request.getMid(), bucket.getThisNode(), request.getPeerIDNumerical());
 		uponFindNodeMessage(findNodeMessage, bucket.getThisNode().getHost(), protoID, tcpChannelId);
 		pendingLookupRequests.add(request.getMid());
 	}
