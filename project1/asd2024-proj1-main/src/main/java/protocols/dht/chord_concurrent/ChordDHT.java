@@ -10,6 +10,7 @@ import protocols.dht.chord_concurrent.requests.LookupRequest;
 import protocols.dht.chord_concurrent.timers.FixFingersTimer;
 import protocols.dht.chord_concurrent.timers.RetryTCPConnectionsTimer;
 import protocols.dht.chord_concurrent.timers.StabilizeTimer;
+import protocols.point2point.notifications.DHTInitializedNotification;
 import pt.unl.fct.di.novasys.babel.core.GenericProtocol;
 import pt.unl.fct.di.novasys.babel.exceptions.HandlerRegistrationException;
 import pt.unl.fct.di.novasys.babel.generic.ProtoMessage;
@@ -43,7 +44,7 @@ public class ChordDHT extends GenericProtocol {
 	private final Set<UUID> pendingLookupRequests;
 	private final Map<UUID, Finger> fingersPendingSuccessor;
 
-	private final boolean isInitialized;
+	private boolean isInitialized;
 
 	public ChordDHT(Properties properties, Host thisHost, short commProtocolID) throws IOException, HandlerRegistrationException {
 		super(PROTOCOL_NAME, PROTOCOL_ID);
@@ -153,6 +154,9 @@ public class ChordDHT extends GenericProtocol {
 
 		predecessorNode = senderNode;
 		fingers[0].setChordNode(successorNode);
+
+		isInitialized = true;
+		triggerNotification(new DHTInitializedNotification());
 	}
 
 	private void updateFingerNode(FoundSuccessorMessage foundSuccessorMessage) {
