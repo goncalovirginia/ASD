@@ -54,7 +54,7 @@ public class ManualMain {
         Point2PointCommunicator commProto = new Point2PointCommunicator(commHost, ChordDHT.PROTOCOL_ID);
         
         //DHT Protocol
-        ChordDHT dhtProto = new ChordDHT(props, dhtHost);
+        ChordDHT dhtProto = new ChordDHT(props, dhtHost, Point2PointCommunicator.PROTOCOL_ID);
         
         //Register applications in babel
         babel.registerProtocol(interactiveApp);

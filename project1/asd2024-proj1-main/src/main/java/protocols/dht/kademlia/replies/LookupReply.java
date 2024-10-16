@@ -1,6 +1,7 @@
 package protocols.dht.kademlia.replies;
 
 import org.apache.commons.lang3.tuple.Pair;
+import protocols.dht.kademlia.messages.KBucketMessage;
 import pt.unl.fct.di.novasys.babel.generic.ProtoReply;
 import pt.unl.fct.di.novasys.network.data.Host;
 import utils.HashProducer;
@@ -22,7 +23,7 @@ public class LookupReply extends ProtoReply {
 	public LookupReply(KBucketMessage KBucketMessage) {
 		super(REPLY_ID);
 		this.key = KBucketMessage.getKey().toByteArray().clone();
-		this.mid = KBucketMessage.getMid();
+		this.mid = KBucketMessage.getMessageID();
 		this.peers = new HashSet<>();
 	}
 

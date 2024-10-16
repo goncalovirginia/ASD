@@ -1,7 +1,7 @@
-package protocols.dht.chord_concurrent.messages;
+package protocols.dht.chord.messages;
 
 import io.netty.buffer.ByteBuf;
-import protocols.dht.chord_concurrent.ChordNode;
+import protocols.dht.chord.ChordNode;
 import pt.unl.fct.di.novasys.babel.generic.ProtoMessage;
 import pt.unl.fct.di.novasys.network.ISerializer;
 import pt.unl.fct.di.novasys.network.data.Host;
@@ -10,9 +10,9 @@ import java.io.IOException;
 import java.math.BigInteger;
 import java.util.UUID;
 
-public class NotifySuccessorMessage extends ProtoMessage {
+public class GetPredecessorMessage extends ProtoMessage {
 
-	public static final short MSG_ID = 505;
+	public static final short MSG_ID = 503;
 
 	private final UUID mid;
 	private final Host sender;
@@ -21,25 +21,24 @@ public class NotifySuccessorMessage extends ProtoMessage {
 
 	@Override
 	public String toString() {
-		return "NotifySuccessorMessage{" +
+		return "GetPredecessorMessage{" +
 				"mid=" + mid +
 				'}';
 	}
 
-	public NotifySuccessorMessage(UUID mid, Host sender, BigInteger senderPeerID) {
+	public GetPredecessorMessage(UUID mid, Host sender, BigInteger senderPeerID) {
 		super(MSG_ID);
 		this.mid = mid;
 		this.sender = sender;
 		this.senderPeerID = senderPeerID;
 	}
 
-	public NotifySuccessorMessage(UUID mid, ChordNode thisNode) {
+	public GetPredecessorMessage(UUID mid, ChordNode thisNode) {
 		super(MSG_ID);
 		this.mid = mid;
 		this.sender = thisNode.getHost();
 		this.senderPeerID = thisNode.getPeerID();
 	}
-
 
 	public Host getSender() {
 		return sender;
@@ -53,9 +52,9 @@ public class NotifySuccessorMessage extends ProtoMessage {
 		return senderPeerID;
 	}
 
-	public static ISerializer<NotifySuccessorMessage> serializer = new ISerializer<>() {
+	public static ISerializer<GetPredecessorMessage> serializer = new ISerializer<>() {
 		@Override
-		public void serialize(NotifySuccessorMessage findSuccessorMessage, ByteBuf out) throws IOException {
+		public void serialize(GetPredecessorMessage findSuccessorMessage, ByteBuf out) throws IOException {
 			out.writeLong(findSuccessorMessage.mid.getMostSignificantBits());
 			out.writeLong(findSuccessorMessage.mid.getLeastSignificantBits());
 			Host.serializer.serialize(findSuccessorMessage.sender, out);
@@ -65,7 +64,7 @@ public class NotifySuccessorMessage extends ProtoMessage {
 		}
 
 		@Override
-		public NotifySuccessorMessage deserialize(ByteBuf in) throws IOException {
+		public GetPredecessorMessage deserialize(ByteBuf in) throws IOException {
 			long firstLong = in.readLong();
 			long secondLong = in.readLong();
 			UUID mid = new UUID(firstLong, secondLong);
@@ -74,7 +73,7 @@ public class NotifySuccessorMessage extends ProtoMessage {
 			byte[] senderPeerIDByteArray = new byte[size];
 			in.readBytes(senderPeerIDByteArray);
 
-			return new NotifySuccessorMessage(mid, sender, new BigInteger(senderPeerIDByteArray));
+			return new GetPredecessorMessage(mid, sender, new BigInteger(senderPeerIDByteArray));
 		}
 	};
 }

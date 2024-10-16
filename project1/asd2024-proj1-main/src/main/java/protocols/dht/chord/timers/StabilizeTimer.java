@@ -1,4 +1,4 @@
-package protocols.dht.chord_concurrent.timers;
+package protocols.dht.chord.timers;
 
 import pt.unl.fct.di.novasys.babel.generic.ProtoTimer;
 

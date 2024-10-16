@@ -1,7 +1,7 @@
-package protocols.dht.chord_concurrent.messages;
+package protocols.dht.chord.messages;
 
 import io.netty.buffer.ByteBuf;
-import protocols.dht.chord_concurrent.ChordNode;
+import protocols.dht.chord.ChordNode;
 import pt.unl.fct.di.novasys.babel.generic.ProtoMessage;
 import pt.unl.fct.di.novasys.network.ISerializer;
 import pt.unl.fct.di.novasys.network.data.Host;
