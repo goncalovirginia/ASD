@@ -1,0 +1,96 @@
+Interface:
+	Requests:
+		write(k, v)
+		read(k)
+	
+	Indications:
+		writeOk(k)
+		readOk(k, v)
+
+State:
+	pIDsActive	 			//set of active process ID's
+	pIDThis 				//this process's ID
+	replicatedMap			//local instance of the system's replicated key-value map, of type (key) -> (value, timestamp)
+	writeAcks			 	//map of received Ack's from sent write replications, of type: (key, mID) -> {pID1, ..., pIDn}
+	readValues				//map of received values from read requests, of type: (key, mID) -> {(value1, timestamp1), ..., (valuen, timestampn)}
+	delivered				//set of Ack'd and delivered messages, consisting of tuples of type: (key, mID)
+
+Upon Init(π, p) do
+	pIDsActive <- π
+	pIDThis <- p
+	replicatedMap <- {}
+	writeAcks <- {}
+	readValues <- {}
+
+//write
+	
+Upon write(k, v) do
+	mID <- uniqueMessageID()
+	t <- currentTimestammp()
+	replicatedMap[k] <- (v, t)
+	writeAcks[(k, mID)] <- {pIDThis}
+
+	foreach peerID ∈ pIDsActive\{pIDThis} do
+		Trigger pp2pSend({WRITE, k, v, mID, t})
+
+Upon pp2pDeliver(pID, {WRITE, k, v, mID, t}) do
+	if t > replicatedMap[k].timestamp then
+		replicatedMap[k] <- (k, t)
+	pp2pSend({WRITEACK, k, mID})
+
+Upon pp2pDeliver(pID, {WRITEACK, k, mID}) do
+	if (k, mID) ∈ delivered then
+		return
+
+	writeAcks[(k, mID)] <- writeAcks[(k, mID)] U {pID}
+
+	if #writeAcks[(k, mID)] >= (#pIDsActive/2)+1 then
+		Trigger writeOk(k)
+		delivered <- delivered U (k, mID)
+
+//read
+
+Upon read(k) do
+	mID <- uniqueMessageID()
+	thisValueTimestampTuple <- replicatedMap[k]
+
+	readValues[(k, mID)] <- {}
+	if thisValueTimestampTuple ≠ ⊥ then
+		readValues[(k, mID)] <- {thisValueTimestampTuple}
+
+	foreach peerID ∈ pIDsActive\{pIDThis} do
+		Trigger pp2pSend({READ, k, mID})
+
+Upon pp2pDeliver(pID, {READ, k, mID}) do
+	thisValueTimestampTuple <- replicatedMap[k]
+	v <- thisValueTimestampTuple.value
+	t <- thisValueTimestampTuple.timestamp
+	Trigger pp2pSend({READACK, k, v, mID, t})
+
+Upon pp2pDeliver(pID, {READACK, k, v, mID, t}) do
+	if (k, mID) ∈ delivered then
+		return
+
+	readValues[(k, mID)] <- readValues[(k, mID)] U {(t, v)}
+
+	if #readValues[(k, mID)] >= (#pIDsActive/2)+1 then
+		newestValueTimestampTuple <- newestValueTimestampTuple(readValues[(k, mID)])
+		replicatedMap[k] <- newestValueTimestampTuple
+		Trigger readOk(k, newestValueTimestampTuple.value)
+		delivered <- delivered U (k, mID)
+
+//crash
+
+Upon crash(pID) do
+	pIDsActive <- pIDsActive \ pID
+
+//procedures
+
+Procedure currentTimestamp()
+	return ...
+
+Procedure uniqueMessageID()
+	return ...
+
+Procedure newestValueTimestampTuple(valueTimestampTuples)
+	return tuple ∈ valueTimestampTuples : tuple.timestamp > tuple'.timestamp, ∀ tuple' ∈ valueTimestampTuples : tuple ≠ tuple
