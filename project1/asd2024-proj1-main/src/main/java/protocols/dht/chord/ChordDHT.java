@@ -120,14 +120,12 @@ public class ChordDHT extends GenericProtocol {
 
 		//initiate timers
 		setupPeriodicTimer(new RetryTCPConnectionsTimer(), 1000, 1000);
-		setupPeriodicTimer(new StabilizeTimer(), 1000, 1000);
-		setupPeriodicTimer(new FixFingersTimer(), 1000, 1000);
+		setupPeriodicTimer(new StabilizeTimer(), 3000, 3000);
+		setupPeriodicTimer(new FixFingersTimer(), 3000, 3000);
 
 		//establish TCP connection to contact host
 		if (props.containsKey("contact"))
 			connectToHost(props.getProperty("contact"));
-		else if (thisNode == predecessorNode)
-			setInitialized();
 	}
 
 	private void connectToHost(String contact) {
@@ -185,10 +183,6 @@ public class ChordDHT extends GenericProtocol {
 		triggerNotification(new DHTInitializedNotification());
 	}
 
-	private boolean isSoloNode() {
-		return thisNode == fingers[0].getChordNode();
-	}
-
 	/*--------------------------------- Requests ---------------------------------------- */
 
 	private void uponLookupRequest(LookupRequest request, short protoID) {
@@ -204,10 +198,19 @@ public class ChordDHT extends GenericProtocol {
 	private void uponFindSuccessorMessage(FindSuccessorMessage findSuccessorMessage, Host from, short sourceProto, int channelId) {
 		logger.info("Received LookupMessage: " + findSuccessorMessage.toString());
 
-		if (Finger.belongsToSuccessor(thisNode.getPeerID(), fingers[0].getChordNode().getPeerID(), findSuccessorMessage.getKey()) || isSoloNode()) {
+		if (!isInitialized) {
+			ChordNode senderNode = new ChordNode(findSuccessorMessage.getKey(), findSuccessorMessage.getSender());
+			FoundSuccessorMessage foundSuccessorMessage = new FoundSuccessorMessage(findSuccessorMessage, senderNode, senderNode);
+			joinStep2(foundSuccessorMessage);
+		}
+		if (Finger.belongsToSuccessor(thisNode.getPeerID(), fingers[0].getChordNode().getPeerID(), findSuccessorMessage.getKey())) {
 			FoundSuccessorMessage foundSuccessorMessage = new FoundSuccessorMessage(findSuccessorMessage, thisNode, fingers[0].getChordNode());
-			if (isSoloNode()) uponFoundSuccessorMessage(foundSuccessorMessage, from, sourceProto, channelId);
-			else sendMessage(foundSuccessorMessage, foundSuccessorMessage.getOriginalSenderHost());
+			sendMessage(foundSuccessorMessage, foundSuccessorMessage.getOriginalSenderHost());
+			return;
+		}
+		if (Finger.belongsToSuccessor(predecessorNode.getPeerID(), thisNode.getPeerID(), findSuccessorMessage.getKey())) {
+			FoundSuccessorMessage foundSuccessorMessage = new FoundSuccessorMessage(findSuccessorMessage, predecessorNode, thisNode);
+			uponFoundSuccessorMessage(foundSuccessorMessage, thisNode.getHost(), PROTOCOL_ID, tcpChannelId);
 			return;
 		}
 
@@ -279,12 +282,16 @@ public class ChordDHT extends GenericProtocol {
 	private void stabilize(StabilizeTimer timer, long timerId) {
 		logger.debug("stabilize: {}", timerId);
 
+		if (!isInitialized) return;
+
 		GetPredecessorMessage getPredecessorMessage = new GetPredecessorMessage(UUID.randomUUID(), thisNode);
 		sendMessage(getPredecessorMessage, fingers[0].getChordNode().getHost());
 	}
 
 	private void fixFingers(FixFingersTimer timer, long timerId) {
 		logger.debug("fixFingers: {}", timerId);
+
+		if (!isInitialized) return;
 
 		int randomFingerIndex = ThreadLocalRandom.current().nextInt(1, fingers.length);
 		UUID uuid = UUID.randomUUID();
@@ -327,7 +334,6 @@ public class ChordDHT extends GenericProtocol {
 	// (not the smartest protocol, but its simple)
 	private void uponInConnectionUp(InConnectionUp event, int channelId) {
 		logger.trace("Connection from {} is up", event.getNode());
-		setInitialized();
 	}
 
 	//A connection someone established to me is disconnected.

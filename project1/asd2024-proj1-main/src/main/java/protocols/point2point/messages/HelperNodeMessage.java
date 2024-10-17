@@ -9,8 +9,8 @@ import pt.unl.fct.di.novasys.network.data.Host;
 import java.io.IOException;
 import java.util.UUID;
 
-public class Point2PointMessage extends ProtoMessage {
-	public static final short MSG_ID = 401;
+public class HelperNodeMessage extends ProtoMessage {
+	public static final short MSG_ID = 402;
 
 	private final UUID mid;
 	private final Host sender, destination;
@@ -19,12 +19,12 @@ public class Point2PointMessage extends ProtoMessage {
 
 	@Override
 	public String toString() {
-		return "Point2PointMessage{" +
+		return "HelperNodeMessage{" +
 				"mid=" + mid +
 				'}';
 	}
 
-	public Point2PointMessage(Send send, Host sender, Host destination) {
+	public HelperNodeMessage(Send send, Host sender, Host destination) {
 		super(MSG_ID);
 		this.mid = send.getMessageID();
 		this.sender = sender;
@@ -34,7 +34,7 @@ public class Point2PointMessage extends ProtoMessage {
 		this.content = send.getMessagePayload();
 	}
 
-	public Point2PointMessage(UUID mid, Host sender, Host destination, byte[] senderPeerID, byte[] destinationID, byte[] content) {
+	public HelperNodeMessage(UUID mid, Host sender, Host destination, byte[] senderPeerID, byte[] destinationID, byte[] content) {
 		super(MSG_ID);
 		this.mid = mid;
 		this.sender = sender;
@@ -44,14 +44,14 @@ public class Point2PointMessage extends ProtoMessage {
 		this.content = content;
 	}
 
-	public Point2PointMessage(HelperNodeMessage helperNodeMessage) {
+	public HelperNodeMessage(Point2PointMessage point2PointMessage) {
 		super(MSG_ID);
-		this.mid = helperNodeMessage.getMid();
-		this.sender = helperNodeMessage.getSender();
-		this.destination = helperNodeMessage.getDestination();
-		this.senderPeerID = helperNodeMessage.getSenderPeerID();
-		this.destinationID = helperNodeMessage.getDestinationID();
-		this.content = helperNodeMessage.getContent();
+		this.mid = point2PointMessage.getMid();
+		this.sender = point2PointMessage.getSender();
+		this.destination = point2PointMessage.getDestination();
+		this.senderPeerID = point2PointMessage.getSenderPeerID();
+		this.destinationID = point2PointMessage.getDestinationID();
+		this.content = point2PointMessage.getContent();
 	}
 
 	public Host getSender() {
@@ -78,9 +78,9 @@ public class Point2PointMessage extends ProtoMessage {
 		return content;
 	}
 
-	public static ISerializer<Point2PointMessage> serializer = new ISerializer<>() {
+	public static ISerializer<HelperNodeMessage> serializer = new ISerializer<>() {
 		@Override
-		public void serialize(Point2PointMessage point2PointMessage, ByteBuf out) throws IOException {
+		public void serialize(HelperNodeMessage point2PointMessage, ByteBuf out) throws IOException {
 			out.writeLong(point2PointMessage.mid.getMostSignificantBits());
 			out.writeLong(point2PointMessage.mid.getLeastSignificantBits());
 			Host.serializer.serialize(point2PointMessage.sender, out);
@@ -96,7 +96,7 @@ public class Point2PointMessage extends ProtoMessage {
 		}
 
 		@Override
-		public Point2PointMessage deserialize(ByteBuf in) throws IOException {
+		public HelperNodeMessage deserialize(ByteBuf in) throws IOException {
 			long firstLong = in.readLong();
 			long secondLong = in.readLong();
 			UUID mid = new UUID(firstLong, secondLong);
@@ -118,7 +118,7 @@ public class Point2PointMessage extends ProtoMessage {
 			if (contentSize > 0)
 				in.readBytes(content);
 
-			return new Point2PointMessage(mid, sender, destination, senderPeerID, destinationID, content);
+			return new HelperNodeMessage(mid, sender, destination, senderPeerID, destinationID, content);
 		}
 	};
 }
