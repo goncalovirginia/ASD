@@ -71,10 +71,10 @@ public class Point2PointCommunicator extends GenericProtocol {
 	/*--------------------------------- Requests ---------------------------------------- */
 
 	private void uponSendRequest(Send request, short protoID) {
-		logger.info("Received SendRequest: " + request.getMessageID());
+		logger.info("Received SendRequest: {}", request.getMessageID());
 
         if (!isDHTInitialized) {
-            logger.info("DHT protocol is not initialized yet, storing message: " + request.getMessageID());
+	        logger.info("DHT protocol is not initialized yet, queueing message: {}", request.getMessageID());
             messagesPendingLookup.add(request);
 			return;
         }
@@ -87,7 +87,7 @@ public class Point2PointCommunicator extends GenericProtocol {
 	/*--------------------------------- Messages ---------------------------------------- */
 
 	private void uponPoint2PointMessage(Point2PointMessage point2PointMessage, Host from, short sourceProto, int channelId) {
-		logger.info("Received Point2Point Message: " + point2PointMessage.toString());
+		logger.info("Received Point2Point Message: {}", point2PointMessage.toString());
 
 		if (receivedMessages.contains(point2PointMessage.getMid())) return;
 
@@ -107,7 +107,7 @@ public class Point2PointCommunicator extends GenericProtocol {
 
 	//TODO: we have to take into account when there are only 2 nodes in the system, or we're sending to our direct successor (we can't be the original sender and helper node)
 	private void uponLookupReply(LookupReply reply, short protoID) {
-		logger.info("Received Lookup Reply: " + reply.toString());
+		logger.info("Received Lookup Reply: {}", reply.toString());
 
 		Send send = messagesPendingLookupReply.get(reply.getMid());
 		if (send == null) return;
@@ -126,6 +126,8 @@ public class Point2PointCommunicator extends GenericProtocol {
 
 	//Upon receiving the channelId from the DHT algorithm, register our own callbacks and serializers
 	private void uponChannelCreated(TCPChannelCreatedNotification notification, short sourceProto) {
+		logger.info("TCPChannelCreatedNotification: {}", notification.toString());
+
 		tcpChannelId = notification.getChannelId();
 		registerSharedChannel(tcpChannelId);
 
@@ -145,7 +147,7 @@ public class Point2PointCommunicator extends GenericProtocol {
 	}
 
     private void uponDHTInitialized(DHTInitializedNotification notification, short sourceProto) {
-        logger.info("DHT is now initialized.");
+        logger.info("DHT protocol initialized.");
 
 		isDHTInitialized = true;
 	    for (Send pendingMessage : messagesPendingLookup) {
