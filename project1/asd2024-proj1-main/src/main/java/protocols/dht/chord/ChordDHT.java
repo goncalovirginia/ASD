@@ -200,8 +200,7 @@ public class ChordDHT extends GenericProtocol {
 
 		if (!isInitialized) {
 			ChordNode senderNode = new ChordNode(findSuccessorMessage.getKey(), findSuccessorMessage.getSender());
-			FoundSuccessorMessage foundSuccessorMessage = new FoundSuccessorMessage(findSuccessorMessage, senderNode, senderNode);
-			joinStep2(foundSuccessorMessage);
+			joinStep2(new FoundSuccessorMessage(findSuccessorMessage, senderNode, senderNode));
 		}
 		if (Finger.belongsToSuccessor(thisNode.getPeerID(), fingers[0].getChordNode().getPeerID(), findSuccessorMessage.getKey())) {
 			FoundSuccessorMessage foundSuccessorMessage = new FoundSuccessorMessage(findSuccessorMessage, thisNode, fingers[0].getChordNode());
