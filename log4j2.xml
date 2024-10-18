@@ -5,7 +5,7 @@
             <PatternLayout pattern="%highlight{%level{length=1}[%d{HH:mm:ss,SSS}] [%t]%logger{0}:} %msg%n"/>
         </Console>
 
-        <File name="MyFile" fileName="${sys:logFilename}.log" append="false" immediateFlush="true">
+        <File name="MyFile" fileName="${logs}.log" append="false" immediateFlush="true">
             <PatternLayout pattern="%highlight{%level{length=1}[%d{HH:mm:ss,SSS}] [%t]%logger{0}:} %msg%n"/>
         </File>
 
