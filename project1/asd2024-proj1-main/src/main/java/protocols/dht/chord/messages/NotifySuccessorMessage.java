@@ -74,7 +74,7 @@ public class NotifySuccessorMessage extends ProtoMessage {
 			byte[] senderPeerIDByteArray = new byte[size];
 			in.readBytes(senderPeerIDByteArray);
 
-			return new NotifySuccessorMessage(mid, sender, new BigInteger(senderPeerIDByteArray));
+			return new NotifySuccessorMessage(mid, sender, new BigInteger(1, senderPeerIDByteArray));
 		}
 	};
 }

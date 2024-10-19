@@ -16,6 +16,7 @@ import pt.unl.fct.di.novasys.babel.exceptions.HandlerRegistrationException;
 import pt.unl.fct.di.novasys.babel.generic.ProtoMessage;
 import pt.unl.fct.di.novasys.network.data.Host;
 
+import java.math.BigInteger;
 import java.util.*;
 
 public class Point2PointCommunicator extends GenericProtocol {
@@ -79,9 +80,15 @@ public class Point2PointCommunicator extends GenericProtocol {
 			return;
         }
 
+		
+
 		LookupRequest lookupRequest = new LookupRequest(request.getDestinationPeerID(), request.getMessageID());
 		sendRequest(lookupRequest, DHT_PROTO_ID);
 		messagesPendingLookupReply.put(request.getMessageID(), request);
+
+		logger.info("MY PEERID in APP {}", request.getDestinationPeerID());
+        
+
 	}
 
 	/*--------------------------------- Messages ---------------------------------------- */
@@ -114,6 +121,8 @@ public class Point2PointCommunicator extends GenericProtocol {
 
 		Host predecessorHost = reply.getPeersIterator().next().getRight();
 		Host successorHost = reply.getPeersIterator().next().getRight();
+
+		logger.info("HERE {}", successorHost);
 
 		Point2PointMessage point2PointMessage = new Point2PointMessage(send, thisHost, successorHost);
 		//TODO: HelperNodeMessage helperNodeMessage = new HelperNodeMessage(point2PointMessage);

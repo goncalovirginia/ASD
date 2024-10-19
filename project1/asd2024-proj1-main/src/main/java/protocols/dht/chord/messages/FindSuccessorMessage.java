@@ -80,7 +80,7 @@ public class FindSuccessorMessage extends ProtoMessage {
 			byte[] peerIDByteArray = new byte[size];
 			in.readBytes(peerIDByteArray);
 
-			return new FindSuccessorMessage(mid, originalSender, sender, new BigInteger(peerIDByteArray));
+			return new FindSuccessorMessage(mid, originalSender, sender, new BigInteger(1, peerIDByteArray));
 		}
 	};
 }

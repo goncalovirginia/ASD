@@ -12,7 +12,7 @@ import java.util.UUID;
 
 public class FoundSuccessorMessage extends ProtoMessage {
 
-	public static final short MSG_ID = 502;
+	public static final short MSG_ID = 522;
 
 	private final UUID mid;
 	private final Host originalSenderHost, senderHost, successorHost;
@@ -79,37 +79,57 @@ public class FoundSuccessorMessage extends ProtoMessage {
 	public static ISerializer<FoundSuccessorMessage> serializer = new ISerializer<>() {
 		@Override
 		public void serialize(FoundSuccessorMessage foundSuccessorMessage, ByteBuf out) throws IOException {
+			// Serialize UUID (mid)
 			out.writeLong(foundSuccessorMessage.mid.getMostSignificantBits());
 			out.writeLong(foundSuccessorMessage.mid.getLeastSignificantBits());
+	
+			// Serialize Hosts (originalSenderHost, senderHost, successorHost)
 			Host.serializer.serialize(foundSuccessorMessage.originalSenderHost, out);
 			Host.serializer.serialize(foundSuccessorMessage.senderHost, out);
+			Host.serializer.serialize(foundSuccessorMessage.successorHost, out);
+	
+			// Serialize BigInteger fields (key, senderPeerID, successorPeerID)
 			byte[] keyByteArray = foundSuccessorMessage.key.toByteArray();
 			out.writeInt(keyByteArray.length);
 			out.writeBytes(keyByteArray);
+	
 			byte[] senderPeerIDByteArray = foundSuccessorMessage.senderPeerID.toByteArray();
 			out.writeInt(senderPeerIDByteArray.length);
 			out.writeBytes(senderPeerIDByteArray);
+	
+			byte[] successorPeerIDByteArray = foundSuccessorMessage.successorPeerID.toByteArray();
+			out.writeInt(successorPeerIDByteArray.length);
+			out.writeBytes(successorPeerIDByteArray);
 		}
-
+	
 		@Override
 		public FoundSuccessorMessage deserialize(ByteBuf in) throws IOException {
+			// Deserialize UUID (mid)
 			long firstLong = in.readLong();
 			long secondLong = in.readLong();
 			UUID mid = new UUID(firstLong, secondLong);
+	
+			// Deserialize Hosts (originalSenderHost, senderHost, successorHost)
 			Host originalSender = Host.serializer.deserialize(in);
 			Host sender = Host.serializer.deserialize(in);
 			Host successor = Host.serializer.deserialize(in);
+	
+			// Deserialize BigInteger fields (key, senderPeerID, successorPeerID)
 			int keySize = in.readInt();
 			byte[] keyByteArray = new byte[keySize];
 			in.readBytes(keyByteArray);
+	
 			int senderPeerIDSize = in.readInt();
 			byte[] senderPeerIDByteArray = new byte[senderPeerIDSize];
 			in.readBytes(senderPeerIDByteArray);
+	
 			int successorPeerIDSize = in.readInt();
 			byte[] successorPeerIDByteArray = new byte[successorPeerIDSize];
 			in.readBytes(successorPeerIDByteArray);
-
-			return new FoundSuccessorMessage(mid, originalSender, sender, successor, new BigInteger(keyByteArray), new BigInteger(senderPeerIDByteArray), new BigInteger(successorPeerIDByteArray));
+	
+			// Return the deserialized message
+			return new FoundSuccessorMessage(mid, originalSender, sender, successor, 
+					new BigInteger(1, keyByteArray), new BigInteger(1, senderPeerIDByteArray), new BigInteger(1, successorPeerIDByteArray));
 		}
 	};
 }

@@ -1,5 +1,6 @@
 package protocols.apps;
 
+import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
 
@@ -140,6 +141,7 @@ public class AutomatedApp extends GenericProtocol {
         
         Send send = new Send(this.myPeerID, destination, mid, payload);
         
+
         logger.info("Sending: {} -> {} : {} ({})", this.myPeerIDHex, HashProducer.toNumberFormat(destination).toString(16), mid.toString(), payload.length);
         //And send it to the dissemination protocol
         sendRequest(send, commProtoId);

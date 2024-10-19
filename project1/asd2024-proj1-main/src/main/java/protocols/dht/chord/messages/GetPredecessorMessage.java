@@ -73,7 +73,7 @@ public class GetPredecessorMessage extends ProtoMessage {
 			byte[] senderPeerIDByteArray = new byte[size];
 			in.readBytes(senderPeerIDByteArray);
 
-			return new GetPredecessorMessage(mid, sender, new BigInteger(senderPeerIDByteArray));
+			return new GetPredecessorMessage(mid, sender, new BigInteger(1, senderPeerIDByteArray));
 		}
 	};
 }

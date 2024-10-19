@@ -96,7 +96,7 @@ public class FixFingerMessage extends ProtoMessage {
 			byte[] fingerStartByteArray = new byte[size];
 			in.readBytes(fingerStartByteArray);
 
-			return new FixFingerMessage(mid, sender, new BigInteger(senderPeerIDByteArray), fingerIndex, new BigInteger(fingerStartByteArray));
+			return new FixFingerMessage(mid, sender, new BigInteger(1, senderPeerIDByteArray), fingerIndex, new BigInteger(1, fingerStartByteArray));
 		}
 	};
 }
