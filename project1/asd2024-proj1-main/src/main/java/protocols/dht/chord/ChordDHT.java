@@ -250,6 +250,7 @@ public class ChordDHT extends GenericProtocol {
 		logger.info("Received ReturnPredecessorMessage: {}", returnPredecessorMessage.toString());
 
 		if (Finger.belongsToSuccessor(thisNode.getPeerID(), fingers[0].getChordNode().getPeerID(), returnPredecessorMessage.getPredecessorPeerID())) {
+			logger.info("Updated successor: {} -> {}", fingers[0].getChordNode().getHost(), returnPredecessorMessage.getPredecessor());
 			fingers[0].setChordNode(new ChordNode(returnPredecessorMessage.getPredecessorPeerID(), returnPredecessorMessage.getPredecessor()));
 		}
 
@@ -262,6 +263,7 @@ public class ChordDHT extends GenericProtocol {
 		logger.info("Received UpdatePredecessorMessage: {}", notifySuccessorMessage.toString());
 
 		if (!isInitialized || Finger.belongsToOpenInterval(predecessorNode.getPeerID(), thisNode.getPeerID(), notifySuccessorMessage.getSenderPeerID())) {
+			logger.info("Updated predecessor: {} -> {}", predecessorNode.getHost(), notifySuccessorMessage.getSender());
 			predecessorNode = new ChordNode(notifySuccessorMessage.getSenderPeerID(), notifySuccessorMessage.getSender());
 
 			//only applies to the network's first node
