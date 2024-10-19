@@ -91,12 +91,12 @@ public class ReturnPredecessorMessage extends ProtoMessage {
             int senderPeerIDSize = in.readInt();
             byte[] senderPeerIDByteArray = new byte[senderPeerIDSize];
             in.readBytes(senderPeerIDByteArray);
-            BigInteger senderPeerID = new BigInteger(senderPeerIDByteArray);
+            BigInteger senderPeerID = new BigInteger(1, senderPeerIDByteArray);
 
             int predecessorPeerIDSize = in.readInt();
             byte[] predecessorPeerIDByteArray = new byte[predecessorPeerIDSize];
             in.readBytes(predecessorPeerIDByteArray);
-            BigInteger predecessorPeerID = new BigInteger(predecessorPeerIDByteArray);
+            BigInteger predecessorPeerID = new BigInteger(1, predecessorPeerIDByteArray);
 
             return new ReturnPredecessorMessage(mid, sender, predecessor, senderPeerID, predecessorPeerID);
         }

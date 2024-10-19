@@ -115,11 +115,18 @@ public class Point2PointCommunicator extends GenericProtocol {
 		Host predecessorHost = reply.getPeersIterator().next().getRight();
 		Host successorHost = reply.getPeersIterator().next().getRight();
 
-		Point2PointMessage point2PointMessage = new Point2PointMessage(send, thisHost, successorHost);
 		//TODO: HelperNodeMessage helperNodeMessage = new HelperNodeMessage(point2PointMessage);
+		Point2PointMessage point2PointMessage = new Point2PointMessage(send, thisHost, successorHost);
 
-		sendMessage(point2PointMessage, successorHost);
+		if (successorHost.equals(thisHost)) {
+			uponPoint2PointMessage(point2PointMessage, successorHost, PROTOCOL_ID, tcpChannelId);
+			return;
+		}
+
+		//TODO: openConnection(predecessorHost);
 		//TODO: sendMessage(helperNodeMessage, predecessorHost);
+		openConnection(successorHost);
+		sendMessage(point2PointMessage, successorHost);
 
 		messagesPendingLookupReply.remove(reply.getMid());
 	}

@@ -1,5 +1,6 @@
 package protocols.apps;
 
+import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
 
@@ -87,6 +88,7 @@ public class AutomatedApp extends GenericProtocol {
         	this.myPeerID = this.peerIDs.get(this.processSequenceNumber-1);
             this.myPeerIDHex = this.peerIDsHex.get(this.processSequenceNumber-1);
             properties.put(PROPERTY_NODE_ID, this.myPeerIDHex);
+            logger.info("My peer ID: {}", new BigInteger(1, this.myPeerID));
         } else {
         	this.processSequenceNumber = -1;
         	this.myPeerID = null;
@@ -137,7 +139,6 @@ public class AutomatedApp extends GenericProtocol {
         }
         
         UUID mid = UUID.randomUUID();
-        
         Send send = new Send(this.myPeerID, destination, mid, payload);
         
         logger.info("Sending: {} -> {} : {} ({})", this.myPeerIDHex, HashProducer.toNumberFormat(destination).toString(16), mid.toString(), payload.length);
