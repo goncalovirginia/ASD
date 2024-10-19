@@ -11,7 +11,7 @@ public class ChordNode {
 	private final Host host;
 
 	public ChordNode(BigInteger peerID, Host host) {
-		this.peerID = peerID;
+		this.peerID = peerID.abs();
 		this.peerIDBytes = peerID.toByteArray();
 		this.host = host;
 	}

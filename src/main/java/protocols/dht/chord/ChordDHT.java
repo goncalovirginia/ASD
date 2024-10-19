@@ -117,10 +117,13 @@ public class ChordDHT extends GenericProtocol {
 		//inform the point2point algorithm above about the TCP channel to use
 		triggerNotification(new TCPChannelCreatedNotification(tcpChannelId));
 
-		//initiate timers
-		setupPeriodicTimer(new RetryTCPConnectionsTimer(), 1000, 1000);
-		setupPeriodicTimer(new StabilizeTimer(), 3000, 3000);
-		setupPeriodicTimer(new FixFingersTimer(), 3000, 3000);
+		//initiate timers - LATER! problems with target values
+		//either our PeerID is too large/wrong or we have to compare it differently
+		//because the target's are in the 100s while the PeerID's are not.
+
+		//setupPeriodicTimer(new RetryTCPConnectionsTimer(), 1000, 1000);
+		//setupPeriodicTimer(new StabilizeTimer(), 3000, 3000);
+		//setupPeriodicTimer(new FixFingersTimer(), 3000, 3000);
 
 		//establish TCP connection to contact host
 		if (props.containsKey("contact")) {
@@ -177,7 +180,7 @@ public class ChordDHT extends GenericProtocol {
 
 		if(!isInitialized) return;
 
-		FindSuccessorMessage findSuccessorMessage = new FindSuccessorMessage(request.getMid(), thisNode.getHost(), thisNode.getHost(), request.getPeerIDNumerical());
+		FindSuccessorMessage findSuccessorMessage = new FindSuccessorMessage(request.getMid(), thisNode.getHost(), thisNode.getHost(), request.getPeerIDNumerical().abs());
 		uponFindSuccessorMessage(findSuccessorMessage, thisNode.getHost(), protoID, tcpChannelId);
 		pendingLookupRequests.add(request.getMid());
 	}
@@ -192,7 +195,8 @@ public class ChordDHT extends GenericProtocol {
 		
 		//reply to yourself with his peer and msg
 		fingers[0].setChordNode(new ChordNode(findSuccessorMessage.getKey(), findSuccessorMessage.getSender()));
-		//YES, I WILL CHANGE FOUNDSUCCESSOR MESSAGE, TOO MANY REDUNDANT FIELDS.
+		predecessorNode = fingers[0].getChordNode();
+		//TOO MANY REDUNDANT FIELDS //TODO: create foundSuccessorMessage differently --> (Looks ugly) just change the field you want in findSuccessorMessage or something
 		foundSuccessorMessage = new FoundSuccessorMessage(findSuccessorMessage.getMid(), 
 		findSuccessorMessage.getOriginalSender(), thisNode.getHost(), fingers[0].getChordNode().getHost(), 
 		thisNode.getPeerID(), thisNode.getPeerID(), fingers[0].getChordNode().getPeerID());
@@ -211,7 +215,7 @@ public class ChordDHT extends GenericProtocol {
 
 		//EDGE CASE, reduces code, any other alternative, that is less extensive than this, should be DULY TESTED.
 		//UNLIKE OTHER NODES, THE FIRST NODE PREDECESSOR IS HIMSELF, AND HE INITIALIZES HERE.
-		if(predecessorNode == fingers[0].getChordNode()) {
+		if(!isInitialized && predecessorNode == fingers[0].getChordNode()) {
 			firstJoin(findSuccessorMessage);
 			return;
 		}
@@ -230,7 +234,14 @@ public class ChordDHT extends GenericProtocol {
 		}
 
 		if (Finger.belongsToSuccessor(predecessorNode.getPeerID(), thisNode.getPeerID(), findSuccessorMessage.getKey())) {
-			FoundSuccessorMessage foundSuccessorMessage = new FoundSuccessorMessage(findSuccessorMessage, predecessorNode, thisNode);
+			//Think we have to do this, double check please, if there is a cleaner way, but yes, 
+			//the comparison betwen last and first is diff than the rest. In all other cases, the predecessor is actually smaller.
+			//And so, it has to be handled differently.
+			FoundSuccessorMessage foundSuccessorMessage = (predecessorNode.getPeerID().compareTo(thisNode.getPeerID()) > 0) ?
+				new FoundSuccessorMessage(findSuccessorMessage, thisNode, fingers[0].getChordNode()) :
+				new FoundSuccessorMessage(findSuccessorMessage, predecessorNode, thisNode);
+
+
 			uponFoundSuccessorMessage(foundSuccessorMessage, thisNode.getHost(), PROTOCOL_ID, tcpChannelId);
 			return;
 		}

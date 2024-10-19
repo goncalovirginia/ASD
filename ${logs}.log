@@ -1,144 +1,194 @@
-I[15:11:51,933] [main]Main: Hello, I am 192.168.1.80:10103
-D[15:11:52,310] [TCPChannel-1-1]TCPChannel: Server socket ready
-I[15:11:52,319] [main]AutomatedApp: Waiting...
-D[15:11:52,322] [TCPChannel-1-1]TCPChannel: onOpenConnection creating connection to: 192.168.1.80:10101
-D[15:11:52,324] [400-EmptyPoint2PointComm]GenericProtocol: Handling event: pt.unl.fct.di.novasys.babel.internal.NotificationEvent@3e331560
-I[15:11:52,324] [400-EmptyPoint2PointComm]Point2PointCommunicator: TCPChannelCreatedNotification: protocols.dht.chord.notifications.TCPChannelCreatedNotification@11e609a2
-D[15:11:52,327] [nioEventLoopGroup-3-1]OutConnectionHandler: Connecting to 192.168.1.80:10101
-D[15:11:52,369] [nioEventLoopGroup-3-1]OutConnectionHandler: Handshake completed to: 192.168.1.80:10101
-D[15:11:52,370] [TCPChannel-1-1]TCPChannel: OutboundConnectionUp 192.168.1.80:10101
-D[15:11:52,371] [400-EmptyPoint2PointComm]GenericProtocol: Handling event: ChannelEvent{event=OutConnectionUp{node=192.168.1.80:10101}, channelId=1}
-D[15:11:52,371] [400-EmptyPoint2PointComm]GenericProtocol: Discarding unhandled channel event (id 1): ChannelEvent{event=OutConnectionUp{node=192.168.1.80:10101}, channelId=1}
-D[15:11:52,371] [500-ChordDHT]GenericProtocol: Handling event: ChannelEvent{event=OutConnectionUp{node=192.168.1.80:10101}, channelId=1}
-D[15:11:52,371] [500-ChordDHT]ChordDHT: Connection to 192.168.1.80:10101 is up
-D[15:11:52,372] [500-ChordDD[15:11:52,380] [TCPChannel-1-1]TCPChannel: DeliverMessage BabelMessage{message=FindSuccessorMessage{mid=d628791f-922e-46d3-a171-dedcc1671c4f}, sourceProto=500, destProto=500} 192.168.1.80:10103 IN
-D[15:11:52,381] [500-ChordDHT]GenericProtocol: Handling event: MessageInEvent{msg=BabelMessage{message=FindSuccessorMessage{mid=d628791f-922e-46d3-a171-dedcc1671c4f}, sourceProto=500, destProto=500}, from=192.168.1.80:10103, channelId=1}
-I[15:11:52,381] [500-ChordDHT]ChordDHT: Received LookupMessage: FindSuccessorMessage{mid=d628791f-922e-46d3-a171-dedcD[15:11:52,407] [nioEventLoopGroup-3-2]InConnectionHandler: Incoming channel active: /192.168.1.80:62911
-D[15:11:52,411] [TCPChannel-1-1]TCPChannel: InboundConnectionUp 192.168.1.80:10101
-D[15:11:52,411] [500-ChordDHT]GenericProtocol: Handling event: ChannelEvent{event=InConnectionUp{node=192.168.1.80:10101}, channelId=1}
-D[15:11:52,411] [400-EmptyPoint2PointComm]GenericProtocol: Handling event: ChannelEvent{event=InConnectionUp{node=192.168.1.80:10101}, channelId=1}
-D[15:11:52,411] [400-EmptyPoint2PointComm]GenericProtocol: Discarding unhandled channel event (id 1): ChannelEvent{event=InConnectionUp{node=192.168.1.80:10101}, channelId=1}
-D[15:11:52,413] [TCPChannel-1-1]TCPChannel: DeliverMessage BabelMessage{message=FoundSuccessorMessage{mid=d628791f-922e-46d3-a171-dedcc1671c4f}, sourceProto=500, destProto=500} 192.168.1.80:10101 IN
-D[15:11:52,414] [500-ChordDHT]GenericProtocol: Handling event: MessageInEvent{msg=BabelMessage{message=FoundSuccessorMessage{mid=d628791f-922e-46d3-a171-dedcc1671c4f}, sourceProto=500, destProto=500}, from=192.168.1.80:10101, channelId=1}
-I[15:11:52,414] [500-ChordDHT]ChordDHT: Received FoundSuccessorMessage: FoundSuccessorMessage{mid=d628791f-922e-46d3-a171-dedcc1671c4f}
-D[15:11:52,414] [400-EmptyPoint2PointComm]GenericProtocol: Handling event: pt.unl.fct.di.novasys.babel.internal.NotificationEvent@4429f4a6
-I[15:11:52,414] [400-EmptyPoint2PointComm]Point2PointCommunicator: DHT protocol initialized.
-D[15:11:52,415] [400-EmptyPoint2PointComm]GenericProtocol: Handling event: pt.unl.fct.di.novasys.babel.internal.IPCEvent@16b68825
-I[15:11:52,421] [400-EmptyPoint2PointComm]Point2PointCommunicator: Received Lookup Reply: LookupReply for -39afe25d3f3f75ff93ba1b68bebeccd5e7e1e673449c154e615b721177d82776 containing set (1 elements):
-	-3c7e403b151a556b2d8d8ab6f76de0f9fb3e92fa04c97c3c17c64250590b76ac::192.168.1.80:10101
+I[14:01:34,265] [main]Main: Hello, I am 192.168.1.80:10103
+D[14:01:34,514] [TCPChannel-1-1]TCPChannel: Server socket ready
+I[14:01:34,521] [main]AutomatedApp: Waiting...
+D[14:01:34,524] [TCPChannel-1-1]TCPChannel: onOpenConnection creating connection to: 192.168.1.80:10101
+D[14:01:34,525] [400-EmptyPoint2PointComm]GenericProtocol: Handling event: pt.unl.fct.di.novasys.babel.internal.NotificationEvent@4f0d1ff7
+I[14:01:34,526] [400-EmptyPoint2PointComm]Point2PointCommunicator: D[14:01:34,542] [nioEventLoopGroup-3-1]InConnectionHandler: Incoming channel active: /192.168.1.80:65032
+D[14:01:34,552] [TCPChannel-1-1]TCPChannel: InboundConnectionUp 192.168.1.80:10103
+D[14:01:34,553] [400-EmptyPoint2PointComm]GenericProtocol: Handling event: ChannelEvent{event=InConnectionUp{node=192.168.1.80:10103}, channelId=1}
+D[14:01:34,553] [400-EmptyPoint2PointComm]GenericPrD[14:01:34,554] [400-EmptyPoint2PointComm]GenericProtocol: Handling event: ChannelEvent{event=OutConnectionUp{node=192.168.1.80:10101}, channelId=1}
+D[14:01:34,554] [400-EmptyPoint2PointComm]GenericProtocol: Discarding unhandled channel event (id 1): ChannelEveD[14:01:34,558] [TCPChannel-1-1]TCPChannel: DeliverMessage BabelMessage{message=FindSuccessorMessage{mid=09140af3-f507-4e02-8648-a836b6049553}, sourceProto=500, destProto=500} 192.168.1.80:10103 IN
+D[14:01:34,558] [500-ChordDHT]GenericProtocol: Handling event: MessageInEvent{msg=BabelMessage{message=FindSuccessorMessage{mid=09140af3-f507-4e02-8648-a836b6049553}, sourceProto=500, destProto=500}, from=192.168.1.80:10103, channelId=1}
+I[14:01:34,558] [500-ChordDHT]ChordDHT: Received LookupMessage: FindSuccessorMessage{mid=09140af3-f507-4e02-8648-a836b6049553}
+D[14:01:34,559] [TCPChannel-1-1]TCPChannel: onOpenConnection creating connection to: 192.168.1.80:10103
+D[14:01:34,559] [500-ChordDHT]GenericProtocol: Sending: FoundSuccessorMessage{mid=09140af3-f507-4e02-8648-a836b6049553} to 192.168.1.80:10103 proto 500 channel 1
+D[14:01:34,560] [400-EmptyPointD[14:01:34,566] [nioEventLoopGroup-3-2]InConnectionHandler: Incoming channel active: /192.168.1.80:65033
+D[14:01:34,569] [TCPChannel-1-1]TCPChannel: InboundConnectionUp 192.168.1.80:10101
+D[14:01:34,570] [400-EmptyPoint2PointComm]GenericProtocol: Handling event: ChannelEvent{event=InConnectionUp{node=192.168.1.80:10101}, channelId=1}
+D[14:01:34,570] [500-ChordDHT]GenericProtocol: Handling event: ChannelEvent{event=InConnectionUp{node=192.168.1.80:10101}, channelId=1}
+D[14:01:34,570] [400-EmptyPoint2PointComm]GenericProtocol: Discarding unhandled channel event (id 1): ChannelEvent{event=InConnectionUp{node=192.168.1.80:10101}, channelId=1}
+D[14:01:34,571] [TCPChannel-1-1]TCPChannel: DeliverMessage BabelMessage{message=FoundSuccessorMessage{mid=09140af3-f507-4e02-8648-a836b6049553}, sourceProto=500, destProto=500} 192.168.1.80:10101 IN
+D[14:01:34,572] [500-ChordDHT]GenericProtocol: Handling event: MessageInEvent{msg=BabelMessage{message=FoundSuccessorMessage{mid=09140af3-f507-4e02-8648-a836b6049553}, sourceProto=500, destProto=500}, from=192.168.1.80:10101, channelId=1}
+I[14:01:34,572] [500-ChordDHT]ChordDHT: Received FoundSuccessorMessage: FoundSuccessorMessage{mid=09140af3-f507-4e02-8648-a836b6049553}
+D[14:01:34,572] [400-EmptyPoint2PointComm]GenericProtocol: Handling event: pt.unl.fct.di.novasys.babel.internal.NotificationEvent@4816a8a7
+I[14:01:34,572] [400-EmptyPoint2PointComm]Point2PointCommunicator: DHT protocol initialized.
+D[14:01:34,573] [400-EmptyPoint2PointComm]GenericProtocol: Handling event: pt.unl.fct.di.novasys.babel.internal.IPCEvent@62656088
+I[14:01:34,575] [400-EmptyPoint2PointComm]Point2PointCommunicator: Received Lookup Reply: LookupReply for 39afe25d3f3f75ff93ba1b68bebeccd5e7e1e673449c154e615b721177d82776 containing set (1 elements):
+	3c7e403b151a556b2d8d8ab6f76de0f9fb3e92fa04c97c3c17c64250590b76ac::192.168.1.80:D[14:01:D[14:01:37,526] [400-EmptyPoint2PointComm]GenericProtocol: Handling event: TimerEvent{uuid=2, timer=protocols.point2point.timers.HelperTimer@131751ec, consumer=protocols.point2point.Point2PointCommunicator@7d0b7e3c, triggerTime=6002, periodic=true, period=3000}
+D[14:01:37,526] [400-EmptyPoint2PointComm]Point2PointCommunicator: helperTiD[14:01:D[14:01:37,549] [TCPChannel-1-1]TCPChannel: DeliverMessage BabelMessage{message=Point2PointMessage{mid=3b7e7daf-7b0e-44ea-9972-49b248916539}, sourceProto=400, destProto=400} 192.168.1.80:10101 IN
+D[14:01:37,549] [400-EmptyPoint2PointComm]GenericProtocol: Handling event: MessageInEvent{msg=BabelMessage{message=Point2PointMessage{mid=3b7e7daf-7b0e-44ea-9972-49b248916539}, sourceProto=400, destProto=400}, from=192.168.1.80:10101, channelId=1}
+I[14:01:37,549] [400-EmptyPoint2PointComm]Point2PointCommunicator: Received Point2Point Message: Point2PointMessage{mid=3b7e7daf-7b0e-44ea-9972-49b248916539}
+D[14:01:37,549] [300-AutomateCommunicationApp]GenericProtocol: Handling event: pt.unl.fct.di.novasys.babel.internal.NotificationEvent@2cd3f158
+I[14:01:37,549] [300-AutomateCommunicationApp]AutomatedApp: Received -3c7e403b151a556b2d8d8ab6f76de0f9fb3e92fa04c97c3c17c64250590b76ac -> -39afe25d3f3f75ff93ba1b68bebeccd5e7e1e673449c154e615b721177d82776 - 3b7e7daf-7b0e-44ea-9972-49b248916539 (100)
+D[14:01:38,552] [TCPChannel-1-1]TCPChannel: DeliverMessage BabelMessage{message=Point2PointMessage{mid=54b872c2-e1ae-408c-a7ca-7b770af6ec02}, sourceProto=400, destProto=400} 192.168.1.80:10101 IN
+D[14:01:38,552] [400-EmptyPoint2PointComm]GenericProtocol: Handling event: MessageInEvent{msg=BabelMessage{message=Point2PointMessage{mid=54b872c2-e1ae-408c-a7ca-7b770af6ec02}, sourceProto=400, destProto=400}, from=192.168.1.80:10101, channelId=1}
+I[14:01:38,553] [400-EmptyPoint2PointComm]Point2PointCommunicator: Received Point2Point Message: Point2PointMessage{mid=54b872c2-e1ae-408c-a7ca-7b770af6ec02}
+D[14:01:38,553] [300-AutomateCommunicationApp]GenericProtocol: Handling event: pt.unl.fct.di.novasys.babel.internal.NotificationEvent@22141ab2
+I[14:01:38,553] [300-AutomateCommunicationApp]AutomatedApp: Received -3c7e403b151a556b2d8d8ab6f76de0f9fb3e92fa04c97c3c17c64250590b76ac -> -39afe25d3f3f75ff93ba1b68bebeccd5e7e1e673449c154e615b721177d82776 - 54b872c2-e1ae-408c-a7ca-7b770af6ec02 (100)
+D[14:01:39,524] [300-AutomateCommunicationApp]GenericProtocol: Handling event: TimerEvent{uuid=1, timer=protocols.apps.timers.StartTimer@262b9a28, consumer=protocols.apps.AutomatedApp@368247b9, triggerTime=5000, periodic=false, period=-1}
+I[14:01:39,524] [300-AutomateCommunicationApp]AutomatedApp: Starting publications
+D[14:01:39,525] [300-AutomateCommunicationApp]GenericProtocol: Handling event: TimerEvent{uuid=3, timer=protocols.apps.timers.SendMessageTimer@63291089, consumer=protocols.apps.AutomatedApp@368247b9, triggerTime=6001, periodic=true, period=1000}
+I[14:01:39,527] [300-AutomateCommunicationApp]AutomatedApp: Sending: -39afe25d3f3f75ff93ba1b68bebeccd5e7e1e673449c154e615b721177d82776 -> -337576e4a9ae84bda9c331220e21c881f71a64b16194abf2a934e48f45a5385a : 4273f7dd-2bf9-428e-b4ff-babe480e3571 (100)
+D[14:01:39,527] [400-EmptyPoint2PointComm]GenericProtocol: Handling event: pt.unl.fct.di.novasys.babel.internal.IPCEvent@4ce8cde0
+I[14:01:39,528] [400-EmptyPoint2PointComm]Point2PointCommunicator: Received SendRequest: 4273f7dd-2bf9-428e-b4ff-babe480e3571
+D[14:01:39,528] [500-ChordDHT]GenericProtocol: Handling event: pt.unl.fct.di.novasys.babel.internal.IPCEvent@211a5080
+I[14:01:39,528] [500-ChordDHT]ChordDHT: Received LookupRequest: Lookup Request for: -337576e4a9ae84bda9c331220e21c881f71a64b16194abf2a934e48f45a5385a
+I[14:01:39,528] [500-ChordDHT]ChordDHT: Received LookupMessage: FindSuccessorMessage{mid=4273f7dd-2bf9-428e-b4ff-babe480e3571}
+I[14:01:39,528] [500-ChordDHT]ChordDHT: Received FoundSuccessorMessage: FoundSuccessorMessage{mid=4273f7dd-2bf9-428e-b4ff-babe480e3571}
+D[14:01:39,529] [400-EmptyPoint2PointComm]GenericProtocol: Handling event: pt.unl.fct.di.novasys.babel.internal.IPCEvent@49539b37
+I[14:01:39,529] [400-EmptyPoint2PointComm]Point2PointCommunicator: Received Lookup Reply: LookupReply for 337576e4a9ae84bda9c331220e21c881f71a64b16194abf2a934e48f45a5385a containing set (1 elements):
+	3c7e403b151a556b2d8d8ab6f76de0f9fb3e92fa04c97c3c17c64250590b76ac::192.168.1.80:10101
 
-D[15:11:53,324] [500-ChordDHT]GenericProtocol: Handling event: TimerEvent{uuid=3, timer=protocols.dht.chord.timers.RetryTCPConnectionsTimer@132a0d66, consumer=protocols.dht.chord.ChordDHT@62b41ad0, triggerTime=2001, periodic=true, period=1000}
-D[15:11:53,325] [500-ChordDHT]ChordDHT: retryTCPConnections: []
-D[15:11:53,605] [TCPChannel-1-1]TCPChannel: DeliverMessage BabelMessage{message=GetPredecessorMessage{mid=ebbc08c4-0d26-4367-8af0-d1abcbc8a4c3}, sourceProto=500, destProto=500} 192.168.1.80:10101 IN
-D[15:11:53,606] [500-ChordDHT]GenericProtocol: Handling event: MessageInEvent{msg=BabelMessage{message=GetPredecessorMessage{mid=ebbc08c4-0d26-4367-8af0-d1abcbc8a4c3}, sourceProto=500, destProto=500}, from=192.168.1.80:10101, channelId=1}
-I[15:11:53,606] [500-ChordDHT]ChordDHT: Received GetPredecessorMessage: GetPredecessorMessage{mid=ebbc08c4-0d26-4367-8af0-d1abcbc8a4c3}
-D[15:11:53,607] [500-ChordDHT]GenericProtocol: Sending: ReturnPredecessorMessage{mid=371302d7-e863-4b79-bc30-60129fda9b80} to 192.168.1.80:10101 proto 500 channel 1
-D[15:11:53,607] [TCPChannel-1-1]TCPChannel: SendMessage BabelMessage{message=ReturnPredecessorMessage{mid=371302d7-e863-4b79-bc30-60129fda9b80}, sourceProto=500, destProto=500} 192.168.1.80:10101 OUT
-D[15:11:53,607] [nioEventLoopGroup-3-1]OutConnectionHandler: Writing BabelMessage{message=ReturnPredecessorMessage{mid=371302d7-e863-4b79-bc30-60129fda9b80}, sourceProto=500, destProto=500} to outChannel of 192.168.1.80:10101
-D[15:11:53,612] [TCPChannel-1-1]TCPChannel: DeliverMessage BabelMessage{message=NotifySuccessorMessage{mid=69d6747e-4ea3-4969-b9aa-e28ba9c4b387}, sourceProto=500, destProto=500} 192.168.1.80:10101 IN
-D[15:11:53,612] [500-ChordDHT]GenericProtocol: Handling event: MessageInEvent{msg=BabelMessage{message=NotifySuccessorMessage{mid=69d6747e-4ea3-4969-b9aa-e28ba9c4b387}, sourceProto=500, destProto=500}, from=192.168.1.80:10101, channelId=1}
-I[15:11:53,612] [500-ChordDHT]ChordDHT: Received UpdatePredecessorMessage: NotifySuccessorMessage{mid=69d6747e-4ea3-4969-b9aa-e28ba9c4b387}
-D[15:11:54,325] [500-ChordDHT]GenericProtocol: Handling event: TimerEvent{uuid=3, timer=protocols.dht.chord.timers.RetryTCPConnectionsTimer@132a0d66, consumer=protocols.dht.chord.ChordDHT@62b41ad0, triggerTime=3003, periodic=true, period=1000}
-D[15:11:54,326] [500-ChordDHT]ChordDHT: retryTCPConnections: []
-D[15:11:55,322] [500-ChordDHT]GenericProtocol: Handling event: TimerEvent{uuid=4, timer=protocols.dht.chord.timers.StabilizeTimer@4c88b7b, consumer=protocols.dht.chord.ChordDHT@62b41ad0, triggerTime=6000, periodic=true, period=3000}
-D[15:11:55,322] [400-EmptyPoint2PointComm]GenericProtocol: Handling event: TimerEvent{uuid=2, timer=protocols.point2point.timers.HelperTimer@411fee1a, consumer=protocols.point2point.Point2PointCommunicator@7d0b7e3c, triggerTime=6000, periodic=true, period=3000}
-D[15:11:55,322] [500-ChordDHT]ChordDHT: stabilize: 4
-D[15:11:55,322] [400-EmptyPoint2PointComm]Point2PointCommunicator: helperTimer: 2
-D[15:11:55,323] [500-ChordDHT]GenericProtocol: Sending: GetPredecessorMessage{mid=390bed7c-6106-429f-ae6e-20193e4a99bc} to 192.168.1.80:10101 proto 500 channel 1
-D[15:11:55,323] [500-ChordDHT]GenericProtocol: Handling event: TimerEvent{uuid=5, timer=protocols.dht.chord.timers.FixFingersTimer@47caf7b9, consumer=protocols.dht.chord.ChordDHT@62b41ad0, triggerTime=6000, periodic=true, period=3000}
-D[15:11:55,323] [TCPChannel-1-1]TCPChannel: SendMessage BabelMessage{message=GetPredecessorMessage{mid=390bed7c-6106-429f-ae6e-20193e4a99bc}, sourceProto=500, destProto=500} 192.168.1.80:10101 OUT
-D[15:11:55,323] [500-ChordDHT]ChordDHT: fixFingers: 5
-D[15:11:55,324] [nioEventLoopGroup-3-1]OutConnectionHandler: Writing BabelMessage{message=GetPredecessorMessage{mid=390bed7c-6106-429f-ae6e-20193e4a99bc}, sourceProto=500, destProto=500} to outChannel of 192.168.1.80:10101
-I[15:11:55,324] [500-ChordDHT]ChordDHT: Received LookupMessage: FindSuccessorMessage{mid=7e5d2769-5008-4a31-af30-4f88a313eeef}
-D[15:11:55,324] [500-ChordDHT]GenericProtocol: Sending: FoundSuccessorMessage{mid=7e5d2769-5008-4a31-af30-4f88a313eeef} to 192.168.1.80:10103 proto 500 channel 1
-D[15:11:55,324] [TCPChannel-1-1]TCPChannel: onOpenConnection creating connection to: 192.168.1.80:10103
-D[15:11:55,325] [TCPChannel-1-1]TCPChannel: SendMessage BabelMessage{message=FoundSuccessorMessage{mid=7e5d2769-5008-4a31-af30-4f88a313eeef}, sourceProto=500, destProto=500} 192.168.1.80:10103 OUT
-D[15:11:55,325] [nioEventLoopGroup-3-3]OutConnectionHandler: Connecting to 192.168.1.80:10103
-D[15:11:55,326] [500-ChordDHT]GenericProtocol: Handling event: TimerEvent{uuid=3, timer=protocols.dht.chord.timers.RetryTCPConnectionsTimer@132a0d66, consumer=protocols.dht.chord.ChordDHT@62b41ad0, triggerTime=4004, periodic=true, period=1000}
-D[15:11:55,326] [500-ChordDHT]ChordDHT: retryTCPConnections: []
-D[15:11:55,328] [TCPChannel-1-1]TCPChannel: DeliverMessage BabelMessage{message=ReturnPredecessorMessage{mid=f2ef9559-91ea-4187-ba8f-255b566301ff}, sourceProto=500, destProto=500} 192.168.1.80:10101 IN
-D[15:11:55,328] [500-ChordDHT]GenericProtocol: Handling event: MessageInEvent{msg=BabelMessage{message=ReturnPredecessorMessage{mid=f2ef9559-91ea-4187-ba8f-255b566301ff}, sourceProto=500, destProto=500}, from=192.168.1.80:10101, channelId=1}
-I[15:11:55,328] [500-ChordDHT]ChordDHT: Received ReturnPredecessorMessage: ReturnPredecessorMessage{mid=f2ef9559-91ea-4187-ba8f-255b566301ff}
-D[15:11:55,328] [500-ChordDHT]GenericProtocol: Sending: NotifySuccessorMessage{mid=dde241ed-6d09-4db4-ba54-a5694461333b} to 192.168.1.80:10101 proto 500 channel 1
-D[15:11:55,328] [nioEventLoopGroup-3-4]InConnectionHandler: Incoming channel active: /192.168.1.80:62912
-D[15:11:55,328] [TCPChannel-1-1]TCPChannel: SendMessage BabelMessage{message=NotifySuccessorMessage{mid=dde241ed-6d09-4db4-ba54-a5694461333b}, sourceProto=500, destProto=500} 192.168.1.80:10101 OUT
-D[15:11:55,329] [nioEventLoopGroup-3-1]OutConnectionHandler: Writing BabelMessage{message=NotifySuccessorMessage{mid=dde241ed-6d09-4db4-ba54-a5694461333b}, sourceProto=500, destProto=500} to outChannel of 192.168.1.80:10101
-D[15:11:55,332] [TCPChannel-1-1]TCPChannel: InboundConnectionUp 192.168.1.80:10103
-D[15:11:55,332] [nioEventLoopGroup-3-3]OutConnectionHandler: Handshake completed to: 192.168.1.80:10103
-D[15:11:55,332] [TCPChannel-1-1]TCPChannel: OutboundConnectionUp 192.168.1.80:10103
-D[15:11:55,333] [400-EmptyPoint2PointComm]GenericProtocol: Handling event: ChannelEvent{event=InConnectionUp{node=192.168.1.80:10103}, channelId=1}
-D[15:11:55,333] [500-ChordDHT]GenericProtocol: Handling event: ChannelEvent{event=InConnectionUp{node=192.168.1.80:10103}, channelId=1}
-D[15:11:55,333] [400-EmptyPoint2PointComm]GenericProtocol: Discarding unhandled channel event (id 1): ChannelEvent{event=InConnectionUp{node=192.168.1.80:10103}, channelId=1}
-D[15:11:55,333] [500-ChordDHT]GenericProtocol: Handling event: ChannelEvent{event=OutConnectionUp{node=192.168.1.80:10103}, channelId=1}
-D[15:11:55,333] [400-EmptyPoint2PointComm]GenericProtocol: Handling event: ChannelEvent{event=OutConnectionUp{node=192.168.1.80:10103}, channelId=1}
-D[15:11:55,333] [500-ChordDHT]ChordDHT: Connection to 192.168.1.80:10103 is up
-D[15:11:55,333] [nioEventLoopGroup-3-3]OutConnectionHandler: Writing BD[15:11:55,615] [300-AutomateCommunicationApp]GenericProtocol: Handling event: TimerEvent{uuid=1, timer=protocols.apps.timers.StartTimer@5ada665d, consumer=protocols.apps.AutomatedApp@368247b9, triggerTime=5000, periodic=false, period=-1}
-I[15:11:55,616] [300-AutomateCommunicationApp]AutomatedApp: Starting publications
-D[15:11:55,617] [300-AutomateCommunicationApp]GenericProtocol: Handling event: TimerEvent{uuid=6, timer=protocols.apps.timers.SendMessageTimer@541d9376, consumer=protocols.apps.AutomatedApp@368247b9, triggerTime=6017, periodic=true, period=1000}
-D[15:11:55,620] [500-ChordDHT]GenericProtocol: Handling event: TimerEvent{uuid=3, timer=protocols.dht.chord.timers.RetryTCPConnectionsTimer@1891c6c1, consumer=protocols.dht.chord.ChordDHT@16563ba3, triggerTime=6020, periodic=true, period=1000}
-D[15:11:55,620] [500-ChordDHT]ChordDHT: retryTCPConnections: []
-I[15:11:55,620] [300-AutomatI[15:11:55,825] [Thread-1]Main: Goodbye
--3c7e403b151a556b2d8d8ab6f76de0f9fb3e92fa04c97c3c17c64250590b76ac -> -17e3ced76118ad9b5dd50c2babf18a507bff0f98358a0f63be6e6197c443701a : 96d786d1-6169-44f8-b1ae-16b46a24794d (100)
-D[15:11:55,621] [400-EmptyPoint2PointComm]GenericProtocol: Handling event: pt.unl.fct.di.novasys.babel.internal.IPCEvent@413d9e2b
-I[15:11:55,621] [400-EmptyPoint2PointComm]Point2PointCommunicator: Received SendRequest: 96d786d1-6169-44f8-b1ae-16b46a24794d
-D[15:11:55,622] [500-ChordDHT]GenericProtocol: Handling event: pt.unl.fct.di.novasys.babel.internal.IPCEvent@1e45b5cb
-I[15:11:55,623] [500-ChordDHT]ChordDHT: Received LookupRequest: Lookup Request for: -17e3ced76118ad9b5dd50c2babf18a507bff0f98358a0f63be6e6197c443701a
-I[15:11:55,623] [500-ChordDHT]ChordDHT: Received LookupMessage: FindSuccessorMessage{mid=96d786d1-6169-44f8-b1ae-16b46a24794d}
-I[15:11:55,623] [500-ChordDHT]ChordDHT: Received FoundSuccessorMessage: FoundSuccessorMessage{mid=96d786d1-6169-44f8-b1ae-16b46a24794d}
-D[15:11:55,623] [400-EmptyPoint2PointComm]GenericProtocol: Handling event: pt.unl.fct.di.novasys.babel.internal.IPCEvent@55f5db24
-I[15:11:55,624] [400-EmptyPoint2PointComm]Point2PointCommunicator: Received Lookup Reply: LookupReply for -17e3ced76118ad9b5dd50c2babf18a507bff0f98358a0f63be6e6197c443701a containing set (1 elements):
-	-3c7e403b151a556b2d8d8ab6f76de0f9fb3e92fa04c97c3c17c64250590b76ac::192.168.1.80:10101
+I[14:01:39,529] [400-EmptyPoint2PointComm]Point2PointCommunicator: HERE 192.168.1.80:10101
+D[14:01:39,529] [400-EmptyPoint2PointComm]GenericProtocol: Sending: Point2PointMessage{mid=4273f7dd-2bf9-428e-b4ff-babe480e3571} to 192.168.1.80:10101 proto 400 channel 1
+D[14:01:39,530] [TCPChannel-1-1]TCPChannel: SendMessage BabelMessage{message=Point2PointMessage{mid=4273f7dd-2bf9-428e-b4ff-babe480e3571}, sourceProto=400, destProto=400} 192.168.1.80:10101 OUT
+D[14:01:39,530] [nioEventLoopGroup-3-1]OutConnectionHandler: Writing BabelMessage{message=Point2PointMessage{mid=4273f7dd-2bf9-428e-b4ff-babe480e3571}, sourceProto=400, destProto=400} to outChannel of 192.168.1.80:10101
+D[14:01:39,562] [TCPChannel-1-1]TCPChannel: DeliverMessage BabelMessage{message=Point2PointMessage{mid=5eac1700-eee3-40e9-899e-76a8c2153e99}, sourceProto=400, destProto=400} 192.168.1.80:10101 IN
+D[14:01:39,562] [400-EmptyPoint2PointComm]GenericProtocol: Handling event: MessageInEvent{msg=BabelMessage{message=Point2PointMessage{mid=5eac1700-eee3-40e9-899e-76a8c2153e99}, sourceProto=400, destProto=400}, from=192.168.1.80:10101, channelId=1}
+I[14:01:39,562] [400-EmptyPoint2PointComm]Point2PointCommunicator: Received Point2Point Message: Point2PointMessage{mid=5eac1700-eee3-40e9-899e-76a8c2153e99}
+D[14:01:39,562] [300-AutomateCommunicationApp]GenericProtocol: Handling event: pt.unl.fct.di.novasys.babel.internal.NotificationEvent@5b425b57
+I[14:01:39,562] [300-AutomateCommunicationApp]AutomatedApp: Received -3c7e403b151a556b2d8d8ab6f76de0f9fb3e92fa04c97c3c17c64250590b76ac -> -39afe25d3f3f75ff93ba1b68bebeccd5e7e1e673449c154e615b721177d82776 - 5eac1700-eee3-40e9-899e-76a8c2153e99 (100)
+D[14:01:40,534] [300-AutomateCommunicationApp]GenericProtocol: Handling event: TimerEvent{uuid=3, timer=protocols.apps.timers.SendMessageTimer@63291089, consumer=protocols.apps.AutomatedApp@368247b9, triggerTime=7010, periodic=true, period=1000}
+D[14:01:40,534] [400-EmptyPoint2PointComm]GenericProtocol: Handling event: TimerEvent{uuid=2, timer=protocols.point2point.timers.HelperTimer@131751ec, consumer=protocols.point2point.Point2PointCommunicator@7d0b7e3c, triggerTime=9010, periodic=true, period=3000}
+D[14:01:40,534] [400-EmptyPoint2PointComm]Point2PointCommunicator: helperTimer: 2
+I[14:01:40,535] [300-AutomateCommunicationApp]AutomatedApp: Sending: -39afe25d3f3f75ff93ba1b68bebeccd5e7e1e673449c154e615b721177d82776 -> 6f65454bb14057a437b70140ac11ef8ab1c0a8a9329c6f8aee8a174ef513f6f5 : 26bf9da4-24f0-4e15-a75d-69ddb6476fe8 (100)
+D[14:01:40,535] [400-EmptyPoint2PointComm]GenericProtocol: Handling event: pt.unl.fct.di.novasys.babel.internal.IPCEvent@43281ee1
+I[14:01:40,535] [400-EmptyPoint2PointComm]Point2PointCommunicator: Received SendRequest: 26bf9da4-24f0-4e15-a75d-69ddb6476fe8
+D[14:01:40,535] [500-ChordDHT]GenericProtocol: Handling event: pt.unl.fct.di.novasys.babel.internal.IPCEvent@4429f4a6
+I[14:01:40,535] [500-ChordDHT]ChordDHT: Received LookupRequest: Lookup Request for: 6f65454bb14057a437b70140ac11ef8ab1c0a8a9329c6f8aee8a174ef513f6f5
+I[14:01:40,535] [500-ChordDHT]ChordDHT: Received LookupMessage: FindSuccessorMessage{mid=26bf9da4-24f0-4e15-a75d-69ddb6476fe8}
+I[14:01:40,536] [500-ChordDHT]ChordDHT: Received FoundSuccessorMessage: FoundSuccessorMessage{mid=26bf9da4-24f0-4e15-a75d-69ddb6476fe8}
+D[14:01:40,536] [400-EmptyPoint2PointComm]GenericProtocol: Handling event: pt.unl.fct.di.novasys.babel.internal.IPCEvent@6a99af59
+I[14:01:40,536] [400-EmptyPoint2PointComm]Point2PointCommunicator: Received Lookup Reply: LookupReply for 6f65454bb14057a437b70140ac11ef8ab1c0a8a9329c6f8aee8a174ef513f6f5 containing set (1 elements):
+	3c7e403b151a556b2d8d8ab6f76de0f9fb3e92fa04c97c3c17c64250590b76ac::192.168.1.80:10101
 
-D[15:11:55,624] [400-EmptyPoint2PointComm]GenericProtocol: Sending: Point2PointMessage{mid=96d786d1-6169-44f8-b1ae-16b46a24794d} to 192.168.1.80:10101 proto 400 channel 1
-D[15:11:55,625] [TCPChannel-1-1]TCPChannel: SendMessage BabelMessage{message=Point2PointMessage{mid=96d786d1-6169-44f8-b1ae-16b46a24794d}, sourceProto=400, destProto=400} 192.168.1.80:10101 OUT
-D[15:11:55,625] [400-EmptyPoint2PointComm]GenericProtocol: Handling event: MessageFailedEvent{msg=BabelMessage{message=Point2PointMessage{mid=96d786d1-6169-44f8-b1ae-16b46a24794d}, sourceProto=400, destProto=400}, to=192.168.1.80:10101, cause=java.lang.IllegalArgumentException: No outgoing connection, channelId=1}
-D[15:11:55,625] [500-ChordDHT]GenericProtocol: Handling event: MessageFailedEvent{msg=BabelMessage{message=Point2PointMessage{mid=96d786d1-6169-44f8-b1ae-16b46a24794d}, sourceProto=400, destProto=400}, to=192.168.1.80:10101, cause=java.lang.IllegalArgumentException: No outgoing connection, channelId=1}
-D[15:11:55,625] [500-ChordDHT]GenericProtocol: Discarding unhandled message failed event MessageFailedEvent{msg=BabelMessage{message=Point2PointMessage{mid=96d786d1-6169-44f8-b1ae-16b46a24794d}, sourceProto=400, destProto=400}, to=192.168.1.80:10101, cause=java.lang.IllegalArgumentException: No outgoing connection, channelId=1}
-E[15:11:55,625] [400-EmptyPoint2PointComm]Point2PointCommunicator: Message Point2PointMessage{mid=96d786d1-6169-44f8-b1ae-16b46a24794d} to 192.168.1.80:10101 failed, reason: java.lang.IllegalArgumentException: No outgoing connection
-D[15:11:56,333] [nioEventLoopGroup-3-1]InConnectionHandler: In connection exception: /192.168.1.80:62910 java.net.SocketException: Connection reset
-D[15:11:56,333] [nioEventLoopGroup-3-2]OutConnectionHandler: Out connection exception: 192.168.1.80:10103 java.net.SocketException: Connection reset
-D[15:11:56,333] [TCPChannel-1-1]TCPChannel: InboundConnectionDown 192.168.1.80:10103 java.net.SocketException: Connection reset
-D[15:11:56,333] [TCPChannel-1-1]TCPChannel: OutboundConnectionDown 192.168.1.80:10103 java.net.SocketException: Connection reset
-D[15:11:56,333] [400-EmptyPoint2PointComm]GenericProtocol: Handling event: ChannelEvent{event=InConnectionDown{node=192.168.1.80:10103, cause=java.net.SocketException: Connection reset}, channelId=1}
-D[15:11:56,333] [500-ChordDHT]GenericProtocol: Handling event: ChannelEvent{event=InConnectionDown{node=192.168.1.80:10103, cause=java.net.SocketException: Connection reset}, channelId=1}
-D[15:11:56,334] [nioEventLoopGroup-3-1]InConnectionHandler: In connection closed: /192.168.1.80:62910
-D[15:11:56,333] [400-EmptyPoint2PointComm]GenericProtocol: Discarding unhandled channel event (id 1): ChannelEvent{event=InConnectionDown{node=192.168.1.80:10103, cause=java.net.SocketException: Connection reset}, channelId=1}
-D[15:11:56,334] [500-ChordDHT]GenericProtocol: Handling event: ChannelEvent{event=OutConnectionDown{node=192.168.1.80:10103, cause=java.net.SocketException: Connection reset}, channelId=1}
-D[15:11:56,334] [400-EmptyPoint2PointComm]GenericProtocol: Handling event: ChannelEvent{event=OutConnectionDown{node=192.168.1.80:10103, cause=java.net.SocketException: Connection reset}, channelId=1}
-D[15:11:56,334] [400-EmptyPoint2PointComm]GenericProtocol: Discarding unhandled channel event (id 1): ChannelEvent{event=OutConnectionDown{node=192.168.1.80:10103, cause=java.net.SocketException: Connection reset}, channelId=1}
-D[15:11:56,334] [500-ChordDHT]ChordDHT: Connection to 192.168.1.80:10103 is down cause java.net.SocketException: Connection reset
-D[15:11:56,602] [400-EmptyPoint2PointComm]GenericProtocol: Handling event: TimerEvent{uuid=2, timer=protocols.point2point.timers.HelperTimer@645c3236, consumer=protocols.point2point.Point2PointCommunicator@7d0b7e3c, triggerTime=6001, periodic=true, period=3000}
-D[15:11:56,602] [500-ChordDHT]GenericProtocol: Handling event: TimerEvent{uuid=5, timer=protocols.dht.chord.timers.FixFingersTimer@604b36ac, consumer=protocols.dht.chord.ChordDHT@16563ba3, triggerTime=9002, periodic=true, period=3000}
-D[15:11:56,602] [400-EmptyPoint2PointComm]Point2PointCommunicator: helperTimer: 2
-D[15:11:56,602] [500-ChordDHT]ChordDHT: fixFingers: 5
-I[15:11:56,602] [500-ChordDHT]ChordDHT: Received LookupMessage: FindSuccessorMessage{mid=c9b47e74-ca46-412b-9948-db2100d74c72}
-I[15:11:56,603] [500-ChordDHT]ChordDHT: Received FoundSuccessorMessage: FoundSuccessorMessage{mid=c9b47e74-ca46-412b-9948-db2100d74c72}
-D[15:11:56,603] [500-ChordDHT]GenericProtocol: Handling event: TimerEvent{uuid=4, timer=protocols.dht.chord.timers.StabilizeTimer@1b87415, consumer=protocols.dht.chord.ChordDHT@16563ba3, triggerTime=9002, periodic=true, period=3000}
-D[15:11:56,603] [500-ChordDHT]ChordDHT: stabilize: 4
-D[15:11:56,603] [500-ChordDHT]GenericProtocol: Sending: GetPredecessorMessage{mid=8587a5d7-e340-4d89-8c55-56abd9c89fcc} to 192.168.1.80:10103 proto 500 channel 1
-D[15:11:56,603] [TCPChannel-1-1]TCPChannel: SendMessage BabelMessage{message=GetPredecessorMessage{mid=8587a5d7-e340-4d89-8c55-56abd9c89fcc}, sourceProto=500, destProto=500} 192.168.1.80:10103 OUT
-D[15:11:56,604] [400-EmptyPoint2PointComm]GenericProtocol: Handling event: MessageFailedEvent{msg=BabelMessage{message=GetPredecessorMessage{mid=8587a5d7-e340-4d89-8c55-56abd9c89fcc}, sourceProto=500, destProto=500}, to=192.168.1.80:10103, cause=java.lang.IllegalArgumentException: No outgoing connection, channelId=1}
-D[15:11:56,604] [500-ChordDHT]GenericProtocol: Handling event: MessageFailedEvent{msg=BabelMessage{message=GetPredecessorMessage{mid=8587a5d7-e340-4d89-8c55-56abd9c89fcc}, sourceProto=500, destProto=500}, to=192.168.1.80:10103, cause=java.lang.IllegalArgumentException: No outgoing connection, channelId=1}
-D[15:11:56,604] [400-EmptyPoint2PointComm]GenericProtocol: Discarding unhandled message failed event MessageFailedEvent{msg=BabelMessage{message=GetPredecessorMessage{mid=8587a5d7-e340-4d89-8c55-56abd9c89fcc}, sourceProto=500, destProto=500}, to=192.168.1.80:10103, cause=java.lang.IllegalArgumentException: No outgoing connection, channelId=1}
-E[15:11:56,604] [500-ChordDHT]ChordDHT: Message GetPredecessorMessage{mid=8587a5d7-e340-4d89-8c55-56abd9c89fcc} to 192.168.1.80:10103 failed, reason: java.lang.IllegalArgumentException: No outgoing connection
-D[15:11:56,618] [300-AutomateCommunicationApp]GenericProtocol: Handling event: TimerEvent{uuid=6, timer=protocols.apps.timers.SendMessageTimer@541d9376, consumer=protocols.apps.AutomatedApp@368247b9, triggerTime=7018, periodic=true, period=1000}
-I[15:11:56,618] [300-AutomateCommunicationApp]AutomatedApp: Sending: -3c7e403b151a556b2d8d8ab6f76de0f9fb3e92fa04c97c3c17c64250590b76ac -> -6f32de0298989ac8ae95eb578b02ea32e6e909113ca52bea48a6a3bbd22aa59c : cf14e7c3-70f5-4057-b9ef-10875c44d848 (100)
-D[15:11:56,619] [400-EmptyPoint2PointComm]GenericProtocol: Handling event: pt.unl.fct.di.novasys.babel.internal.IPCEvent@4680c93
-I[15:11:56,619] [400-EmptyPoint2PointComm]Point2PointCommunicator: Received SendRequest: cf14e7c3-70f5-4057-b9ef-10875c44d848
-D[15:11:56,619] [500-ChordDHT]GenericProtocol: Handling event: pt.unl.fct.di.novasys.babel.internal.IPCEvent@25a6f531
-I[15:11:56,620] [500-ChordDHT]ChordDHT: Received LookupRequest: Lookup Request for: -6f32de0298989ac8ae95eb578b02ea32e6e909113ca52bea48a6a3bbd22aa59c
-I[15:11:56,620] [500-ChordDHT]ChordDHT: Received LookupMessage: FindSuccessorMessage{mid=cf14e7c3-70f5-4057-b9ef-10875c44d848}
-I[15:11:56,621] [500-ChordDHT]ChordDHT: Received FoundSuccessorMessage: FoundSuccessorMessage{mid=cf14e7c3-70f5-4057-b9ef-10875c44d848}
-D[15:11:56,621] [500-ChordDHT]GenericProtocol: Handling event: TimerEvent{uuid=3, timer=protocols.dht.chord.timers.RetryTCPConnectionsTimer@1891c6c1, consumer=protocols.dht.chord.ChordDHT@16563ba3, triggerTime=7021, periodic=true, period=1000}
-D[15:11:56,621] [400-EmptyPoint2PointComm]GenericProtocol: Handling event: pt.unl.fct.di.novasys.babel.internal.IPCEvent@1a043aa
-D[15:11:56,621] [500-ChordDHT]ChordDHT: retryTCPConnections: []
-I[15:11:56,621] [400-EmptyPoint2PointComm]Point2PointCommunicator: Received Lookup Reply: LookupReply for -6f32de0298989ac8ae95eb578b02ea32e6e909113ca52bea48a6a3bbd22aa59c containing set (1 elements):
-	-3c7e403b151a556b2d8d8ab6f76de0f9fb3e92fa04c97c3c17c64250590b76ac::192.168.1.80:10101
+I[14:01:40,536] [400-EmptyPoint2PointComm]Point2PointCommunicator: HERE 192.168.1.80:10101
+D[14:01:40,537] [400-EmptyPoint2PointComm]GenericProtocol: Sending: Point2PointMessage{mid=26bf9da4-24f0-4e15-a75d-69ddb6476fe8} to 192.168.1.80:10101 proto 400 channel 1
+D[14:01:40,537] [TCPChannel-1-1]TCPChannel: SendMessage BabelMessage{message=Point2PointMessage{mid=26bf9da4-24f0-4e15-a75d-69ddb6476fe8}, sourceProto=400, destProto=400} 192.168.1.80:10101 OUT
+D[14:01:40,537] [nioEventLoopGroup-3-1]OutConnectionHandler: Writing BabelMessage{message=Point2PointMessage{mid=26bf9da4-24f0-4e15-a75d-69ddb6476fe8}, sourceProto=400, destProto=400} to outChannel of 192.168.1.80:10101
+D[14:01:40,576] [TCPChannel-1-1]TCPChannel: DeliverMessage BabelMessage{message=Point2PointMessage{mid=a29a2b36-0247-4bba-9c72-9c9a5cf30ebb}, sourceProto=400, destProto=400} 192.168.1.80:10101 IN
+D[14:01:40,576] [400-EmptyPoint2PointComm]GenericProtocol: Handling event: MessageInEvent{msg=BabelMessage{message=Point2PointMessage{mid=a29a2b36-0247-4bba-9c72-9c9a5cf30ebb}, sourceProto=400, destProto=400}, from=192.168.1.80:10101, channelId=1}
+I[14:01:40,576] [400-EmptyPoint2PointComm]Point2PointCommunicator: Received Point2Point Message: Point2PointMessage{mid=a29a2b36-0247-4bba-9c72-9c9a5cf30ebb}
+D[14:01:40,576] [300-AutomateCommunicationApp]GenericProtocol: Handling event: pt.unl.fct.di.novasys.babel.internal.NotificationEvent@19a7a44f
+I[14:01:40,576] [300-AutomateCommunicationApp]AutomatedApp: Received -3c7e403b151a556b2d8d8ab6f76de0f9fb3e92fa04c97c3c17c64250590b76ac -> -39afe25d3f3f75ff93ba1b68bebeccd5e7e1e673449c154e615b721177d82776 - a29a2b36-0247-4bba-9c72-9c9a5cf30ebb (100)
+D[14:01:41,543] [300-AutomateCommunicationApp]GenericProtocol: Handling event: TimerEvent{uuid=3, timer=protocols.apps.timers.SendMessageTimer@63291089, consumer=protocols.apps.AutomatedApp@368247b9, triggerTime=7010, periodic=true, period=1000}
+I[14:01:41,543] [300-AutomateCommunicationApp]AutomatedApp: Sending: -39afe25d3f3f75ff93ba1b68bebeccd5e7e1e673449c154e615b721177d82776 -> 5e1ae2afd8972b3767b5c941783799ac3a2eccdcfc4aab35d639a5b2ece8d8b9 : c2c686d7-a6c4-4497-a040-93c79bd39761 (100)
+D[14:01:41,543] [400-EmptyPoint2PointComm]GenericProtocol: Handling event: pt.unl.fct.di.novasys.babel.internal.IPCEvent@6014f827
+I[14:01:41,543] [400-EmptyPoint2PointComm]Point2PointCommunicator: Received SendRequest: c2c686d7-a6c4-4497-a040-93c79bd39761
+D[14:01:41,544] [500-ChordDHT]GenericProtocol: Handling event: pt.unl.fct.di.novasys.babel.internal.IPCEvent@655b5423
+I[14:01:41,544] [500-ChordDHT]ChordDHT: Received LookupRequest: Lookup Request for: 5e1ae2afd8972b3767b5c941783799ac3a2eccdcfc4aab35d639a5b2ece8d8b9
+I[14:01:41,544] [500-ChordDHT]ChordDHT: Received LookupMessage: FindSuccessorMessage{mid=c2c686d7-a6c4-4497-a040-93c79bd39761}
+I[14:01:41,544] [500-ChordDHT]ChordDHT: Received FoundSuccessorMessage: FoundSuccessorMessage{mid=c2c686d7-a6c4-4497-a040-93c79bd39761}
+D[14:01:41,544] [400-EmptyPoint2PointComm]GenericProtocol: Handling event: pt.unl.fct.di.novasys.babel.internal.IPCEvent@354b4d31
+I[14:01:41,544] [400-EmptyPoint2PointComm]Point2PointCommunicator: Received Lookup Reply: LookupReply for 5e1ae2afd8972b3767b5c941783799ac3a2eccdcfc4aab35d639a5b2ece8d8b9 containing set (1 elements):
+	3c7e403b151a556b2d8d8ab6f76de0f9fb3e92fa04c97c3c17c64250590b76ac::192.168.1.80:10101
 
-D[15:11:56,622] [400-EmptyPoint2PointComm]GenericProtocol: Sending: Point2PointMessage{mid=cf14e7c3-70f5-4057-b9ef-10875c44d848} to 192.168.1.80:10101 proto 400 channel 1
-D[15:11:56,622] [TCPChannel-1-1]TCPChannel: SendMessage BabelMessage{message=Point2PointMessage{mid=cf14e7c3-70f5-4057-b9ef-10875c44d848}, sourceProto=400, destProto=400} 192.168.1.80:10101 OUT
-D[15:11:56,622] [500-ChordDHT]GenericProtocol: Handling event: MessageFailedEvent{msg=BabelMessage{message=Point2PointMessage{mid=cf14e7c3-70f5-4057-b9ef-10875c44d848}, sourceProto=400, destProto=400}, to=192.168.1.80:10101, cause=java.lang.IllegalArgumentException: No outgoing connection, channelId=1}
-D[15:11:56,622] [500-ChordDHT]GenericProtocol: Discarding unhandled message failed event MessageFailedEvent{msg=BabelMessage{message=Point2PointMessage{mid=cf14e7c3-70f5-4057-b9ef-10875c44d848}, sourceProto=400, destProto=400}, to=192.168.1.80:10101, cause=java.lang.IllegalArgumentException: No outgoing connection, channelId=1}
-D[15:11:56,622] [400-EmptyPoint2PointComm]GenericProtocol: Handling event: MessageFailedEvent{msg=BabelMessage{message=Point2PointMessage{mid=cf14e7c3-70f5-4057-b9ef-10875c44d848}, sourceProto=400, destProto=400}, to=192.168.1.80:10101, cause=java.lang.IllegalArgumentException: No outgoing connection, channelId=1}
-E[15:11:56,622] [400-EmptyPoint2PointComm]Point2PointCommunicator: Message Point2PointMessage{mid=cf14e7c3-70f5-4057-b9ef-10875c44d848} to 192.168.1.80:10101 failed, reason: java.lang.IllegalArgumentException: No outgoing connection
-I[15:11:57,113] [Thread-1]Main: Goodbye
+I[14:01:41,546] [400-EmptyPoint2PointComm]Point2PointCommunicator: HERE 192.168.1.80:10101
+D[14:01:41,546] [400-EmptyPoint2PointComm]GenericProtocol: Sending: Point2PointMessage{mid=c2c686d7-a6c4-4497-a040-93c79bd39761} to 192.168.1.80:10101 proto 400 channel 1
+D[14:01:41,546] [TCPChannel-1-1]TCPChannel: SendMessage BabelMessage{message=Point2PointMessage{mid=c2c686d7-a6c4-4497-a040-93c79bd39761}, sourceProto=400, destProto=400} 192.168.1.80:10101 OUT
+D[14:01:41,546] [nioEventLoopGroup-3-1]OutConnectionHandler: Writing BabelMessage{message=Point2PointMessage{mid=c2c686d7-a6c4-4497-a040-93c79bd39761}, sourceProto=400, destProto=400} to outChannel of 192.168.1.80:10101
+D[14:01:41,572] [TCPChannel-1-1]TCPChannel: DeliverMessage BabelMessage{message=Point2PointMessage{mid=746e8fe9-2860-488b-8312-111155d1d3cb}, sourceProto=400, destProto=400} 192.168.1.80:10101 IN
+D[14:01:41,572] [400-EmptyPoint2PointComm]GenericProtocol: Handling event: MessageInEvent{msg=BabelMessage{message=Point2PointMessage{mid=746e8fe9-2860-488b-8312-111155d1d3cb}, sourceProto=400, destProto=400}, from=192.168.1.80:10101, channelId=1}
+I[14:01:41,572] [400-EmptyPoint2PointComm]Point2PointCommunicator: Received Point2Point Message: Point2PointMessage{mid=746e8fe9-2860-488b-8312-111155d1d3cb}
+D[14:01:41,573] [300-AutomateCommunicationApp]GenericProtocol: Handling event: pt.unl.fct.di.novasys.babel.internal.NotificationEvent@5e38ac46
+I[14:01:41,573] [300-AutomateCommunicationApp]AutomatedApp: Received -3c7e403b151a556b2d8d8ab6f76de0f9fb3e92fa04c97c3c17c64250590b76ac -> -39afe25d3f3f75ff93ba1b68bebeccd5e7e1e673449c154e615b721177d82776 - 746e8fe9-2860-488b-8312-111155d1d3cb (100)
+D[14:01:42,555] [300-AutomateCommunicationApp]GenericProtocol: Handling event: TimerEvent{uuid=3, timer=protocols.apps.timers.SendMessageTimer@63291089, consumer=protocols.apps.AutomatedApp@368247b9, triggerTime=9031, periodic=true, period=1000}
+I[14:01:42,555] [300-AutomateCommunicationApp]AutomatedApp: Sending: -39afe25d3f3f75ff93ba1b68bebeccd5e7e1e673449c154e615b721177d82776 -> -72ad1fb35453fdb111a8c5303a5b40e8fa068cf6efa858c28d0d958f9abd1640 : 238210c1-614f-4db9-a80b-43bda173c28a (100)
+D[14:01:42,555] [400-EmptyPoint2PointComm]GenericProtocol: Handling event: pt.unl.fct.di.novasys.babel.internal.IPCEvent@3617826f
+I[14:01:42,555] [400-EmptyPoint2PointComm]Point2PointCommunicator: Received SendRequest: 238210c1-614f-4db9-a80b-43bda173c28a
+D[14:01:42,556] [500-ChordDHT]GenericProtocol: Handling event: pt.unl.fct.di.novasys.babel.internal.IPCEvent@2d7cab06
+I[14:01:42,556] [500-ChordDHT]ChordDHT: Received LookupRequest: Lookup Request for: -72ad1fb35453fdb111a8c5303a5b40e8fa068cf6efa858c28d0d958f9abd1640
+I[14:01:42,556] [500-ChordDHT]ChordDHT: Received LookupMessage: FindSuccessorMessage{mid=238210c1-614f-4db9-a80b-43bda173c28a}
+I[14:01:42,556] [500-ChordDHT]ChordDHT: Received FoundSuccessorMessage: FoundSuccessorMessage{mid=238210c1-614f-4db9-a80b-43bda173c28a}
+D[14:01:42,557] [400-EmptyPoint2PointComm]GenericProtocol: Handling event: pt.unl.fct.di.novasys.babel.internal.IPCEvent@11d31093
+I[14:01:42,557] [400-EmptyPoint2PointComm]Point2PointCommunicator: Received Lookup Reply: LookupReply for 72ad1fb35453fdb111a8c5303a5b40e8fa068cf6efa858c28d0d958f9abd1640 containing set (1 elements):
+	3c7e403b151a556b2d8d8ab6f76de0f9fb3e92fa04c97c3c17c64250590b76ac::192.168.1.80:10101
+
+I[14:01:42,557] [400-EmptyPoint2PointComm]Point2PointCommunicator: HERE 192.168.1.80:10101
+D[14:01:42,557] [400-EmptyPoint2PointComm]GenericProtocol: Sending: Point2PointMessage{mid=238210c1-614f-4db9-a80b-43bda173c28a} to 192.168.1.80:10101 proto 400 channel 1
+D[14:01:42,557] [TCPChannel-1-1]TCPChannel: SendMessage BabelMessage{message=Point2PointMessage{mid=238210c1-614f-4db9-a80b-43bda173c28a}, sourceProto=400, destProto=400} 192.168.1.80:10101 OUT
+D[14:01:42,557] [nioEventLoopGroup-3-1]OutConnectionHandler: Writing BabelMessage{message=Point2PointMessage{mid=238210c1-614f-4db9-a80b-43bda173c28a}, sourceProto=400, destProto=400} to outChannel of 192.168.1.80:10101
+D[14:01:42,575] [TCPChannel-1-1]TCPChannel: DeliverMessage BabelMessage{message=Point2PointMessage{mid=062afb6c-a384-40f1-9caa-5cb5f63582dd}, sourceProto=400, destProto=400} 192.168.1.80:10101 IN
+D[14:01:42,576] [400-EmptyPoint2PointComm]GenericProtocol: Handling event: MessageInEvent{msg=BabelMessage{message=Point2PointMessage{mid=062afb6c-a384-40f1-9caa-5cb5f63582dd}, sourceProto=400, destProto=400}, from=192.168.1.80:10101, channelId=1}
+I[14:01:42,576] [400-EmptyPoint2PointComm]Point2PointCommunicator: Received Point2Point Message: Point2PointMessage{mid=062afb6c-a384-40f1-9caa-5cb5f63582dd}
+D[14:01:42,576] [300-AutomateCommunicationApp]GenericProtocol: Handling event: pt.unl.fct.di.novasys.babel.internal.NotificationEvent@70a7155d
+I[14:01:42,576] [300-AutomateCommunicationApp]AutomatedApp: Received -3c7e403b151a556b2d8d8ab6f76de0f9fb3e92fa04c97c3c17c64250590b76ac -> -39afe25d3f3f75ff93ba1b68bebeccd5e7e1e673449c154e615b721177d82776 - 062afb6c-a384-40f1-9caa-5cb5f63582dd (100)
+D[14:01:43,535] [400-EmptyPoint2PointComm]GenericProtocol: Handling event: TimerEvent{uuid=2, timer=protocols.point2point.timers.HelperTimer@131751ec, consumer=protocols.point2point.Point2PointCommunicator@7d0b7e3c, triggerTime=12011, periodic=true, period=3000}
+D[14:01:43,535] [400-EmptyPoint2PointComm]Point2PointCommunicator: helperTimer: 2
+D[14:01:43,564] [300-AutomateCommunicationApp]GenericProtocol: Handling event: TimerEvent{uuid=3, timer=protocols.apps.timers.SendMessageTimer@63291089, consumer=protocols.apps.AutomatedApp@368247b9, triggerTime=10040, periodic=true, period=1000}
+I[14:01:43,564] [300-AutomateCommunicationApp]AutomatedApp: Sending: -39afe25d3f3f75ff93ba1b68bebeccd5e7e1e673449c154e615b721177d82776 -> 6466ee9a2c76d34367ae674a929fff23c616a2765cc4c2fbb5c75388a3990718 : e62cb62f-e793-4a7c-b7f0-cc9b61a47887 (100)
+D[14:01:43,565] [400-EmptyPoint2PointComm]GenericProtocol: Handling event: pt.unl.fct.di.novasys.babel.internal.IPCEvent@5641174e
+I[14:01:43,565] [400-EmptyPoint2PointComm]Point2PointCommunicator: Received SendRequest: e62cb62f-e793-4a7c-b7f0-cc9b61a47887
+D[14:01:43,565] [500-ChordDHT]GenericProtocol: Handling event: pt.unl.fct.di.novasys.babel.internal.IPCEvent@306c4eb6
+I[14:01:43,566] [500-ChordDHT]ChordDHT: Received LookupRequest: Lookup Request for: 6466ee9a2c76d34367ae674a929fff23c616a2765cc4c2fbb5c75388a3990718
+I[14:01:43,566] [500-ChordDHT]ChordDHT: Received LookupMessage: FindSuccessorMessage{mid=e62cb62f-e793-4a7c-b7f0-cc9b61a47887}
+I[14:01:43,566] [500-ChordDHT]ChordDHT: Received FoundSuccessorMessage: FoundSuccessorMessage{mid=e62cb62f-e793-4a7c-b7f0-cc9b61a47887}
+D[14:01:43,567] [400-EmptyPoint2PointComm]GenericProtocol: Handling event: pt.unl.fct.di.novasys.babel.internal.IPCEvent@390cea72
+I[14:01:43,567] [400-EmptyPoint2PointComm]Point2PointCommunicator: Received Lookup Reply: LookupReply for 6466ee9a2c76d34367ae674a929fff23c616a2765cc4c2fbb5c75388a3990718 containing set (1 elements):
+	3c7e403b151a556b2d8d8ab6f76de0f9fb3e92fa04c97c3c17c64250590b76ac::192.168.1.80:10101
+
+I[14:01:43,567] [400-EmptyPoint2PointComm]Point2PointCommunicator: HERE 192.168.1.80:10101
+D[14:01:43,567] [400-EmptyPoint2PointComm]GenericProtocol: Sending: Point2PointMessage{mid=e62cb62f-e793-4a7c-b7f0-cc9b61a47887} to 192.168.1.80:10101 proto 400 channel 1
+D[14:01:43,567] [TCPChannel-1-1]TCPChannel: SendMessage BabelMessage{message=Point2PointMessage{mid=e62cb62f-e793-4a7c-b7f0-cc9b61a47887}, sourceProto=400, destProto=400} 192.168.1.80:10101 OUT
+D[14:01:43,567] [nioEventLoopGroup-3-1]OutConnectionHandler: Writing BabelMessage{message=Point2PointMessage{mid=e62cb62f-e793-4a7c-b7f0-cc9b61a47887}, sourceProto=400, destProto=400} to outChannel of 192.168.1.80:10101
+D[14:01:44,017] [nioEventLoopGroup-3-1]OutConnectionHandler: Out connection exception: 192.168.1.80:10101 java.net.SocketException: Connection reset
+D[14:01:44,017] [nioEventLoopGroup-3-2]InConnectionHandler: In connection exception: /192.168.1.80:65033 java.net.SocketException: Connection reset
+D[14:01:44,017] [TCPChannel-1-1]TCPChannel: InboundConnectionDown 192.168.1.80:10101 java.net.SocketException: Connection reset
+D[14:01:44,017] [TCPChannel-1-1]TCPChannel: OutboundConnectionDown 192.168.1.80:10101 java.net.SocketException: Connection reset
+D[14:01:44,017] [400-EmptyPoint2PointComm]GenericProtocol: Handling event: ChannelEvent{event=InConnectionDown{node=192.168.1.80:10101, cause=java.net.SocketException: Connection reset}, channelId=1}
+D[14:01:44,017] [400-EmptyPoint2PointComm]GenericProtocol: Discarding unhandled channel event (id 1): ChannelEvent{event=InConnectionDown{node=192.168.1.80:10101, cause=java.net.SocketException: Connection reset}, channelId=1}
+D[14:01:44,017] [400-EmptyPoint2PointComm]GenericProtocol: Handling event: ChannelEvent{event=OutConnectionDown{node=192.168.1.80:10101, cause=java.net.SocketException: Connection reset}, channelId=1}
+D[14:01:44,017] [400-EmptyPoint2PointComm]GenericProtocol: Discarding unhandled channel event (id 1): ChannelEvent{event=OutConnectionDown{node=192.168.1.80:10101, cause=java.net.SocketException: Connection reset}, channelId=1}
+D[14:01:44,017] [nioEventLoopGroup-3-2]InConnectionHandler: In connection closed: /192.168.1.80:65033
+D[14:01:44,017] [500-ChordDHT]GenericProtocol: Handling event: ChannelEvent{event=InConnectionDown{node=192.168.1.80:10101, cause=java.net.SocketException: Connection reset}, channelId=1}
+D[14:01:44,017] [500-ChordDHT]GenericProtocol: Handling event: ChannelEvent{event=OutConnectionDown{node=192.168.1.80:10101, cause=java.net.SocketException: Connection reset}, channelId=1}
+D[14:01:44,017] [500-ChordDHT]ChordDHT: Connection to 192.168.1.80:10101 is down cause java.net.SocketException: Connection reset
+D[14:01:44,571] [300-AutomateCommunicationApp]GenericProtocol: Handling event: TimerEvent{uuid=3, timer=protocols.apps.timers.SendMessageTimer@63291089, consumer=protocols.apps.AutomatedApp@368247b9, triggerTime=11047, periodic=true, period=1000}
+I[14:01:44,571] [300-AutomateCommunicationApp]AutomatedApp: Sending: -39afe25d3f3f75ff93ba1b68bebeccd5e7e1e673449c154e615b721177d82776 -> 6e13848fdf34f86febd45fff645bc13080a8091546d462ff4556d6c897fc84f0 : 2565baa4-f429-4b6e-9394-748106502312 (100)
+D[14:01:44,572] [400-EmptyPoint2PointComm]GenericProtocol: Handling event: pt.unl.fct.di.novasys.babel.internal.IPCEvent@330203c6
+I[14:01:44,572] [400-EmptyPoint2PointComm]Point2PointCommunicator: Received SendRequest: 2565baa4-f429-4b6e-9394-748106502312
+D[14:01:44,572] [500-ChordDHT]GenericProtocol: Handling event: pt.unl.fct.di.novasys.babel.internal.IPCEvent@13f9798
+I[14:01:44,572] [500-ChordDHT]ChordDHT: Received LookupRequest: Lookup Request for: 6e13848fdf34f86febd45fff645bc13080a8091546d462ff4556d6c897fc84f0
+I[14:01:44,573] [500-ChordDHT]ChordDHT: Received LookupMessage: FindSuccessorMessage{mid=2565baa4-f429-4b6e-9394-748106502312}
+I[14:01:44,573] [500-ChordDHT]ChordDHT: Received FoundSuccessorMessage: FoundSuccessorMessage{mid=2565baa4-f429-4b6e-9394-748106502312}
+D[14:01:44,573] [400-EmptyPoint2PointComm]GenericProtocol: Handling event: pt.unl.fct.di.novasys.babel.internal.IPCEvent@3a5ccabd
+I[14:01:44,573] [400-EmptyPoint2PointComm]Point2PointCommunicator: Received Lookup Reply: LookupReply for 6e13848fdf34f86febd45fff645bc13080a8091546d462ff4556d6c897fc84f0 containing set (1 elements):
+	3c7e403b151a556b2d8d8ab6f76de0f9fb3e92fa04c97c3c17c64250590b76ac::192.168.1.80:10101
+
+I[14:01:44,573] [400-EmptyPoint2PointComm]Point2PointCommunicator: HERE 192.168.1.80:10101
+D[14:01:44,573] [400-EmptyPoint2PointComm]GenericProtocol: Sending: Point2PointMessage{mid=2565baa4-f429-4b6e-9394-748106502312} to 192.168.1.80:10101 proto 400 channel 1
+D[14:01:44,573] [TCPChannel-1-1]TCPChannel: SendMessage BabelMessage{message=Point2PointMessage{mid=2565baa4-f429-4b6e-9394-748106502312}, sourceProto=400, destProto=400} 192.168.1.80:10101 OUT
+D[14:01:44,574] [400-EmptyPoint2PointComm]GenericProtocol: Handling event: MessageFailedEvent{msg=BabelMessage{message=Point2PointMessage{mid=2565baa4-f429-4b6e-9394-748106502312}, sourceProto=400, destProto=400}, to=192.168.1.80:10101, cause=java.lang.IllegalArgumentException: No outgoing connection, channelId=1}
+D[14:01:44,574] [500-ChordDHT]GenericProtocol: Handling event: MessageFailedEvent{msg=BabelMessage{message=Point2PointMessage{mid=2565baa4-f429-4b6e-9394-748106502312}, sourceProto=400, destProto=400}, to=192.168.1.80:10101, cause=java.lang.IllegalArgumentException: No outgoing connection, channelId=1}
+D[14:01:44,574] [500-ChordDHT]GenericProtocol: Discarding unhandled message failed event MessageFailedEvent{msg=BabelMessage{message=Point2PointMessage{mid=2565baa4-f429-4b6e-9394-748106502312}, sourceProto=400, destProto=400}, to=192.168.1.80:10101, cause=java.lang.IllegalArgumentException: No outgoing connection, channelId=1}
+E[14:01:44,574] [400-EmptyPoint2PointComm]Point2PointCommunicator: Message Point2PointMessage{mid=2565baa4-f429-4b6e-9394-748106502312} to 192.168.1.80:10101 failed, reason: java.lang.IllegalArgumentException: No outgoing connection
+D[14:01:45,576] [300-AutomateCommunicationApp]GenericProtocol: Handling event: TimerEvent{uuid=3, timer=protocols.apps.timers.SendMessageTimer@63291089, consumer=protocols.apps.AutomatedApp@368247b9, triggerTime=12052, periodic=true, period=1000}
+I[14:01:45,576] [300-AutomateCommunicationApp]AutomatedApp: Sending: -39afe25d3f3f75ff93ba1b68bebeccd5e7e1e673449c154e615b721177d82776 -> 6e13848fdf34f86febd45fff645bc13080a8091546d462ff4556d6c897fc84f0 : 87fd2d81-8828-4900-8a36-10c9d32534e6 (100)
+D[14:01:45,577] [400-EmptyPoint2PointComm]GenericProtocol: Handling event: pt.unl.fct.di.novasys.babel.internal.IPCEvent@647941df
+I[14:01:45,577] [400-EmptyPoint2PointComm]Point2PointCommunicator: Received SendRequest: 87fd2d81-8828-4900-8a36-10c9d32534e6
+D[14:01:45,577] [500-ChordDHT]GenericProtocol: Handling event: pt.unl.fct.di.novasys.babel.internal.IPCEvent@13d40171
+I[14:01:45,577] [500-ChordDHT]ChordDHT: Received LookupRequest: Lookup Request for: 6e13848fdf34f86febd45fff645bc13080a8091546d462ff4556d6c897fc84f0
+I[14:01:45,577] [500-ChordDHT]ChordDHT: Received LookupMessage: FindSuccessorMessage{mid=87fd2d81-8828-4900-8a36-10c9d32534e6}
+I[14:01:45,577] [500-ChordDHT]ChordDHT: Received FoundSuccessorMessage: FoundSuccessorMessage{mid=87fd2d81-8828-4900-8a36-10c9d32534e6}
+D[14:01:45,577] [400-EmptyPoint2PointComm]GenericProtocol: Handling event: pt.unl.fct.di.novasys.babel.internal.IPCEvent@3af86858
+I[14:01:45,578] [400-EmptyPoint2PointComm]Point2PointCommunicator: Received Lookup Reply: LookupReply for 6e13848fdf34f86febd45fff645bc13080a8091546d462ff4556d6c897fc84f0 containing set (1 elements):
+	3c7e403b151a556b2d8d8ab6f76de0f9fb3e92fa04c97c3c17c64250590b76ac::192.168.1.80:10101
+
+I[14:01:45,578] [400-EmptyPoint2PointComm]Point2PointCommunicator: HERE 192.168.1.80:10101
+D[14:01:45,578] [400-EmptyPoint2PointComm]GenericProtocol: Sending: Point2PointMessage{mid=87fd2d81-8828-4900-8a36-10c9d32534e6} to 192.168.1.80:10101 proto 400 channel 1
+D[14:01:45,578] [TCPChannel-1-1]TCPChannel: SendMessage BabelMessage{message=Point2PointMessage{mid=87fd2d81-8828-4900-8a36-10c9d32534e6}, sourceProto=400, destProto=400} 192.168.1.80:10101 OUT
+D[14:01:45,578] [400-EmptyPoint2PointComm]GenericProtocol: Handling event: MessageFailedEvent{msg=BabelMessage{message=Point2PointMessage{mid=87fd2d81-8828-4900-8a36-10c9d32534e6}, sourceProto=400, destProto=400}, to=192.168.1.80:10101, cause=java.lang.IllegalArgumentException: No outgoing connection, channelId=1}
+D[14:01:45,578] [500-ChordDHT]GenericProtocol: Handling event: MessageFailedEvent{msg=BabelMessage{message=Point2PointMessage{mid=87fd2d81-8828-4900-8a36-10c9d32534e6}, sourceProto=400, destProto=400}, to=192.168.1.80:10101, cause=java.lang.IllegalArgumentException: No outgoing connection, channelId=1}
+E[14:01:45,578] [400-EmptyPoint2PointComm]Point2PointCommunicator: Message Point2PointMessage{mid=87fd2d81-8828-4900-8a36-10c9d32534e6} to 192.168.1.80:10101 failed, reason: java.lang.IllegalArgumentException: No outgoing connection
+D[14:01:45,578] [500-ChordDHT]GenericProtocol: Discarding unhandled message failed event MessageFailedEvent{msg=BabelMessage{message=Point2PointMessage{mid=87fd2d81-8828-4900-8a36-10c9d32534e6}, sourceProto=400, destProto=400}, to=192.168.1.80:10101, cause=java.lang.IllegalArgumentException: No outgoing connection, channelId=1}
+I[14:01:45,763] [Thread-1]Main: Goodbye
