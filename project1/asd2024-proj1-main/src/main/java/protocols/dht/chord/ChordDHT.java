@@ -18,7 +18,6 @@ import pt.unl.fct.di.novasys.babel.generic.ProtoMessage;
 import pt.unl.fct.di.novasys.channel.tcp.TCPChannel;
 import pt.unl.fct.di.novasys.channel.tcp.events.*;
 import pt.unl.fct.di.novasys.network.data.Host;
-import utils.AuxCalcs;
 
 import java.io.IOException;
 import java.math.BigInteger;
@@ -44,7 +43,7 @@ public class ChordDHT extends GenericProtocol {
 	private final Finger[] fingers;
 
 	private final Set<UUID> pendingLookupRequests;
-	private final Map<UUID, Finger> fingersPendingSuccessor;
+	private final Map<UUID, Finger> fingersPendingNode;
 
 	private boolean isInitialized;
 
@@ -55,7 +54,7 @@ public class ChordDHT extends GenericProtocol {
 
 		pendingHostConnections = new HashSet<>();
 		pendingLookupRequests = new HashSet<>();
-		fingersPendingSuccessor = new HashMap<>();
+		fingersPendingNode = new HashMap<>();
 		isInitialized = false;
 
 		//initialize thisNode and predecessorNode
@@ -65,7 +64,7 @@ public class ChordDHT extends GenericProtocol {
 		predecessorNode = thisNode;
 
 		//initialize fingers
-		int numFingers = AuxCalcs.log2Ceil(Integer.parseInt(properties.getProperty("id_bits")));
+		int numFingers = Integer.parseInt(properties.getProperty("id_bits"));
 		fingers = new Finger[numFingers];
 		BigInteger fingerEnd = thisNode.getPeerID().add(BigInteger.TWO.pow(fingers.length)).mod(BigInteger.TWO.pow(fingers.length));
 		for (int i = fingers.length-1; i >= 0; i--) {
@@ -121,7 +120,7 @@ public class ChordDHT extends GenericProtocol {
 
 		setupPeriodicTimer(new RetryTCPConnectionsTimer(), 3000, 3000);
 		setupPeriodicTimer(new StabilizeTimer(), 1000, 3000);
-		//TODO: setupPeriodicTimer(new FixFingersTimer(), 3000, 3000);
+		setupPeriodicTimer(new FixFingersTimer(), 3000, 3000);
 
 		//establish TCP connection to contact host
 		if (props.containsKey("contact")) {
@@ -149,9 +148,9 @@ public class ChordDHT extends GenericProtocol {
 		sendMessage(protoMessage, host);
 	}
 
-	private void updateFingerNode(FoundSuccessorMessage foundSuccessorMessage) {
-		ChordNode newSuccessorNode = new ChordNode(foundSuccessorMessage.getSenderPeerID(), foundSuccessorMessage.getSenderHost());
-		fingersPendingSuccessor.remove(foundSuccessorMessage.getMid()).setChordNode(newSuccessorNode);;
+	private void fixFinger(FoundSuccessorMessage foundSuccessorMessage) {
+		ChordNode newSuccessorNode = new ChordNode(foundSuccessorMessage.getSuccessorPeerID(), foundSuccessorMessage.getSuccessorHost());
+		fingersPendingNode.remove(foundSuccessorMessage.getMid()).setChordNode(newSuccessorNode);
 	}
 
 	//TODO: kind of optional, but good to have:
@@ -223,8 +222,8 @@ public class ChordDHT extends GenericProtocol {
 			return;
 		}
 		//used for fix fingers responses
-		if (fingersPendingSuccessor.containsKey(foundSuccessorMessage.getMid())) {
-			updateFingerNode(foundSuccessorMessage);
+		if (fingersPendingNode.containsKey(foundSuccessorMessage.getMid())) {
+			fixFinger(foundSuccessorMessage);
 			return;
 		}
 
@@ -298,7 +297,7 @@ public class ChordDHT extends GenericProtocol {
 
 		int randomFingerIndex = ThreadLocalRandom.current().nextInt(1, fingers.length);
 		UUID uuid = UUID.randomUUID();
-		fingersPendingSuccessor.put(uuid, fingers[randomFingerIndex]);
+		fingersPendingNode.put(uuid, fingers[randomFingerIndex]);
 
 		FindSuccessorMessage findSuccessorMessage = new FindSuccessorMessage(uuid, thisNode.getHost(), thisNode.getHost(), fingers[randomFingerIndex].getStart());
 		uponFindSuccessorMessage(findSuccessorMessage, thisNode.getHost(), PROTOCOL_ID, tcpChannelId);
