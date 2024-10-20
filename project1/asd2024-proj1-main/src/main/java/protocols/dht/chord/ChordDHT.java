@@ -176,13 +176,6 @@ public class ChordDHT extends GenericProtocol {
 		}
 	}
 
-	//TODO: kind of optional, but good to have:
-	//TODO: after the node is inserted in the network and the finger tables are stabilized, do the last step and move any outdated (key, value) pairs..
-	//TODO: ..stored in the node's immediate successor, to this node (deleting them in the successor)
-	private void moveKeysFromSuccessor() {
-
-	}
-
 	/*--------------------------------- Requests ---------------------------------------- */
 
 	private void uponLookupRequest(LookupRequest request, short protoID) {
