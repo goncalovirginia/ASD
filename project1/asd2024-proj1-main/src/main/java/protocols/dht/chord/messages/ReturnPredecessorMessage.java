@@ -34,7 +34,7 @@ public class ReturnPredecessorMessage extends ProtoMessage {
         this.predecessorPeerID = predecessorPeerID;
     }
 
-    public ReturnPredecessorMessage(UUID mid, short toDeliver, ChordNode thisNode, ChordNode predecessorNode) {
+    public ReturnPredecessorMessage(UUID mid, ChordNode thisNode, ChordNode predecessorNode) {
         super(MSG_ID);
         this.mid = mid;
         this.sender = thisNode.getHost();

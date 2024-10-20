@@ -134,17 +134,19 @@ public class ChordDHT extends GenericProtocol {
 		try {
 			String[] hostElems = contact.split(":");
 			Host contactHost = new Host(InetAddress.getByName(hostElems[0]), Short.parseShort(hostElems[1]));
-
-			openConnection(contactHost);
-			pendingHostConnections.add(contactHost);
-
 			FindSuccessorMessage findSuccessorMessage = new FindSuccessorMessage(UUID.randomUUID(), thisNode.getHost(), thisNode.getHost(), thisNode.getPeerID());
-			sendMessage(findSuccessorMessage, contactHost);
+			openConnectionAndSendMessage(findSuccessorMessage, contactHost);
 		} catch (Exception e) {
 			logger.error("Invalid contact on configuration: {}", contact);
 			logger.error(e.getStackTrace());
 			System.exit(-1);
 		}
+	}
+
+	private void openConnectionAndSendMessage(ProtoMessage protoMessage, Host host) {
+		pendingHostConnections.add(host);
+		openConnection(host);
+		sendMessage(protoMessage, host);
 	}
 
 	private void updateFingerNode(FoundSuccessorMessage foundSuccessorMessage) {
@@ -169,6 +171,7 @@ public class ChordDHT extends GenericProtocol {
 	}
 
 	private void setInitialized() {
+		logger.info("Initialization complete: {} - {} - {}", predecessorNode.getHost(), thisNode.getHost(), fingers[0].getChordNode().getHost());
 		isInitialized = true;
 		triggerNotification(new DHTInitializedNotification());
 	}
@@ -190,29 +193,23 @@ public class ChordDHT extends GenericProtocol {
 
 		if (!isInitialized || Finger.belongsToSuccessor(thisNode.getPeerID(), fingers[0].getChordNode().getPeerID(), findSuccessorMessage.getKey())) {
 			FoundSuccessorMessage foundSuccessorMessage = new FoundSuccessorMessage(findSuccessorMessage, thisNode, fingers[0].getChordNode());
-			openConnection(foundSuccessorMessage.getOriginalSenderHost());
-			sendMessage(foundSuccessorMessage, foundSuccessorMessage.getOriginalSenderHost());
+			openConnectionAndSendMessage(foundSuccessorMessage, foundSuccessorMessage.getOriginalSenderHost());
 			return;
 		}
 		//optimization for when the searched key is between predecessorNode and thisNode, avoids going around the whole ring
 		if (Finger.belongsToSuccessor(predecessorNode.getPeerID(), thisNode.getPeerID(), findSuccessorMessage.getKey())) {
 			FoundSuccessorMessage foundSuccessorMessage = new FoundSuccessorMessage(findSuccessorMessage, predecessorNode, thisNode);
-
 			if (findSuccessorMessage.getOriginalSender().equals(thisNode.getHost())) {
 				uponFoundSuccessorMessage(foundSuccessorMessage, thisNode.getHost(), PROTOCOL_ID, channelId);
 				return;
 			}
-
-			openConnection(foundSuccessorMessage.getOriginalSenderHost());
-			sendMessage(foundSuccessorMessage, foundSuccessorMessage.getOriginalSenderHost());
+			openConnectionAndSendMessage(foundSuccessorMessage, foundSuccessorMessage.getOriginalSenderHost());
 			return;
 		}
 
 		ChordNode closestPrecedingNode = closestPrecedingNode(findSuccessorMessage.getKey());
 		FindSuccessorMessage findSuccessorMessage2 = new FindSuccessorMessage(findSuccessorMessage, thisNode.getHost());
-		openConnection(closestPrecedingNode.getHost());
-		sendMessage(findSuccessorMessage2, closestPrecedingNode.getHost());
-		pendingLookupRequests.remove(findSuccessorMessage2.getMid());
+		openConnectionAndSendMessage(findSuccessorMessage2, closestPrecedingNode.getHost());
 	}
 
 	private void uponFoundSuccessorMessage(FoundSuccessorMessage foundSuccessorMessage, Host from, short sourceProto, int channelId) {
@@ -222,7 +219,6 @@ public class ChordDHT extends GenericProtocol {
 		if (!isInitialized) {
 			predecessorNode = new ChordNode(foundSuccessorMessage.getSenderPeerID(), foundSuccessorMessage.getSenderHost());
 			fingers[0].setChordNode(new ChordNode(foundSuccessorMessage.getSuccessorPeerID(), foundSuccessorMessage.getSuccessorHost()));
-			logger.info("Initialization complete: {} - {} - {}", predecessorNode.getHost(), thisNode.getHost(), fingers[0].getChordNode().getHost());
 			setInitialized();
 			return;
 		}
@@ -236,27 +232,26 @@ public class ChordDHT extends GenericProtocol {
 		lookupReply.addElementToPeers(foundSuccessorMessage.getSenderPeerID().toByteArray(), foundSuccessorMessage.getSenderHost());
 		lookupReply.addElementToPeers(foundSuccessorMessage.getSuccessorPeerID().toByteArray(), foundSuccessorMessage.getSuccessorHost());
 		sendReply(lookupReply, COMM_PROTOCOL_ID);
+		pendingLookupRequests.remove(foundSuccessorMessage.getMid());
 	}
 
 	private void uponGetPredecessorMessage(GetPredecessorMessage getPredecessorMessage, Host from, short sourceProto, int channelId) {
 		logger.info("Received GetPredecessorMessage: {}", getPredecessorMessage.toString());
 
-		ReturnPredecessorMessage returnPredecessorMessage = new ReturnPredecessorMessage(UUID.randomUUID(), PROTOCOL_ID, thisNode, predecessorNode);
-		openConnection(getPredecessorMessage.getSender());
-		sendMessage(returnPredecessorMessage, getPredecessorMessage.getSender());
+		ReturnPredecessorMessage returnPredecessorMessage = new ReturnPredecessorMessage(getPredecessorMessage.getMid(), thisNode, predecessorNode);
+		openConnectionAndSendMessage(returnPredecessorMessage, getPredecessorMessage.getSender());
 	}
 
 	private void uponReturnPredecessorMessage(ReturnPredecessorMessage returnPredecessorMessage, Host from, short sourceProto, int channelId) {
 		logger.info("Received ReturnPredecessorMessage: {}", returnPredecessorMessage.toString());
 
-		if (Finger.belongsToSuccessor(thisNode.getPeerID(), fingers[0].getChordNode().getPeerID(), returnPredecessorMessage.getPredecessorPeerID())) {
+		if (Finger.belongsToOpenInterval(thisNode.getPeerID(), fingers[0].getChordNode().getPeerID(), returnPredecessorMessage.getPredecessorPeerID())) {
 			logger.info("Updated successor: {} -> {}", fingers[0].getChordNode().getHost(), returnPredecessorMessage.getPredecessor());
 			fingers[0].setChordNode(new ChordNode(returnPredecessorMessage.getPredecessorPeerID(), returnPredecessorMessage.getPredecessor()));
 		}
 
 		NotifySuccessorMessage notifySuccessorMessage = new NotifySuccessorMessage(UUID.randomUUID(), thisNode);
-		openConnection(fingers[0].getChordNode().getHost());
-		sendMessage(notifySuccessorMessage, fingers[0].getChordNode().getHost());
+		openConnectionAndSendMessage(notifySuccessorMessage, fingers[0].getChordNode().getHost());
 	}
 
 	private void uponNotifySuccessorMessage(NotifySuccessorMessage notifySuccessorMessage, Host from, short sourceProto, int channelId) {
@@ -269,7 +264,6 @@ public class ChordDHT extends GenericProtocol {
 			//only applies to the network's first node
 			if (!isInitialized) {
 				fingers[0].setChordNode(predecessorNode);
-				logger.info("Initialization complete: {} - {} - {}", predecessorNode.getHost(), thisNode.getHost(), fingers[0].getChordNode().getHost());
 				setInitialized();
 			}
 		}
@@ -294,8 +288,7 @@ public class ChordDHT extends GenericProtocol {
 		if (!isInitialized) return;
 
 		GetPredecessorMessage getPredecessorMessage = new GetPredecessorMessage(UUID.randomUUID(), thisNode);
-		openConnection(fingers[0].getChordNode().getHost());
-		sendMessage(getPredecessorMessage, fingers[0].getChordNode().getHost());
+		openConnectionAndSendMessage(getPredecessorMessage, fingers[0].getChordNode().getHost());
 	}
 
 	private void fixFingers(FixFingersTimer timer, long timerId) {
