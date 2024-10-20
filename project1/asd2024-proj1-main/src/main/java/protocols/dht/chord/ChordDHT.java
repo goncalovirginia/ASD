@@ -2,7 +2,6 @@ package protocols.dht.chord;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-
 import protocols.apps.AutomatedApp;
 import protocols.dht.chord.messages.*;
 import protocols.dht.chord.notifications.TCPChannelCreatedNotification;
@@ -22,8 +21,10 @@ import pt.unl.fct.di.novasys.network.data.Host;
 import java.io.IOException;
 import java.math.BigInteger;
 import java.net.InetAddress;
-
-import java.util.*;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Properties;
+import java.util.UUID;
 import java.util.concurrent.ThreadLocalRandom;
 
 public class ChordDHT extends GenericProtocol {
@@ -66,7 +67,7 @@ public class ChordDHT extends GenericProtocol {
 		int numFingers = Integer.parseInt(properties.getProperty("id_bits"));
 		fingers = new Finger[numFingers];
 		BigInteger fingerEnd = thisNode.getPeerID().add(BigInteger.TWO.pow(fingers.length)).mod(BigInteger.TWO.pow(fingers.length));
-		for (int i = fingers.length-1; i >= 0; i--) {
+		for (int i = fingers.length - 1; i >= 0; i--) {
 			BigInteger fingerStart = thisNode.getPeerID().add(BigInteger.TWO.pow(i)).mod(BigInteger.TWO.pow(fingers.length));
 			fingers[i] = new Finger(fingerStart, fingerEnd, thisNode);
 			fingerEnd = fingerStart;
@@ -125,7 +126,6 @@ public class ChordDHT extends GenericProtocol {
 		if (props.containsKey("contact")) {
 			connectToHost(props.getProperty("contact"));
 		}
-			
 	}
 
 	private void connectToHost(String contact) {
@@ -153,7 +153,7 @@ public class ChordDHT extends GenericProtocol {
 	}
 
 	private ChordNode closestPrecedingNode(BigInteger peerID) {
-		for (int i = fingers.length-1; i >= 0 ; i--) {
+		for (int i = fingers.length - 1; i >= 0; i--) {
 			if (Finger.belongsToOpenInterval(thisNode.getPeerID(), peerID, fingers[i].getChordNode().getPeerID())) {
 				return fingers[i].getChordNode();
 			}
@@ -286,7 +286,7 @@ public class ChordDHT extends GenericProtocol {
 	private void retrySendMessages(RetryLookupsTimer timer, long timerId) {
 		logger.debug("RetryLookupsTimer: {}", lookupsPendingResponse);
 
-		for (FindSuccessorMessage findSuccessorMessage: lookupsPendingResponse.values()) {
+		for (FindSuccessorMessage findSuccessorMessage : lookupsPendingResponse.values()) {
 			uponFindSuccessorMessage(findSuccessorMessage, findSuccessorMessage.getOriginalSender(), PROTOCOL_ID, tcpChannelId);
 		}
 	}

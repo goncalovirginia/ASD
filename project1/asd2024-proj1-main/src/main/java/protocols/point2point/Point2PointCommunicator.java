@@ -36,7 +36,7 @@ public class Point2PointCommunicator extends GenericProtocol {
 	private final Set<HelperNodeMessage> helperMessagesToSend; //HelperNodeMessages I received as a helper
 	private final Map<Host, Set<HelperNodeMessage>> myHelpersMessages; //HelperNodeMessages I sent to helpers
 
-    private boolean isDHTInitialized;
+	private boolean isDHTInitialized;
 
 	public Point2PointCommunicator(Host thisHost, short DHT_Proto_ID) throws HandlerRegistrationException {
 		super(PROTOCOL_NAME, PROTOCOL_ID);
@@ -73,11 +73,11 @@ public class Point2PointCommunicator extends GenericProtocol {
 	private void uponSendRequest(Send request, short protoID) {
 		logger.info("Received SendRequest: {}", request.getMessageID());
 
-        if (!isDHTInitialized) {
-	        logger.info("DHT protocol is not initialized yet, queueing message: {}", request.getMessageID());
-            messagesPendingLookup.add(request);
+		if (!isDHTInitialized) {
+			logger.info("DHT protocol is not initialized yet, queueing message: {}", request.getMessageID());
+			messagesPendingLookup.add(request);
 			return;
-        }
+		}
 
 		LookupRequest lookupRequest = new LookupRequest(request.getDestinationPeerID(), request.getMessageID());
 		sendRequest(lookupRequest, DHT_PROTO_ID);
@@ -153,15 +153,15 @@ public class Point2PointCommunicator extends GenericProtocol {
 		}
 	}
 
-    private void uponDHTInitialized(DHTInitializedNotification notification, short sourceProto) {
-        logger.info("DHT protocol initialized.");
+	private void uponDHTInitialized(DHTInitializedNotification notification, short sourceProto) {
+		logger.info("DHT protocol initialized.");
 
 		isDHTInitialized = true;
-	    for (Send pendingMessage : messagesPendingLookup) {
-		    uponSendRequest(pendingMessage, PROTOCOL_ID);
-	    }
-	    messagesPendingLookup.clear();
-    }
+		for (Send pendingMessage : messagesPendingLookup) {
+			uponSendRequest(pendingMessage, PROTOCOL_ID);
+		}
+		messagesPendingLookup.clear();
+	}
 
 	/*--------------------------------- Timers ---------------------------------------- */
 

@@ -17,7 +17,10 @@ import pt.unl.fct.di.novasys.network.data.Host;
 import java.io.IOException;
 import java.math.BigInteger;
 import java.net.InetAddress;
-import java.util.*;
+import java.util.HashSet;
+import java.util.Properties;
+import java.util.Set;
+import java.util.UUID;
 
 public class KademliaDHT extends GenericProtocol {
 
