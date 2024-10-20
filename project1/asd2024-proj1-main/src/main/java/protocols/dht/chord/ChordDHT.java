@@ -9,7 +9,7 @@ import protocols.dht.chord.notifications.TCPChannelCreatedNotification;
 import protocols.dht.chord.replies.LookupReply;
 import protocols.dht.chord.requests.LookupRequest;
 import protocols.dht.chord.timers.FixFingersTimer;
-import protocols.dht.chord.timers.RetryTCPConnectionsTimer;
+import protocols.dht.chord.timers.RetryLookupsTimer;
 import protocols.dht.chord.timers.StabilizeTimer;
 import protocols.point2point.notifications.DHTInitializedNotification;
 import pt.unl.fct.di.novasys.babel.core.GenericProtocol;
@@ -36,14 +36,13 @@ public class ChordDHT extends GenericProtocol {
 	private final short COMM_PROTOCOL_ID;
 
 	private final int tcpChannelId;
-	private final Set<Host> pendingHostConnections;
 
 	private ChordNode predecessorNode;
 	private final ChordNode thisNode;
 	private final Finger[] fingers;
 
-	private final Set<UUID> pendingLookupRequests;
-	private final Map<UUID, Finger> fingersPendingNode;
+	private final Map<UUID, FindSuccessorMessage> lookupsPendingResponse;
+	private final Map<UUID, Finger> fixFingersPendingResponse;
 
 	private boolean isInitialized;
 
@@ -52,9 +51,8 @@ public class ChordDHT extends GenericProtocol {
 
 		COMM_PROTOCOL_ID = commProtocolID;
 
-		pendingHostConnections = new HashSet<>();
-		pendingLookupRequests = new HashSet<>();
-		fingersPendingNode = new HashMap<>();
+		lookupsPendingResponse = new HashMap<>();
+		fixFingersPendingResponse = new HashMap<>();
 		isInitialized = false;
 
 		//initialize thisNode and predecessorNode
@@ -108,7 +106,7 @@ public class ChordDHT extends GenericProtocol {
 		registerMessageHandler(tcpChannelId, NotifySuccessorMessage.MSG_ID, this::uponNotifySuccessorMessage, this::uponMessageFail);
 
 		//register timer handlers
-		registerTimerHandler(RetryTCPConnectionsTimer.TIMER_ID, this::retryTCPConnections);
+		registerTimerHandler(RetryLookupsTimer.TIMER_ID, this::retrySendMessages);
 		registerTimerHandler(StabilizeTimer.TIMER_ID, this::stabilize);
 		registerTimerHandler(FixFingersTimer.TIMER_ID, this::fixFingers);
 	}
@@ -118,7 +116,7 @@ public class ChordDHT extends GenericProtocol {
 		//inform the point2point algorithm above about the TCP channel to use
 		triggerNotification(new TCPChannelCreatedNotification(tcpChannelId));
 
-		setupPeriodicTimer(new RetryTCPConnectionsTimer(), 3000, 3000);
+		setupPeriodicTimer(new RetryLookupsTimer(), 3000, 3000);
 		setupPeriodicTimer(new StabilizeTimer(), 1000, 3000);
 		setupPeriodicTimer(new FixFingersTimer(), 3000, 3000);
 
@@ -143,21 +141,14 @@ public class ChordDHT extends GenericProtocol {
 	}
 
 	private void openConnectionAndSendMessage(ProtoMessage protoMessage, Host host) {
-		pendingHostConnections.add(host);
 		openConnection(host);
 		sendMessage(protoMessage, host);
 	}
 
-	private void fixFinger(FoundSuccessorMessage foundSuccessorMessage) {
-		ChordNode newSuccessorNode = new ChordNode(foundSuccessorMessage.getSuccessorPeerID(), foundSuccessorMessage.getSuccessorHost());
-		fingersPendingNode.remove(foundSuccessorMessage.getMid()).setChordNode(newSuccessorNode);
-	}
-
-	//TODO: kind of optional, but good to have:
-	//TODO: after the node is inserted in the network and the finger tables are stabilized, do the last step and move any outdated (key, value) pairs..
-	//TODO: ..stored in the node's immediate successor, to this node (deleting them in the successor)
-	private void moveKeysFromSuccessor() {
-
+	private void setInitialized() {
+		logger.info("Initialization complete: {} - {} - {}", predecessorNode.getHost(), thisNode.getHost(), fingers[0].getChordNode().getHost());
+		isInitialized = true;
+		triggerNotification(new DHTInitializedNotification());
 	}
 
 	private ChordNode closestPrecedingNode(BigInteger peerID) {
@@ -169,10 +160,41 @@ public class ChordDHT extends GenericProtocol {
 		return thisNode;
 	}
 
-	private void setInitialized() {
-		logger.info("Initialization complete: {} - {} - {}", predecessorNode.getHost(), thisNode.getHost(), fingers[0].getChordNode().getHost());
-		isInitialized = true;
-		triggerNotification(new DHTInitializedNotification());
+	private void fixFinger(FoundSuccessorMessage foundSuccessorMessage) {
+		ChordNode newSuccessorNode = new ChordNode(foundSuccessorMessage.getSuccessorPeerID(), foundSuccessorMessage.getSuccessorHost());
+		fixFingersPendingResponse.remove(foundSuccessorMessage.getMid()).setChordNode(newSuccessorNode);
+	}
+
+	//replaces the ChordNodes associated to the down peer (contained in their Fingers), with the next closest known ChordNode in the Finger table (or, thisNode, if none are known)
+	private void fixFingersFromDisconnectingNode(Host disconnectingHost) {
+		int i = 0, firstAssociatedFingerIndex = -1;
+		ChordNode nextKnownChordNode = null;
+
+		while (i < fingers.length) {
+			if (firstAssociatedFingerIndex == -1 && fingers[i].getChordNode().getHost().equals(disconnectingHost)) {
+				firstAssociatedFingerIndex = i;
+				fingers[i].setChordNode(thisNode);
+			}
+			if (firstAssociatedFingerIndex != -1 && !fingers[i].getChordNode().getHost().equals(disconnectingHost)) {
+				nextKnownChordNode = fingers[i].getChordNode();
+				break;
+			}
+			i++;
+		}
+
+		if (firstAssociatedFingerIndex == -1 || nextKnownChordNode == null) return;
+		i--;
+
+		while (i >= firstAssociatedFingerIndex) {
+			fingers[i--].setChordNode(nextKnownChordNode);
+		}
+	}
+
+	//TODO: kind of optional, but good to have:
+	//TODO: after the node is inserted in the network and the finger tables are stabilized, do the last step and move any outdated (key, value) pairs..
+	//TODO: ..stored in the node's immediate successor, to this node (deleting them in the successor)
+	private void moveKeysFromSuccessor() {
+
 	}
 
 	/*--------------------------------- Requests ---------------------------------------- */
@@ -181,8 +203,8 @@ public class ChordDHT extends GenericProtocol {
 		logger.info("Received LookupRequest: {}", request.toString());
 
 		FindSuccessorMessage findSuccessorMessage = new FindSuccessorMessage(request.getMid(), thisNode.getHost(), thisNode.getHost(), new BigInteger(1, request.getPeerID()));
+		lookupsPendingResponse.put(findSuccessorMessage.getMid(), findSuccessorMessage);
 		uponFindSuccessorMessage(findSuccessorMessage, thisNode.getHost(), protoID, tcpChannelId);
-		pendingLookupRequests.add(request.getMid());
 	}
 
 	/*--------------------------------- Messages ---------------------------------------- */
@@ -222,7 +244,7 @@ public class ChordDHT extends GenericProtocol {
 			return;
 		}
 		//used for fix fingers responses
-		if (fingersPendingNode.containsKey(foundSuccessorMessage.getMid())) {
+		if (fixFingersPendingResponse.containsKey(foundSuccessorMessage.getMid())) {
 			fixFinger(foundSuccessorMessage);
 			return;
 		}
@@ -231,7 +253,7 @@ public class ChordDHT extends GenericProtocol {
 		lookupReply.addElementToPeers(foundSuccessorMessage.getSenderPeerID().toByteArray(), foundSuccessorMessage.getSenderHost());
 		lookupReply.addElementToPeers(foundSuccessorMessage.getSuccessorPeerID().toByteArray(), foundSuccessorMessage.getSuccessorHost());
 		sendReply(lookupReply, COMM_PROTOCOL_ID);
-		pendingLookupRequests.remove(foundSuccessorMessage.getMid());
+		lookupsPendingResponse.remove(foundSuccessorMessage.getMid());
 	}
 
 	private void uponGetPredecessorMessage(GetPredecessorMessage getPredecessorMessage, Host from, short sourceProto, int channelId) {
@@ -274,10 +296,11 @@ public class ChordDHT extends GenericProtocol {
 
 	/*--------------------------------- Timers ---------------------------------------- */
 
-	private void retryTCPConnections(RetryTCPConnectionsTimer timer, long timerId) {
-		logger.debug("retryTCPConnections: {}", pendingHostConnections);
-		for (Host host : pendingHostConnections) {
-			openConnection(host);
+	private void retrySendMessages(RetryLookupsTimer timer, long timerId) {
+		logger.debug("RetryLookupsTimer: {}", lookupsPendingResponse);
+
+		for (FindSuccessorMessage findSuccessorMessage: lookupsPendingResponse.values()) {
+			uponFindSuccessorMessage(findSuccessorMessage, findSuccessorMessage.getOriginalSender(), PROTOCOL_ID, tcpChannelId);
 		}
 	}
 
@@ -297,7 +320,7 @@ public class ChordDHT extends GenericProtocol {
 
 		int randomFingerIndex = ThreadLocalRandom.current().nextInt(1, fingers.length);
 		UUID uuid = UUID.randomUUID();
-		fingersPendingNode.put(uuid, fingers[randomFingerIndex]);
+		fixFingersPendingResponse.put(uuid, fingers[randomFingerIndex]);
 
 		FindSuccessorMessage findSuccessorMessage = new FindSuccessorMessage(uuid, thisNode.getHost(), thisNode.getHost(), fingers[randomFingerIndex].getStart());
 		uponFindSuccessorMessage(findSuccessorMessage, thisNode.getHost(), PROTOCOL_ID, tcpChannelId);
@@ -305,36 +328,31 @@ public class ChordDHT extends GenericProtocol {
 
 	/* --------------------------------- TCPChannel Events ---------------------------- */
 
-	//If a connection is successfully established, this event is triggered. In this protocol, we want to add the
-	//respective peer to the membership, and inform the Dissemination protocol via a notification.
+	//triggered when an outgoing connection is up
 	private void uponOutConnectionUp(OutConnectionUp event, int channelId) {
 		Host peerHost = event.getNode();
 		logger.debug("Connection to {} is up", peerHost);
-		pendingHostConnections.remove(peerHost);
 	}
 
-	//If an established connection is disconnected, remove the peer from the membership and inform the Dissemination
-	//protocol. Alternatively, we could do smarter things like retrying the connection X times.
+	//triggered when an outgoing connection is down
 	private void uponOutConnectionDown(OutConnectionDown event, int channelId) {
 		Host peer = event.getNode();
 		logger.debug("Connection to {} is down cause {}", peer, event.getCause());
+
+		fixFingersFromDisconnectingNode(peer);
 	}
 
-	//If a connection fails to be established, this event is triggered. In this protocol, we simply remove from the
-	//pending set. Note that this event is only triggered while attempting a connection, not after connection.
-	//Thus the peer will be in the pending set, and not in the membership (unless something is very wrong with our code)
+	//triggered when an outgoing connection fails to be established
 	private void uponOutConnectionFailed(OutConnectionFailed<ProtoMessage> event, int channelId) {
 		logger.debug("Connection to {} failed cause: {}", event.getNode(), event.getCause());
 	}
 
-	//If someone established a connection to me, this event is triggered. In this protocol we do nothing with this event.
-	//If we want to add the peer to the membership, we will establish our own outgoing connection.
-	// (not the smartest protocol, but its simple)
+	//triggered when an incoming connection is up
 	private void uponInConnectionUp(InConnectionUp event, int channelId) {
 		logger.trace("Connection from {} is up", event.getNode());
 	}
 
-	//A connection someone established to me is disconnected.
+	//triggered when an incoming connection is down
 	private void uponInConnectionDown(InConnectionDown event, int channelId) {
 		logger.trace("Connection from {} is down, cause: {}", event.getNode(), event.getCause());
 	}

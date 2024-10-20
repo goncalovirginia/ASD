@@ -2,11 +2,11 @@ package protocols.dht.chord.timers;
 
 import pt.unl.fct.di.novasys.babel.generic.ProtoTimer;
 
-public class RetryTCPConnectionsTimer extends ProtoTimer {
+public class RetryLookupsTimer extends ProtoTimer {
 
 	public static final short TIMER_ID = 501;
 
-	public RetryTCPConnectionsTimer() {
+	public RetryLookupsTimer() {
 		super(TIMER_ID);
 	}
 
