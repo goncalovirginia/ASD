@@ -12,8 +12,8 @@ hostsArg="${hostsArg%\}}"  # Remove trailing }
 IFS=',' read -r -a hosts <<< "$hostsArg"
 
 # You should change this following commands to start your process
-cmdfirst="cd logs && java -jar $jar MainClass babel.interface=eth0 contact=none 2>&1 > console.log"
-cmd="cd logs && java -jar $jar MainClass babel.interface=eth0 contact=10.10.53.231:5555 2>&1 > console.log"
+cmdfirst="cd logs && java -cp $jar MainClass babel.interface=eth0 contact=none 2>&1 > console.log"
+cmd="cd logs && java -cp $jar MainClass babel.interface=eth0 contact=10.10.53.231:5555 2>&1 > console.log"
 
 max=$(( ${#hosts[@]} - 1 ))
 s=0
