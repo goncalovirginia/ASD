@@ -163,7 +163,7 @@ public class ChordDHT extends GenericProtocol {
 
 	private ChordNode closestPrecedingNode(BigInteger peerID) {
 		for (int i = fingers.length-1; i >= 0 ; i--) {
-			if (fingers[i].isInInterval(peerID)) {
+			if (Finger.belongsToOpenInterval(thisNode.getPeerID(), peerID, fingers[i].getChordNode().getPeerID())) {
 				return fingers[i].getChordNode();
 			}
 		}
