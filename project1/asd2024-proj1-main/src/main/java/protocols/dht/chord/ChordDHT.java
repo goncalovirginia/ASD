@@ -168,29 +168,11 @@ public class ChordDHT extends GenericProtocol {
 
 	//replaces the ChordNodes associated to the down peer (contained in their Fingers), with the next closest known ChordNode in the Finger table (or, thisNode, if none are known)
 	private void fixFingersFromDisconnectingNode(Host disconnectingHost) {
-		int i = 0, firstAssociatedFingerIndex = -1;
-		ChordNode nextKnownChordNode = null;
-
-		while (i < fingers.length) {
-			if (firstAssociatedFingerIndex == -1 && fingers[i].getChordNode().getHost().equals(disconnectingHost)) {
-				firstAssociatedFingerIndex = i;
-			}
-			if (firstAssociatedFingerIndex != -1 && !fingers[i].getChordNode().getHost().equals(disconnectingHost)) {
-				nextKnownChordNode = fingers[i].getChordNode();
-				break;
-			}
-			i++;
+		for (Finger finger : fingers) {
+			if (finger.getChordNode().getHost().equals(disconnectingHost)) finger.setChordNode(thisNode);
 		}
-
-		if (firstAssociatedFingerIndex == -1 || nextKnownChordNode == null) return;
-
-		if (firstAssociatedFingerIndex == 0) {
+		if (fingers[0].getChordNode().equals(thisNode)) {
 			fingers[0].setChordNode(successorSuccessorNode);
-			return;
-		}
-
-		while (i >= firstAssociatedFingerIndex) {
-			fingers[i--].setChordNode(nextKnownChordNode);
 		}
 	}
 
