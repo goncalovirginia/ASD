@@ -37,7 +37,7 @@ public class ChordDHT extends GenericProtocol {
 
 	private final int tcpChannelId;
 
-	private ChordNode predecessorNode;
+	private ChordNode predecessorNode, successorSuccessorNode;
 	private final ChordNode thisNode;
 	private final Finger[] fingers;
 
@@ -60,6 +60,7 @@ public class ChordDHT extends GenericProtocol {
 		BigInteger myPeerID = new BigInteger(1, new BigInteger(myPeerIDHex, 16).toByteArray());
 		thisNode = new ChordNode(myPeerID, thisHost);
 		predecessorNode = thisNode;
+		successorSuccessorNode = thisNode;
 
 		//initialize fingers
 		int numFingers = Integer.parseInt(properties.getProperty("id_bits"));
@@ -183,6 +184,11 @@ public class ChordDHT extends GenericProtocol {
 
 		if (firstAssociatedFingerIndex == -1 || nextKnownChordNode == null) return;
 
+		if (firstAssociatedFingerIndex == 0) {
+			fingers[0].setChordNode(successorSuccessorNode);
+			return;
+		}
+
 		while (i >= firstAssociatedFingerIndex) {
 			fingers[i--].setChordNode(nextKnownChordNode);
 		}
@@ -257,7 +263,7 @@ public class ChordDHT extends GenericProtocol {
 	private void uponGetPredecessorMessage(GetPredecessorMessage getPredecessorMessage, Host from, short sourceProto, int channelId) {
 		logger.info("Received GetPredecessorMessage: {}", getPredecessorMessage.toString());
 
-		ReturnPredecessorMessage returnPredecessorMessage = new ReturnPredecessorMessage(getPredecessorMessage.getMid(), thisNode, predecessorNode);
+		ReturnPredecessorMessage returnPredecessorMessage = new ReturnPredecessorMessage(getPredecessorMessage.getMid(), predecessorNode, thisNode, fingers[0].getChordNode());
 		openConnectionAndSendMessage(returnPredecessorMessage, getPredecessorMessage.getSender());
 	}
 
@@ -269,6 +275,7 @@ public class ChordDHT extends GenericProtocol {
 			fingers[0].setChordNode(new ChordNode(returnPredecessorMessage.getPredecessorPeerID(), returnPredecessorMessage.getPredecessor()));
 		}
 
+		successorSuccessorNode = new ChordNode(returnPredecessorMessage.getSuccessorPeerID(), returnPredecessorMessage.getSuccessor());
 		NotifySuccessorMessage notifySuccessorMessage = new NotifySuccessorMessage(UUID.randomUUID(), thisNode);
 		openConnectionAndSendMessage(notifySuccessorMessage, fingers[0].getChordNode().getHost());
 	}
