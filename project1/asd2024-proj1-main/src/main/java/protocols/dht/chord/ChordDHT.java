@@ -173,7 +173,6 @@ public class ChordDHT extends GenericProtocol {
 		while (i < fingers.length) {
 			if (firstAssociatedFingerIndex == -1 && fingers[i].getChordNode().getHost().equals(disconnectingHost)) {
 				firstAssociatedFingerIndex = i;
-				fingers[i].setChordNode(thisNode);
 			}
 			if (firstAssociatedFingerIndex != -1 && !fingers[i].getChordNode().getHost().equals(disconnectingHost)) {
 				nextKnownChordNode = fingers[i].getChordNode();
@@ -183,7 +182,6 @@ public class ChordDHT extends GenericProtocol {
 		}
 
 		if (firstAssociatedFingerIndex == -1 || nextKnownChordNode == null) return;
-		i--;
 
 		while (i >= firstAssociatedFingerIndex) {
 			fingers[i--].setChordNode(nextKnownChordNode);
