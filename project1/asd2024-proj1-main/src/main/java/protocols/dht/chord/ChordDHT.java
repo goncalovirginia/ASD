@@ -192,13 +192,13 @@ public class ChordDHT extends GenericProtocol {
 		logger.info("Received FindSuccessorMessage: {} - {}", findSuccessorMessage.getOriginalSender(), findSuccessorMessage.getKey());
 
 		if (!isInitialized || Finger.belongsToSuccessor(thisNode.getPeerID(), fingers[0].getChordNode().getPeerID(), findSuccessorMessage.getKey())) {
-			FoundSuccessorMessage foundSuccessorMessage = new FoundSuccessorMessage(findSuccessorMessage, thisNode, fingers[0].getChordNode());
+			FoundSuccessorMessage foundSuccessorMessage = new FoundSuccessorMessage(findSuccessorMessage, thisNode, fingers[0].getChordNode(), predecessorNode);
 			openConnectionAndSendMessage(foundSuccessorMessage, foundSuccessorMessage.getOriginalSenderHost());
 			return;
 		}
 		//optimization for when the searched key is between predecessorNode and thisNode, avoids going around the whole ring
 		if (Finger.belongsToSuccessor(predecessorNode.getPeerID(), thisNode.getPeerID(), findSuccessorMessage.getKey())) {
-			FoundSuccessorMessage foundSuccessorMessage = new FoundSuccessorMessage(findSuccessorMessage, predecessorNode, thisNode);
+			FoundSuccessorMessage foundSuccessorMessage = new FoundSuccessorMessage(findSuccessorMessage, predecessorNode, thisNode, fingers[0].getChordNode());
 			if (findSuccessorMessage.getOriginalSender().equals(thisNode.getHost())) {
 				uponFoundSuccessorMessage(foundSuccessorMessage, thisNode.getHost(), PROTOCOL_ID, channelId);
 				return;
@@ -229,6 +229,7 @@ public class ChordDHT extends GenericProtocol {
 		}
 
 		LookupReply lookupReply = new LookupReply(foundSuccessorMessage);
+		//lookupReply.addElementToPeers(foundSuccessorMessage.getPredecessorPeerID().toByteArray(), foundSuccessorMessage.getPredecessorHost());
 		lookupReply.addElementToPeers(foundSuccessorMessage.getSenderPeerID().toByteArray(), foundSuccessorMessage.getSenderHost());
 		lookupReply.addElementToPeers(foundSuccessorMessage.getSuccessorPeerID().toByteArray(), foundSuccessorMessage.getSuccessorHost());
 		sendReply(lookupReply, COMM_PROTOCOL_ID);
