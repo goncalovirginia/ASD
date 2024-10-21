@@ -192,13 +192,13 @@ public class ChordDHT extends GenericProtocol {
 		logger.info("Received FindSuccessorMessage: {} - {}", findSuccessorMessage.getOriginalSender(), findSuccessorMessage.getKey());
 
 		if (!isInitialized || Finger.belongsToSuccessor(thisNode.getPeerID(), fingers[0].getChordNode().getPeerID(), findSuccessorMessage.getKey())) {
-			FoundSuccessorMessage foundSuccessorMessage = new FoundSuccessorMessage(findSuccessorMessage, thisNode, fingers[0].getChordNode(), predecessorNode);
+			FoundSuccessorMessage foundSuccessorMessage = new FoundSuccessorMessage(findSuccessorMessage,thisNode, fingers[0].getChordNode() );
 			openConnectionAndSendMessage(foundSuccessorMessage, foundSuccessorMessage.getOriginalSenderHost());
 			return;
 		}
 		//optimization for when the searched key is between predecessorNode and thisNode, avoids going around the whole ring
 		if (Finger.belongsToSuccessor(predecessorNode.getPeerID(), thisNode.getPeerID(), findSuccessorMessage.getKey())) {
-			FoundSuccessorMessage foundSuccessorMessage = new FoundSuccessorMessage(findSuccessorMessage, predecessorNode, thisNode, fingers[0].getChordNode());
+			FoundSuccessorMessage foundSuccessorMessage = new FoundSuccessorMessage(findSuccessorMessage, predecessorNode, thisNode);
 			if (findSuccessorMessage.getOriginalSender().equals(thisNode.getHost())) {
 				uponFoundSuccessorMessage(foundSuccessorMessage, thisNode.getHost(), PROTOCOL_ID, channelId);
 				return;
@@ -230,13 +230,12 @@ public class ChordDHT extends GenericProtocol {
 		
 		//Condition that checks if there are 2 or more nodes in the chord ring
 		LookupReply lookupReply = new LookupReply(foundSuccessorMessage);
-		if (!predecessorNode.equals(fingers[0].getChordNode()) && !foundSuccessorMessage.getPredecessorPeerID().equals(fingers[0].getChordNode().getPeerID())) {
-			lookupReply.addElementToPeers(foundSuccessorMessage.getPredecessorPeerID().toByteArray(), foundSuccessorMessage.getPredecessorHost());
+		if(foundSuccessorMessage.getSenderPeerID().equals(thisNode.getPeerID())) {
+			lookupReply.addElementToPeers(predecessorNode.getPeerID(), predecessorNode.getHost());
+		} else {
+			lookupReply.addElementToPeers(foundSuccessorMessage.getSenderPeerID(), foundSuccessorMessage.getSenderHost());
 		}
-
-		lookupReply.addElementToPeers(foundSuccessorMessage.getSenderPeerID().toByteArray(), foundSuccessorMessage.getSenderHost());
-		lookupReply.addElementToPeers(foundSuccessorMessage.getSuccessorPeerID().toByteArray(), foundSuccessorMessage.getSuccessorHost());
-		
+		lookupReply.addElementToPeers(foundSuccessorMessage.getSuccessorPeerID(), foundSuccessorMessage.getSuccessorHost());
 		sendReply(lookupReply, COMM_PROTOCOL_ID);
 		lookupsPendingResponse.remove(foundSuccessorMessage.getMid());
 	}

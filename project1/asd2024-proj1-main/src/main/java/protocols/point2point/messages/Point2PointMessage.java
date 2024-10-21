@@ -7,6 +7,7 @@ import pt.unl.fct.di.novasys.network.ISerializer;
 import pt.unl.fct.di.novasys.network.data.Host;
 
 import java.io.IOException;
+import java.math.BigInteger;
 import java.util.UUID;
 
 public class Point2PointMessage extends ProtoMessage {
@@ -14,7 +15,7 @@ public class Point2PointMessage extends ProtoMessage {
 
 	private final UUID mid;
 	private final Host sender, destination;
-	private final byte[] senderPeerID, destinationID;
+	private final BigInteger senderPeerID, destinationID;
 	private final byte[] content;
 
 	@Override
@@ -29,12 +30,12 @@ public class Point2PointMessage extends ProtoMessage {
 		this.mid = send.getMessageID();
 		this.sender = sender;
 		this.destination = destination;
-		this.senderPeerID = send.getSenderPeerID();
-		this.destinationID = send.getDestinationPeerID();
+		this.senderPeerID = new BigInteger(1, send.getSenderPeerID());
+		this.destinationID = new BigInteger(1, send.getDestinationPeerID());
 		this.content = send.getMessagePayload();
 	}
 
-	public Point2PointMessage(UUID mid, Host sender, Host destination, byte[] senderPeerID, byte[] destinationID, byte[] content) {
+	public Point2PointMessage(UUID mid, Host sender, Host destination, BigInteger senderPeerID, BigInteger destinationID, byte[] content) {
 		super(MSG_ID);
 		this.mid = mid;
 		this.sender = sender;
@@ -66,11 +67,11 @@ public class Point2PointMessage extends ProtoMessage {
 		return mid;
 	}
 
-	public byte[] getSenderPeerID() {
+	public BigInteger getSenderPeerID() {
 		return senderPeerID;
 	}
 
-	public byte[] getDestinationID() {
+	public BigInteger getDestinationID() {
 		return destinationID;
 	}
 
@@ -85,10 +86,15 @@ public class Point2PointMessage extends ProtoMessage {
 			out.writeLong(point2PointMessage.mid.getLeastSignificantBits());
 			Host.serializer.serialize(point2PointMessage.sender, out);
 			Host.serializer.serialize(point2PointMessage.destination, out);
-			out.writeInt(point2PointMessage.senderPeerID.length);
-			out.writeBytes(point2PointMessage.senderPeerID);
-			out.writeInt(point2PointMessage.destinationID.length);
-			out.writeBytes(point2PointMessage.destinationID);
+			
+			byte[] sendByteArray = point2PointMessage.senderPeerID.toByteArray();
+			out.writeInt(sendByteArray.length);
+			out.writeBytes(sendByteArray);
+
+			byte[] destByteArray = point2PointMessage.destinationID.toByteArray();
+			out.writeInt(destByteArray.length);
+			out.writeBytes(destByteArray);
+			
 			out.writeInt(point2PointMessage.content.length);
 			if (point2PointMessage.content.length > 0) {
 				out.writeBytes(point2PointMessage.content);
@@ -118,7 +124,7 @@ public class Point2PointMessage extends ProtoMessage {
 			if (contentSize > 0)
 				in.readBytes(content);
 
-			return new Point2PointMessage(mid, sender, destination, senderPeerID, destinationID, content);
+			return new Point2PointMessage(mid, sender, destination, new BigInteger(1, senderPeerID), new BigInteger(1, destinationID), content);
 		}
 	};
 }

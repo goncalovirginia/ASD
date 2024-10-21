@@ -17,6 +17,7 @@ import pt.unl.fct.di.novasys.babel.exceptions.HandlerRegistrationException;
 import pt.unl.fct.di.novasys.babel.generic.ProtoMessage;
 import pt.unl.fct.di.novasys.network.data.Host;
 
+import java.math.BigInteger;
 import java.util.*;
 
 public class Point2PointCommunicator extends GenericProtocol {
@@ -90,20 +91,20 @@ public class Point2PointCommunicator extends GenericProtocol {
 	private void uponPoint2PointMessage(Point2PointMessage point2PointMessage, Host from, short sourceProto, int channelId) {
 		logger.info("Received Point2Point Message: {}", point2PointMessage.toString());
 
-		if (receivedMessages.contains(point2PointMessage.getMid())) return;
-
+		if (receivedMessages.contains(point2PointMessage.getMid())) {
+			//TODO P2PReceivedMessage (Name of the msg)
+			//New msg to sender to ask him to remove from his list this message
+			return;
+		}
 		triggerNotification(new Deliver(point2PointMessage));
 		receivedMessages.add(point2PointMessage.getMid());
 	}
 
 	private void uponHelperNodeMessage(HelperNodeMessage msg, Host from, short sourceProto, int channelId) {
 		helperMessagesToSend.add(msg);
-
 		
 		Point2PointMessage p2pMsg = new Point2PointMessage(msg);
-		
 		logger.info("HELPER {} IS ALSO SENDING THE MESSAGE {} TO ---> {}", thisHost, p2pMsg.getMid(), p2pMsg.getDestination());
-
 		openConnection(p2pMsg.getDestination());
 		sendMessage(p2pMsg, p2pMsg.getDestination());
 
@@ -112,16 +113,17 @@ public class Point2PointCommunicator extends GenericProtocol {
 	private void uponHelperMessageFail(HelperNodeMessage msg, Host host, short destProto, Throwable throwable, int channelId) {
 		logger.error("Message {} to {} failed, reason: {}", msg, host, throwable);
 
+
 		//select the predecessor of helper as the next helper.
 
 	//	HelperNodeMessage helperNodeMessage = new HelperNodeMessage(msg);
-
+		//TODO
 		//Change impl to, forget the pre-predecessor
 		//We just store the succ and sender, when sender goes down(not suc the one returned p2p)
 		//if the helper goes down, we simply need to lookUp the DHT table for a new one that key.
 		//Easier
-		openConnection(msg.getPreHelper());
-		sendMessage(msg, msg.getPreHelper());
+/* 		openConnection(msg.getPreHelper());
+		sendMessage(msg, msg.getPreHelper()); */
 	}
 
 	private void uponMessageFail(ProtoMessage msg, Host host, short destProto, Throwable throwable, int channelId) {
@@ -139,15 +141,9 @@ public class Point2PointCommunicator extends GenericProtocol {
 		Send send = messagesPendingLookupReply.get(reply.getMid());
 		if (send == null) return;
 
-		Iterator<Pair<byte[], Host>> iterator = reply.getPeersIterator();
-		Pair<byte[], Host> helperPredecessor = iterator.next();
-		Pair<byte[], Host> helper = iterator.next();
-		Host successorHost = iterator.hasNext() ? iterator.next().getRight() : null;
-		if (successorHost == null) {
-			successorHost = helper.getRight();
-			helper = helperPredecessor;
-			helperPredecessor = null;
-		} 
+		Iterator<Pair<BigInteger, Host>> it = reply.getPeersIterator();
+		Pair<BigInteger, Host> helper = it.next();
+		Host successorHost = it.next().getRight();
 
 		Point2PointMessage point2PointMessage = new Point2PointMessage(send, thisHost, successorHost);
 		if (successorHost.equals(thisHost)) {
@@ -155,17 +151,17 @@ public class Point2PointCommunicator extends GenericProtocol {
 			return;
 		}
 
-		if (helperPredecessor != null && !(helperPredecessor.getRight().equals(successorHost)) ) {
-			logger.info("SENDING DUP MESSAGE TO HELPER ---> {}", helper.getRight());
-			HelperNodeMessage helperNodeMessage = new HelperNodeMessage(point2PointMessage, helper.getLeft(), helper.getRight(), helperPredecessor.getLeft(), helperPredecessor.getRight());
-			openConnection(helper.getRight());
-			sendMessage(helperNodeMessage, helper.getRight());
-		}
-		
 		logger.info("SENDING PAYLOAD TO ---> {}", successorHost);
 		openConnection(successorHost);
 		sendMessage(point2PointMessage, successorHost);
 		messagesPendingLookupReply.remove(reply.getMid());
+
+		logger.info("SENDING DUP MESSAGE TO HELPER ---> {}", helper.getRight());
+		if(!helper.getRight().equals(successorHost)) {
+			HelperNodeMessage helperNodeMessage = new HelperNodeMessage(point2PointMessage);
+			openConnection(helper.getRight());
+			sendMessage(helperNodeMessage, helper.getRight());
+		}
 	}
 
 	//Upon receiving the channelId from the DHT algorithm, register our own callbacks and serializers

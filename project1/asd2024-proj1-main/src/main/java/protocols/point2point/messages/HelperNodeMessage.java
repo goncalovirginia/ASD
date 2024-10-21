@@ -15,8 +15,8 @@ public class HelperNodeMessage extends ProtoMessage {
 
 
 	private final UUID mid;
-	private final Host sender, destination, helper, preHelper;
-	private final byte[] senderPeerID, destinationID, helperID, preHelperID;
+	private final Host sender, destination;
+	private final BigInteger senderPeerID, destinationID;
 	private final byte[] content;
 
 	@Override
@@ -37,33 +37,26 @@ public class HelperNodeMessage extends ProtoMessage {
 		this.content = send.getMessagePayload();
 	} */
 
-	public HelperNodeMessage(UUID mid, Host sender, Host destination, Host helper, Host preHelper, byte[] senderPeerID, byte[] destinationID, byte[] helperID, byte[] preID, byte[] content) {
+	public HelperNodeMessage(UUID mid, Host sender, Host destination, BigInteger senderPeerID, BigInteger destinationID, byte[] content) {
 		super(MSG_ID);
 		this.mid = mid;
 		this.sender = sender;
 		this.destination = destination;
-		this.helper = helper;
-		this.preHelper = preHelper;
 
 		this.senderPeerID = senderPeerID;
 		this.destinationID = destinationID;
-		this.helperID = helperID;
-		this.preHelperID = preID;
+
 		this.content = content;
 	}
 
-	public HelperNodeMessage(Point2PointMessage point2PointMessage, byte[] helperID, Host helperHost, byte[] preHelperID, Host preHelper) {
+	public HelperNodeMessage(Point2PointMessage point2PointMessage) {
 		super(MSG_ID);
 		this.mid = point2PointMessage.getMid();
 		this.sender = point2PointMessage.getSender();
 		this.destination = point2PointMessage.getDestination();
-		this.helper = helperHost;
-		this.preHelper = preHelper;
 
 		this.senderPeerID = point2PointMessage.getSenderPeerID();
 		this.destinationID = point2PointMessage.getDestinationID();
-		this.helperID = helperID;
-		this.preHelperID = preHelperID;
 
 		this.content = point2PointMessage.getContent();
 	}
@@ -76,24 +69,15 @@ public class HelperNodeMessage extends ProtoMessage {
 		return destination;
 	}
 
-	public Host getHelper() {
-		return helper;
-	}
-
-	public Host getPreHelper() {
-		return preHelper;
-	}
-
-
 	public UUID getMid() {
 		return mid;
 	}
 
-	public byte[] getSenderPeerID() {
+	public BigInteger getSenderPeerID() {
 		return senderPeerID;
 	}
 
-	public byte[] getDestinationID() {
+	public BigInteger getDestinationID() {
 		return destinationID;
 	}
 
@@ -108,20 +92,15 @@ public class HelperNodeMessage extends ProtoMessage {
 			out.writeLong(helperMessage.mid.getLeastSignificantBits());
 			Host.serializer.serialize(helperMessage.sender, out);
 			Host.serializer.serialize(helperMessage.destination, out);
-			Host.serializer.serialize(helperMessage.helper, out);
-			Host.serializer.serialize(helperMessage.preHelper, out);
-			
-			out.writeInt(helperMessage.senderPeerID.length);
-			out.writeBytes(helperMessage.senderPeerID);
-			
-			out.writeInt(helperMessage.destinationID.length);
-			out.writeBytes(helperMessage.destinationID);
 
-			out.writeInt(helperMessage.helperID.length);
-			out.writeBytes(helperMessage.helperID);
+			byte[] senderByteArray = helperMessage.senderPeerID.toByteArray();
+			out.writeInt(senderByteArray.length);
+			out.writeBytes(senderByteArray);
+			
+			byte[] destByteArray = helperMessage.destinationID.toByteArray();
+			out.writeInt(destByteArray.length);
+			out.writeBytes(destByteArray);
 
-			out.writeInt(helperMessage.preHelperID.length);
-			out.writeBytes(helperMessage.preHelperID);
 
 			out.writeInt(helperMessage.content.length);
 			if (helperMessage.content.length > 0) {
@@ -136,8 +115,6 @@ public class HelperNodeMessage extends ProtoMessage {
 			UUID mid = new UUID(firstLong, secondLong);
 			Host sender = Host.serializer.deserialize(in);
 			Host destination = Host.serializer.deserialize(in);
-			Host helperHost = Host.serializer.deserialize(in);
-			Host preHelperHost = Host.serializer.deserialize(in);
 
 			int senderPeerIDSize = in.readInt();
 			byte[] senderPeerID = new byte[senderPeerIDSize];
@@ -149,22 +126,12 @@ public class HelperNodeMessage extends ProtoMessage {
 			if (destinationIDSize > 0)
 				in.readBytes(destinationID);
 
-			int helperIDSize = in.readInt();
-			byte[] helperID = new byte[helperIDSize];
-			if (helperIDSize > 0)
-				in.readBytes(helperID);
-
-			int preHelperIDSize = in.readInt();
-			byte[] preID = new byte[preHelperIDSize];
-			if (preHelperIDSize > 0)
-				in.readBytes(preID);
-
 			int contentSize = in.readInt();
 			byte[] content = new byte[contentSize];
 			if (contentSize > 0)
 				in.readBytes(content);
 
-			return new HelperNodeMessage(mid, sender, destination, helperHost, preHelperHost, senderPeerID, destinationID, helperID, preID, content);
+			return new HelperNodeMessage(mid, sender, destination, new BigInteger(1, senderPeerID), new BigInteger(1, destinationID), content);
 		}
 	};
 }

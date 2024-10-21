@@ -24,7 +24,7 @@ public class Deliver extends ProtoNotification {
 
 	public Deliver(Point2PointMessage point2PointMessage) {
 		super(NOTIFICATION_ID);
-		this.senderID = point2PointMessage.getSenderPeerID();
+		this.senderID = point2PointMessage.getSenderPeerID().toByteArray();
 		this.messageID = point2PointMessage.getMid();
 		this.messagePayload = point2PointMessage.getContent();
 	}
