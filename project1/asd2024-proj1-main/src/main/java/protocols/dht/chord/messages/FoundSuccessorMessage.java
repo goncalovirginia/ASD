@@ -25,6 +25,7 @@ public class FoundSuccessorMessage extends ProtoMessage {
 				"mid=" + mid +
 				'}';
 	}
+
 	//original sender can be any1
 	public FoundSuccessorMessage(UUID mid, Host originalSenderHost, Host senderHost, Host successorHost, BigInteger key, BigInteger senderPeerID, BigInteger successorPeerID) {
 		super(MSG_ID);
@@ -46,7 +47,7 @@ public class FoundSuccessorMessage extends ProtoMessage {
 		this.key = findSuccessorMessage.getKey();
 		this.senderPeerID = thisNode.getPeerID();
 		this.successorPeerID = successorNode.getPeerID();
-		
+
 	}
 
 	public Host getOriginalSenderHost() {
@@ -88,7 +89,7 @@ public class FoundSuccessorMessage extends ProtoMessage {
 			Host.serializer.serialize(foundSuccessorMessage.originalSenderHost, out);
 			Host.serializer.serialize(foundSuccessorMessage.senderHost, out);
 			Host.serializer.serialize(foundSuccessorMessage.successorHost, out);
-			
+
 
 			// Serialize BigInteger fields (key, senderPeerID, successorPeerID)
 			byte[] keyByteArray = foundSuccessorMessage.key.toByteArray();
@@ -115,7 +116,7 @@ public class FoundSuccessorMessage extends ProtoMessage {
 			// Deserialize Hosts (originalSenderHost, senderHost, successorHost)
 			Host originalSender = Host.serializer.deserialize(in);
 			Host sender = Host.serializer.deserialize(in);
-			Host successor = Host.serializer.deserialize(in);	
+			Host successor = Host.serializer.deserialize(in);
 
 			// Deserialize BigInteger fields (key, senderPeerID, successorPeerID)
 			int keySize = in.readInt();

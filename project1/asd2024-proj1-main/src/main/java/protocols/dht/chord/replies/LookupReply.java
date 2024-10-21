@@ -4,7 +4,6 @@ import org.apache.commons.lang3.tuple.Pair;
 import protocols.dht.chord.messages.FoundSuccessorMessage;
 import pt.unl.fct.di.novasys.babel.generic.ProtoReply;
 import pt.unl.fct.di.novasys.network.data.Host;
-import utils.HashProducer;
 
 import java.math.BigInteger;
 import java.util.Iterator;

@@ -11,7 +11,7 @@ import java.math.BigInteger;
 import java.util.UUID;
 
 public class Point2PointMessage extends ProtoMessage {
-	public static final short MSG_ID = 401;
+	public static final short MSG_ID = 403;
 
 	private final UUID mid;
 	private final Host sender, destination;
@@ -86,7 +86,7 @@ public class Point2PointMessage extends ProtoMessage {
 			out.writeLong(point2PointMessage.mid.getLeastSignificantBits());
 			Host.serializer.serialize(point2PointMessage.sender, out);
 			Host.serializer.serialize(point2PointMessage.destination, out);
-			
+
 			byte[] sendByteArray = point2PointMessage.senderPeerID.toByteArray();
 			out.writeInt(sendByteArray.length);
 			out.writeBytes(sendByteArray);
@@ -94,7 +94,7 @@ public class Point2PointMessage extends ProtoMessage {
 			byte[] destByteArray = point2PointMessage.destinationID.toByteArray();
 			out.writeInt(destByteArray.length);
 			out.writeBytes(destByteArray);
-			
+
 			out.writeInt(point2PointMessage.content.length);
 			if (point2PointMessage.content.length > 0) {
 				out.writeBytes(point2PointMessage.content);

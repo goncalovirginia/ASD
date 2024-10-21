@@ -1,7 +1,6 @@
 package protocols.point2point.messages;
 
 import io.netty.buffer.ByteBuf;
-import protocols.point2point.requests.Send;
 import pt.unl.fct.di.novasys.babel.generic.ProtoMessage;
 import pt.unl.fct.di.novasys.network.ISerializer;
 import pt.unl.fct.di.novasys.network.data.Host;
@@ -61,6 +60,18 @@ public class HelperNodeMessage extends ProtoMessage {
 		this.content = point2PointMessage.getContent();
 	}
 
+	public HelperNodeMessage(P2PReceivedMessage point2PointMessage) {
+		super(MSG_ID);
+		this.mid = point2PointMessage.getMid();
+		this.sender = point2PointMessage.getSender();
+		this.destination = point2PointMessage.getDestination();
+
+		this.senderPeerID = point2PointMessage.getSenderPeerID();
+		this.destinationID = point2PointMessage.getDestinationID();
+
+		this.content = point2PointMessage.getContent();
+	}
+
 	public Host getSender() {
 		return sender;
 	}
@@ -96,7 +107,7 @@ public class HelperNodeMessage extends ProtoMessage {
 			byte[] senderByteArray = helperMessage.senderPeerID.toByteArray();
 			out.writeInt(senderByteArray.length);
 			out.writeBytes(senderByteArray);
-			
+
 			byte[] destByteArray = helperMessage.destinationID.toByteArray();
 			out.writeInt(destByteArray.length);
 			out.writeBytes(destByteArray);

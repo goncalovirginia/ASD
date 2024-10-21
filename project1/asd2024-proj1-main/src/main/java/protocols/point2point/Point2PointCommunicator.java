@@ -7,6 +7,7 @@ import protocols.dht.chord.notifications.TCPChannelCreatedNotification;
 import protocols.dht.chord.replies.LookupReply;
 import protocols.dht.chord.requests.LookupRequest;
 import protocols.point2point.messages.HelperNodeMessage;
+import protocols.point2point.messages.P2PReceivedMessage;
 import protocols.point2point.messages.Point2PointMessage;
 import protocols.point2point.notifications.DHTInitializedNotification;
 import protocols.point2point.notifications.Deliver;
@@ -18,6 +19,7 @@ import pt.unl.fct.di.novasys.babel.generic.ProtoMessage;
 import pt.unl.fct.di.novasys.network.data.Host;
 
 import java.math.BigInteger;
+import java.net.InetSocketAddress;
 import java.util.*;
 
 public class Point2PointCommunicator extends GenericProtocol {
@@ -94,6 +96,18 @@ public class Point2PointCommunicator extends GenericProtocol {
 		if (receivedMessages.contains(point2PointMessage.getMid())) {
 			//TODO P2PReceivedMessage (Name of the msg)
 			//New msg to sender to ask him to remove from his list this message
+			logger.info("I AM DUPLICATED");
+			HelperNodeMessage msg = new HelperNodeMessage(point2PointMessage);
+			logger.info("{} ", point2PointMessage.getSender());
+
+			InetSocketAddress adjustedSender = new InetSocketAddress(point2PointMessage.getSender().getAddress(), point2PointMessage.getSender().getPort() - 1);
+
+			openConnection(point2PointMessage.getSender());
+			sendMessage(new P2PReceivedMessage(msg), point2PointMessage.getSender());		
+
+			logger.info(point2PointMessage.getSender());
+
+			
 			return;
 		}
 		triggerNotification(new Deliver(point2PointMessage));
@@ -102,13 +116,22 @@ public class Point2PointCommunicator extends GenericProtocol {
 
 	private void uponHelperNodeMessage(HelperNodeMessage msg, Host from, short sourceProto, int channelId) {
 		helperMessagesToSend.add(msg);
-		
+
 		Point2PointMessage p2pMsg = new Point2PointMessage(msg);
 		logger.info("HELPER {} IS ALSO SENDING THE MESSAGE {} TO ---> {}", thisHost, p2pMsg.getMid(), p2pMsg.getDestination());
 		openConnection(p2pMsg.getDestination());
 		sendMessage(p2pMsg, p2pMsg.getDestination());
-
 	}
+
+	private void uponP2PReceivedMessage(P2PReceivedMessage p2pReceivedMsg, Host from, short sourceProto, int channelId) {
+		logger.info("Received Warning of Duplicated Message: {}", p2pReceivedMsg.toString());
+
+		//receivedMessages.add(p2pReceivedMsg.getMid());
+		logger.info("HERE");
+		helperMessagesToSend.remove(new HelperNodeMessage(p2pReceivedMsg));
+	}
+
+	
 
 	private void uponHelperMessageFail(HelperNodeMessage msg, Host host, short destProto, Throwable throwable, int channelId) {
 		logger.error("Message {} to {} failed, reason: {}", msg, host, throwable);
@@ -116,11 +139,11 @@ public class Point2PointCommunicator extends GenericProtocol {
 
 		//select the predecessor of helper as the next helper.
 
-	//	HelperNodeMessage helperNodeMessage = new HelperNodeMessage(msg);
+		//	HelperNodeMessage helperNodeMessage = new HelperNodeMessage(msg);
 		//TODO
 		//Change impl to, forget the pre-predecessor
 		//We just store the succ and sender, when sender goes down(not suc the one returned p2p)
-		//if the helper goes down, we simply need to lookUp the DHT table for a new one that key.
+		//if the helper goes down, we simply need to lookUp the DHT table for a new one for that key.
 		//Easier
 /* 		openConnection(msg.getPreHelper());
 		sendMessage(msg, msg.getPreHelper()); */
@@ -131,7 +154,7 @@ public class Point2PointCommunicator extends GenericProtocol {
 
 		//select the predecessor of helper as the next helper.
 
-	//	HelperNodeMessage helperNodeMessage = new HelperNodeMessage(msg);
+		//	HelperNodeMessage helperNodeMessage = new HelperNodeMessage(msg);
 	}
 
 	/*--------------------------------- Notifications ---------------------------------------- */
@@ -157,7 +180,7 @@ public class Point2PointCommunicator extends GenericProtocol {
 		messagesPendingLookupReply.remove(reply.getMid());
 
 		logger.info("SENDING DUP MESSAGE TO HELPER ---> {}", helper.getRight());
-		if(!helper.getRight().equals(successorHost)) {
+		if (!helper.getRight().equals(successorHost)) {
 			HelperNodeMessage helperNodeMessage = new HelperNodeMessage(point2PointMessage);
 			openConnection(helper.getRight());
 			sendMessage(helperNodeMessage, helper.getRight());
@@ -174,11 +197,13 @@ public class Point2PointCommunicator extends GenericProtocol {
 		//register message serializers
 		registerMessageSerializer(tcpChannelId, Point2PointMessage.MSG_ID, Point2PointMessage.serializer);
 		registerMessageSerializer(tcpChannelId, HelperNodeMessage.MSG_ID, HelperNodeMessage.serializer);
+		registerMessageSerializer(tcpChannelId, P2PReceivedMessage.MSG_ID, P2PReceivedMessage.serializer);
 
 		//register message handlers
 		try {
 			registerMessageHandler(tcpChannelId, Point2PointMessage.MSG_ID, this::uponPoint2PointMessage, this::uponMessageFail);
 			registerMessageHandler(tcpChannelId, HelperNodeMessage.MSG_ID, this::uponHelperNodeMessage, this::uponHelperMessageFail);
+			registerMessageHandler(tcpChannelId, P2PReceivedMessage.MSG_ID, this::uponP2PReceivedMessage, this::uponMessageFail);
 		} catch (HandlerRegistrationException e) {
 			logger.error("Error registering message handler: " + e.getMessage());
 			e.printStackTrace();

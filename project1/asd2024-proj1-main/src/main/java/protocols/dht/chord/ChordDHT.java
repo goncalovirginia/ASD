@@ -192,7 +192,7 @@ public class ChordDHT extends GenericProtocol {
 		logger.info("Received FindSuccessorMessage: {} - {}", findSuccessorMessage.getOriginalSender(), findSuccessorMessage.getKey());
 
 		if (!isInitialized || Finger.belongsToSuccessor(thisNode.getPeerID(), fingers[0].getChordNode().getPeerID(), findSuccessorMessage.getKey())) {
-			FoundSuccessorMessage foundSuccessorMessage = new FoundSuccessorMessage(findSuccessorMessage,thisNode, fingers[0].getChordNode() );
+			FoundSuccessorMessage foundSuccessorMessage = new FoundSuccessorMessage(findSuccessorMessage, thisNode, fingers[0].getChordNode());
 			openConnectionAndSendMessage(foundSuccessorMessage, foundSuccessorMessage.getOriginalSenderHost());
 			return;
 		}
@@ -227,15 +227,16 @@ public class ChordDHT extends GenericProtocol {
 			fixFinger(foundSuccessorMessage);
 			return;
 		}
-		
-		//Condition that checks if there are 2 or more nodes in the chord ring
+
 		LookupReply lookupReply = new LookupReply(foundSuccessorMessage);
-		if(foundSuccessorMessage.getSenderPeerID().equals(thisNode.getPeerID())) {
+
+		if (foundSuccessorMessage.getSenderPeerID().equals(thisNode.getPeerID()))
 			lookupReply.addElementToPeers(predecessorNode.getPeerID(), predecessorNode.getHost());
-		} else {
+		else
 			lookupReply.addElementToPeers(foundSuccessorMessage.getSenderPeerID(), foundSuccessorMessage.getSenderHost());
-		}
+
 		lookupReply.addElementToPeers(foundSuccessorMessage.getSuccessorPeerID(), foundSuccessorMessage.getSuccessorHost());
+
 		sendReply(lookupReply, COMM_PROTOCOL_ID);
 		lookupsPendingResponse.remove(foundSuccessorMessage.getMid());
 	}
