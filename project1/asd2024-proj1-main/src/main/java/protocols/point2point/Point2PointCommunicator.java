@@ -115,6 +115,11 @@ public class Point2PointCommunicator extends GenericProtocol {
 		//select the predecessor of helper as the next helper.
 
 	//	HelperNodeMessage helperNodeMessage = new HelperNodeMessage(msg);
+
+		//Change impl to, forget the pre-predecessor
+		//We just store the succ and sender, when sender goes down(not suc the one returned p2p)
+		//if the helper goes down, we simply need to lookUp the DHT table for a new one that key.
+		//Easier
 		openConnection(msg.getPreHelper());
 		sendMessage(msg, msg.getPreHelper());
 	}
