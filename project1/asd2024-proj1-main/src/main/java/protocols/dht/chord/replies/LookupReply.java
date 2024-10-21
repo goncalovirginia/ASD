@@ -7,9 +7,9 @@ import pt.unl.fct.di.novasys.network.data.Host;
 import utils.HashProducer;
 
 import java.math.BigInteger;
-import java.util.HashSet;
 import java.util.Iterator;
-import java.util.Set;
+import java.util.LinkedList;
+import java.util.List;
 import java.util.UUID;
 
 public class LookupReply extends ProtoReply {
@@ -18,13 +18,13 @@ public class LookupReply extends ProtoReply {
 
 	private final byte[] key;
 	private final UUID mid;
-	private final Set<Pair<byte[], Host>> peers;
+	private final List<Pair<byte[], Host>> peers;
 
 	public LookupReply(FoundSuccessorMessage foundSuccessorMessage) {
 		super(REPLY_ID);
 		this.key = foundSuccessorMessage.getKey().toByteArray().clone();
 		this.mid = foundSuccessorMessage.getMid();
-		this.peers = new HashSet<>();
+		this.peers = new LinkedList<>();
 	}
 
 	public byte[] getKey() {

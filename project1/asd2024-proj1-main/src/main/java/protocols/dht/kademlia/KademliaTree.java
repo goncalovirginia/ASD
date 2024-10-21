@@ -4,7 +4,7 @@ import java.math.BigInteger;
 
 public class KademliaTree {
 
-	private KademliaNode thisNode;
+	private final KademliaNode thisNode;
 
 	public KademliaTree(KademliaNode thisNode) {
 		this.thisNode = thisNode;

@@ -1,5 +1,6 @@
 package protocols.point2point;
 
+import org.apache.commons.lang3.tuple.Pair;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import protocols.dht.chord.notifications.TCPChannelCreatedNotification;
@@ -16,7 +17,6 @@ import pt.unl.fct.di.novasys.babel.exceptions.HandlerRegistrationException;
 import pt.unl.fct.di.novasys.babel.generic.ProtoMessage;
 import pt.unl.fct.di.novasys.network.data.Host;
 
-import java.math.BigInteger;
 import java.util.*;
 
 public class Point2PointCommunicator extends GenericProtocol {
@@ -37,7 +37,7 @@ public class Point2PointCommunicator extends GenericProtocol {
 	private final Set<HelperNodeMessage> helperMessagesToSend; //HelperNodeMessages I received as a helper
 	private final Map<Host, Set<HelperNodeMessage>> myHelpersMessages; //HelperNodeMessages I sent to helpers
 
-    private boolean isDHTInitialized;
+	private boolean isDHTInitialized;
 
 	public Point2PointCommunicator(Host thisHost, short DHT_Proto_ID) throws HandlerRegistrationException {
 		super(PROTOCOL_NAME, PROTOCOL_ID);
@@ -74,21 +74,15 @@ public class Point2PointCommunicator extends GenericProtocol {
 	private void uponSendRequest(Send request, short protoID) {
 		logger.info("Received SendRequest: {}", request.getMessageID());
 
-        if (!isDHTInitialized) {
-	        logger.info("DHT protocol is not initialized yet, queueing message: {}", request.getMessageID());
-            messagesPendingLookup.add(request);
+		if (!isDHTInitialized) {
+			logger.info("DHT protocol is not initialized yet, queueing message: {}", request.getMessageID());
+			messagesPendingLookup.add(request);
 			return;
-        }
-
-		
+		}
 
 		LookupRequest lookupRequest = new LookupRequest(request.getDestinationPeerID(), request.getMessageID());
 		sendRequest(lookupRequest, DHT_PROTO_ID);
 		messagesPendingLookupReply.put(request.getMessageID(), request);
-
-		logger.info("MY PEERID in APP {}", request.getDestinationPeerID());
-        
-
 	}
 
 	/*--------------------------------- Messages ---------------------------------------- */
@@ -102,34 +96,70 @@ public class Point2PointCommunicator extends GenericProtocol {
 		receivedMessages.add(point2PointMessage.getMid());
 	}
 
-	private void uponHelperNodeMessage(HelperNodeMessage helperNodeMessage, Host from, short sourceProto, int channelId) {
-		helperMessagesToSend.add(helperNodeMessage);
+	private void uponHelperNodeMessage(HelperNodeMessage msg, Host from, short sourceProto, int channelId) {
+		helperMessagesToSend.add(msg);
+
+		
+		Point2PointMessage p2pMsg = new Point2PointMessage(msg);
+		
+		logger.info("HELPER {} IS ALSO SENDING THE MESSAGE {} TO ---> {}", thisHost, p2pMsg.getMid(), p2pMsg.getDestination());
+
+		openConnection(p2pMsg.getDestination());
+		sendMessage(p2pMsg, p2pMsg.getDestination());
+
+	}
+
+	private void uponHelperMessageFail(HelperNodeMessage msg, Host host, short destProto, Throwable throwable, int channelId) {
+		logger.error("Message {} to {} failed, reason: {}", msg, host, throwable);
+
+		//select the predecessor of helper as the next helper.
+
+	//	HelperNodeMessage helperNodeMessage = new HelperNodeMessage(msg);
+		openConnection(msg.getPreHelper());
+		sendMessage(msg, msg.getPreHelper());
 	}
 
 	private void uponMessageFail(ProtoMessage msg, Host host, short destProto, Throwable throwable, int channelId) {
 		logger.error("Message {} to {} failed, reason: {}", msg, host, throwable);
+
+		//select the predecessor of helper as the next helper.
+
+	//	HelperNodeMessage helperNodeMessage = new HelperNodeMessage(msg);
 	}
 
 	/*--------------------------------- Notifications ---------------------------------------- */
-
-	//TODO: we have to take into account when there are only 2 nodes in the system, or we're sending to our direct successor (we can't be the original sender and helper node)
 	private void uponLookupReply(LookupReply reply, short protoID) {
 		logger.info("Received Lookup Reply: {}", reply.toString());
 
 		Send send = messagesPendingLookupReply.get(reply.getMid());
 		if (send == null) return;
 
-		Host predecessorHost = reply.getPeersIterator().next().getRight();
-		Host successorHost = reply.getPeersIterator().next().getRight();
-
-		logger.info("HERE {}", successorHost);
+		Iterator<Pair<byte[], Host>> iterator = reply.getPeersIterator();
+		Pair<byte[], Host> helperPredecessor = iterator.next();
+		Pair<byte[], Host> helper = iterator.next();
+		Host successorHost = iterator.hasNext() ? iterator.next().getRight() : null;
+		if (successorHost == null) {
+			successorHost = helper.getRight();
+			helper = helperPredecessor;
+			helperPredecessor = null;
+		} 
 
 		Point2PointMessage point2PointMessage = new Point2PointMessage(send, thisHost, successorHost);
-		//TODO: HelperNodeMessage helperNodeMessage = new HelperNodeMessage(point2PointMessage);
+		if (successorHost.equals(thisHost)) {
+			uponPoint2PointMessage(point2PointMessage, successorHost, PROTOCOL_ID, tcpChannelId);
+			return;
+		}
 
+		if (helperPredecessor != null && !(helperPredecessor.getRight().equals(successorHost)) ) {
+			logger.info("SENDING DUP MESSAGE TO HELPER ---> {}", helper.getRight());
+			HelperNodeMessage helperNodeMessage = new HelperNodeMessage(point2PointMessage, helper.getLeft(), helper.getRight(), helperPredecessor.getLeft(), helperPredecessor.getRight());
+			openConnection(helper.getRight());
+			sendMessage(helperNodeMessage, helper.getRight());
+		}
+		
+		logger.info("SENDING PAYLOAD TO ---> {}", successorHost);
+		openConnection(successorHost);
 		sendMessage(point2PointMessage, successorHost);
-		//TODO: sendMessage(helperNodeMessage, predecessorHost);
-
 		messagesPendingLookupReply.remove(reply.getMid());
 	}
 
@@ -147,7 +177,7 @@ public class Point2PointCommunicator extends GenericProtocol {
 		//register message handlers
 		try {
 			registerMessageHandler(tcpChannelId, Point2PointMessage.MSG_ID, this::uponPoint2PointMessage, this::uponMessageFail);
-			registerMessageHandler(tcpChannelId, HelperNodeMessage.MSG_ID, this::uponHelperNodeMessage, this::uponMessageFail);
+			registerMessageHandler(tcpChannelId, HelperNodeMessage.MSG_ID, this::uponHelperNodeMessage, this::uponHelperMessageFail);
 		} catch (HandlerRegistrationException e) {
 			logger.error("Error registering message handler: " + e.getMessage());
 			e.printStackTrace();
@@ -155,15 +185,15 @@ public class Point2PointCommunicator extends GenericProtocol {
 		}
 	}
 
-    private void uponDHTInitialized(DHTInitializedNotification notification, short sourceProto) {
-        logger.info("DHT protocol initialized.");
+	private void uponDHTInitialized(DHTInitializedNotification notification, short sourceProto) {
+		logger.info("DHT protocol initialized.");
 
 		isDHTInitialized = true;
-	    for (Send pendingMessage : messagesPendingLookup) {
-		    uponSendRequest(pendingMessage, PROTOCOL_ID);
-	    }
-	    messagesPendingLookup.clear();
-    }
+		for (Send pendingMessage : messagesPendingLookup) {
+			uponSendRequest(pendingMessage, PROTOCOL_ID);
+		}
+		messagesPendingLookup.clear();
+	}
 
 	/*--------------------------------- Timers ---------------------------------------- */
 

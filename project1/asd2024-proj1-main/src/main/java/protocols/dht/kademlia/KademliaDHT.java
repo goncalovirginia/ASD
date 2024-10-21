@@ -5,7 +5,6 @@ import org.apache.logging.log4j.Logger;
 import protocols.apps.AutomatedApp;
 import protocols.dht.kademlia.messages.*;
 import protocols.dht.kademlia.notifications.TCPChannelCreatedNotification;
-import protocols.dht.kademlia.replies.LookupReply;
 import protocols.dht.kademlia.requests.LookupRequest;
 import protocols.dht.kademlia.timers.RetryTCPConnectionsTimer;
 import pt.unl.fct.di.novasys.babel.core.GenericProtocol;
@@ -14,12 +13,14 @@ import pt.unl.fct.di.novasys.babel.generic.ProtoMessage;
 import pt.unl.fct.di.novasys.channel.tcp.TCPChannel;
 import pt.unl.fct.di.novasys.channel.tcp.events.*;
 import pt.unl.fct.di.novasys.network.data.Host;
-import utils.AuxCalcs;
 
 import java.io.IOException;
 import java.math.BigInteger;
 import java.net.InetAddress;
-import java.util.*;
+import java.util.HashSet;
+import java.util.Properties;
+import java.util.Set;
+import java.util.UUID;
 
 public class KademliaDHT extends GenericProtocol {
 

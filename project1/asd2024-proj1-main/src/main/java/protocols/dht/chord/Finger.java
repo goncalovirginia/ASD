@@ -39,11 +39,6 @@ public class Finger {
 				(thisID.compareTo(successorID) > 0 && (thisID.compareTo(key) < 0 || successorID.compareTo(key) >= 0));
 	}
 
-	public static boolean belongsToClosedOpenInterval(BigInteger startID, BigInteger endID, BigInteger key) {
-		return (startID.compareTo(key) <= 0 && endID.compareTo(key) > 0) ||
-				(startID.compareTo(endID) > 0 && (startID.compareTo(key) <= 0 || endID.compareTo(key) > 0));
-	}
-
 	public static boolean belongsToOpenInterval(BigInteger startID, BigInteger endID, BigInteger key) {
 		return (startID.compareTo(key) < 0 && endID.compareTo(key) > 0) ||
 				(startID.compareTo(endID) > 0 && (startID.compareTo(key) < 0 || endID.compareTo(key) > 0));
