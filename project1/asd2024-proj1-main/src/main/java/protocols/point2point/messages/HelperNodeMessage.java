@@ -1,7 +1,6 @@
 package protocols.point2point.messages;
 
 import io.netty.buffer.ByteBuf;
-import protocols.point2point.requests.Send;
 import pt.unl.fct.di.novasys.babel.generic.ProtoMessage;
 import pt.unl.fct.di.novasys.network.ISerializer;
 import pt.unl.fct.di.novasys.network.data.Host;
@@ -15,8 +14,8 @@ public class HelperNodeMessage extends ProtoMessage {
 
 
 	private final UUID mid;
-	private final Host sender, destination, helper;
-	private final byte[] senderPeerID, destinationID, helperID;
+	private final Host sender, destination;
+	private final BigInteger senderPeerID, destinationID;
 	private final byte[] content;
 
 	@Override
@@ -37,28 +36,26 @@ public class HelperNodeMessage extends ProtoMessage {
 		this.content = send.getMessagePayload();
 	} */
 
-	public HelperNodeMessage(UUID mid, Host sender, Host destination, Host helper, byte[] senderPeerID, byte[] destinationID, byte[] preID, byte[] content) {
+	public HelperNodeMessage(UUID mid, Host sender, Host destination, BigInteger senderPeerID, BigInteger destinationID, byte[] content) {
 		super(MSG_ID);
 		this.mid = mid;
 		this.sender = sender;
 		this.destination = destination;
-		this.helper = helper;
+
 		this.senderPeerID = senderPeerID;
 		this.destinationID = destinationID;
-		this.helperID = preID;
+
 		this.content = content;
 	}
 
-	public HelperNodeMessage(Point2PointMessage point2PointMessage, byte[] preID, Host preHost) {
+	public HelperNodeMessage(Point2PointMessage point2PointMessage) {
 		super(MSG_ID);
 		this.mid = point2PointMessage.getMid();
 		this.sender = point2PointMessage.getSender();
 		this.destination = point2PointMessage.getDestination();
-		this.helper = preHost;
 
 		this.senderPeerID = point2PointMessage.getSenderPeerID();
 		this.destinationID = point2PointMessage.getDestinationID();
-		this.helperID = preID;
 
 		this.content = point2PointMessage.getContent();
 	}
@@ -75,11 +72,11 @@ public class HelperNodeMessage extends ProtoMessage {
 		return mid;
 	}
 
-	public byte[] getSenderPeerID() {
+	public BigInteger getSenderPeerID() {
 		return senderPeerID;
 	}
 
-	public byte[] getDestinationID() {
+	public BigInteger getDestinationID() {
 		return destinationID;
 	}
 
@@ -94,13 +91,15 @@ public class HelperNodeMessage extends ProtoMessage {
 			out.writeLong(helperMessage.mid.getLeastSignificantBits());
 			Host.serializer.serialize(helperMessage.sender, out);
 			Host.serializer.serialize(helperMessage.destination, out);
-			Host.serializer.serialize(helperMessage.helper, out);
-			
-			out.writeInt(helperMessage.senderPeerID.length);
-			out.writeBytes(helperMessage.senderPeerID);
-			
-			out.writeInt(helperMessage.destinationID.length);
-			out.writeBytes(helperMessage.destinationID);
+
+			byte[] senderByteArray = helperMessage.senderPeerID.toByteArray();
+			out.writeInt(senderByteArray.length);
+			out.writeBytes(senderByteArray);
+
+			byte[] destByteArray = helperMessage.destinationID.toByteArray();
+			out.writeInt(destByteArray.length);
+			out.writeBytes(destByteArray);
+
 
 			out.writeInt(helperMessage.content.length);
 			if (helperMessage.content.length > 0) {
@@ -115,7 +114,6 @@ public class HelperNodeMessage extends ProtoMessage {
 			UUID mid = new UUID(firstLong, secondLong);
 			Host sender = Host.serializer.deserialize(in);
 			Host destination = Host.serializer.deserialize(in);
-			Host helperHost = Host.serializer.deserialize(in);
 
 			int senderPeerIDSize = in.readInt();
 			byte[] senderPeerID = new byte[senderPeerIDSize];
@@ -127,17 +125,12 @@ public class HelperNodeMessage extends ProtoMessage {
 			if (destinationIDSize > 0)
 				in.readBytes(destinationID);
 
-			int helperIDSize = in.readInt();
-			byte[] preID = new byte[helperIDSize];
-			if (helperIDSize > 0)
-				in.readBytes(preID);
-
 			int contentSize = in.readInt();
 			byte[] content = new byte[contentSize];
 			if (contentSize > 0)
 				in.readBytes(content);
 
-			return new HelperNodeMessage(mid, sender, destination, helperHost, senderPeerID, destinationID, preID, content);
+			return new HelperNodeMessage(mid, sender, destination, new BigInteger(1, senderPeerID), new BigInteger(1, destinationID), content);
 		}
 	};
 }
