@@ -3,10 +3,12 @@ package protocols.point2point;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import protocols.dht.chord.notifications.PeerDownNotification;
 import protocols.dht.chord.notifications.TCPChannelCreatedNotification;
 import protocols.dht.chord.replies.LookupReply;
 import protocols.dht.chord.requests.LookupRequest;
 import protocols.point2point.messages.HelperNodeMessage;
+import protocols.point2point.messages.Point2PointAckMessage;
 import protocols.point2point.messages.Point2PointMessage;
 import protocols.point2point.notifications.DHTInitializedNotification;
 import protocols.point2point.notifications.Deliver;
@@ -24,7 +26,7 @@ public class Point2PointCommunicator extends GenericProtocol {
 
 	private static final Logger logger = LogManager.getLogger(Point2PointCommunicator.class);
 
-	public final static String PROTOCOL_NAME = "EmptyPoint2PointComm";
+	public final static String PROTOCOL_NAME = "Point2PointCommunicator";
 	public final static short PROTOCOL_ID = 400;
 
 	private final Host thisHost;
@@ -35,8 +37,10 @@ public class Point2PointCommunicator extends GenericProtocol {
 	private final List<Send> messagesPendingLookup;
 	private final Map<UUID, Send> messagesPendingLookupReply;
 	private final Set<UUID> receivedMessages;
-	private final Set<HelperNodeMessage> helperMessagesToSend; //HelperNodeMessages I received as a helper
-	private final Map<Host, Set<HelperNodeMessage>> myHelpersMessages; //HelperNodeMessages I sent to helpers
+	private final Map<Point2PointMessage, Host> point2PointMessagesPendingAck;
+	private final Map<Host, Set<HelperNodeMessage>> helperMessagesToSend; //HelperNodeMessages I received in order to act as a helper, if the original sender goes down
+	private final Set<HelperNodeMessage> helperMessagesSending; //HelperNodeMessages I am currently sending, since the original sender went down
+	private final Map<Host, Set<HelperNodeMessage>> myHelpersMessages; //HelperNodeMessages I sent to others to be my helpers
 
 	private boolean isDHTInitialized;
 
@@ -44,10 +48,13 @@ public class Point2PointCommunicator extends GenericProtocol {
 		super(PROTOCOL_NAME, PROTOCOL_ID);
 		this.thisHost = thisHost;
 		this.DHT_PROTO_ID = DHT_Proto_ID;
+
 		this.messagesPendingLookup = new LinkedList<>();
 		this.messagesPendingLookupReply = new HashMap<>();
 		this.receivedMessages = new HashSet<>();
-		this.helperMessagesToSend = new HashSet<>();
+		this.point2PointMessagesPendingAck = new HashMap<>();
+		this.helperMessagesToSend = new HashMap<>();
+		this.helperMessagesSending = new HashSet<>();
 		this.myHelpersMessages = new HashMap<>();
 		this.isDHTInitialized = false;
 
@@ -60,6 +67,7 @@ public class Point2PointCommunicator extends GenericProtocol {
 		//register notification handlers
 		subscribeNotification(TCPChannelCreatedNotification.NOTIFICATION_ID, this::uponChannelCreated);
 		subscribeNotification(DHTInitializedNotification.NOTIFICATION_ID, this::uponDHTInitialized);
+		subscribeNotification(PeerDownNotification.NOTIFICATION_ID, this::uponPeerDown);
 
 		//register timer handlers
 		registerTimerHandler(HelperTimer.TIMER_ID, this::helperTimer);
@@ -68,6 +76,11 @@ public class Point2PointCommunicator extends GenericProtocol {
 	@Override
 	public void init(Properties props) {
 		setupPeriodicTimer(new HelperTimer(), 3000, 3000);
+	}
+
+	private void openConnectionAndSendMessage(ProtoMessage protoMessage, Host host) {
+		openConnection(host);
+		sendMessage(protoMessage, host);
 	}
 
 	/*--------------------------------- Requests ---------------------------------------- */
@@ -92,22 +105,44 @@ public class Point2PointCommunicator extends GenericProtocol {
 		logger.info("Received Point2Point Message: {}", point2PointMessage.toString());
 
 		if (receivedMessages.contains(point2PointMessage.getMid())) {
-			//TODO P2PReceivedMessage (Name of the msg)
-			//New msg to sender to ask him to remove from his list this message
+			openConnectionAndSendMessage(new Point2PointAckMessage(point2PointMessage), from);
 			return;
 		}
+
 		triggerNotification(new Deliver(point2PointMessage));
 		receivedMessages.add(point2PointMessage.getMid());
 	}
 
-	private void uponHelperNodeMessage(HelperNodeMessage msg, Host from, short sourceProto, int channelId) {
-		helperMessagesToSend.add(msg);
+	private void uponHelperNodeMessage(HelperNodeMessage helperNodeMessage, Host from, short sourceProto, int channelId) {
+		logger.info("HelperNodeMessage: sending message {} to host {}", helperNodeMessage.getMid(), helperNodeMessage.getDestination());
 
-		Point2PointMessage p2pMsg = new Point2PointMessage(msg);
-		logger.info("HELPER {} IS ALSO SENDING THE MESSAGE {} TO ---> {}", thisHost, p2pMsg.getMid(), p2pMsg.getDestination());
-		openConnection(p2pMsg.getDestination());
-		sendMessage(p2pMsg, p2pMsg.getDestination());
+		helperMessagesToSend.putIfAbsent(from, new HashSet<>());
+		helperMessagesToSend.get(from).add(helperNodeMessage);
+	}
 
+	private void uponPoint2PointAckMessage(Point2PointAckMessage point2PointAckMessage, Host from, short sourceProto, int channelId) {
+		logger.info("Received Point2PointAckMessage: {}", point2PointAckMessage.toString());
+
+		point2PointMessagesPendingAck.remove(new Point2PointMessage(point2PointAckMessage));
+		helperMessagesSending.remove(new HelperNodeMessage(point2PointAckMessage));
+	}
+
+	private void uponPoint2PointMessageFail(Point2PointMessage msg, Host host, short destProto, Throwable throwable, int channelId) {
+		logger.error("Message {} to {} failed, reason: {}", msg, host, throwable);
+
+		Host helperHost = point2PointMessagesPendingAck.get(msg);
+		HelperNodeMessage helperNodeMessage = new HelperNodeMessage(msg);
+
+		//if HelperNodeMessage was already sent to helper, don't send it again
+		if (helperHost == null) return;
+		if (!myHelpersMessages.containsKey(helperHost)) myHelpersMessages.put(helperHost, new HashSet<>());
+		if (myHelpersMessages.get(helperHost).contains(helperNodeMessage)) return;
+
+		if (!helperHost.equals(msg.getDestination()) && !helperHost.equals(thisHost)) {
+			logger.error("Sending HelperNodeMessage to {}", helperHost);
+			myHelpersMessages.get(helperHost).add(helperNodeMessage);
+			openConnectionAndSendMessage(helperNodeMessage, helperHost);
+		}
 	}
 
 	private void uponHelperMessageFail(HelperNodeMessage msg, Host host, short destProto, Throwable throwable, int channelId) {
@@ -120,7 +155,7 @@ public class Point2PointCommunicator extends GenericProtocol {
 		//TODO
 		//Change impl to, forget the pre-predecessor
 		//We just store the succ and sender, when sender goes down(not suc the one returned p2p)
-		//if the helper goes down, we simply need to lookUp the DHT table for a new one that key.
+		//if the helper goes down, we simply need to lookUp the DHT table for a new one for that key.
 		//Easier
 /* 		openConnection(msg.getPreHelper());
 		sendMessage(msg, msg.getPreHelper()); */
@@ -135,33 +170,26 @@ public class Point2PointCommunicator extends GenericProtocol {
 	}
 
 	/*--------------------------------- Notifications ---------------------------------------- */
+
 	private void uponLookupReply(LookupReply reply, short protoID) {
 		logger.info("Received Lookup Reply: {}", reply.toString());
 
-		Send send = messagesPendingLookupReply.get(reply.getMid());
+		Send send = messagesPendingLookupReply.remove(reply.getMid());
 		if (send == null) return;
 
 		Iterator<Pair<BigInteger, Host>> it = reply.getPeersIterator();
 		Pair<BigInteger, Host> helper = it.next();
-		Host successorHost = it.next().getRight();
+		Pair<BigInteger, Host> target = it.next();
 
-		Point2PointMessage point2PointMessage = new Point2PointMessage(send, thisHost, successorHost);
-		if (successorHost.equals(thisHost)) {
-			uponPoint2PointMessage(point2PointMessage, successorHost, PROTOCOL_ID, tcpChannelId);
+		Point2PointMessage point2PointMessage = new Point2PointMessage(send, thisHost, target.getRight());
+
+		if (target.getRight().equals(thisHost)) {
+			uponPoint2PointMessage(point2PointMessage, target.getRight(), PROTOCOL_ID, tcpChannelId);
 			return;
 		}
 
-		logger.info("SENDING PAYLOAD TO ---> {}", successorHost);
-		openConnection(successorHost);
-		sendMessage(point2PointMessage, successorHost);
-		messagesPendingLookupReply.remove(reply.getMid());
-
-		logger.info("SENDING DUP MESSAGE TO HELPER ---> {}", helper.getRight());
-		if (!helper.getRight().equals(successorHost)) {
-			HelperNodeMessage helperNodeMessage = new HelperNodeMessage(point2PointMessage);
-			openConnection(helper.getRight());
-			sendMessage(helperNodeMessage, helper.getRight());
-		}
+		point2PointMessagesPendingAck.put(point2PointMessage, helper.getRight());
+		openConnectionAndSendMessage(point2PointMessage, target.getRight());
 	}
 
 	//Upon receiving the channelId from the DHT algorithm, register our own callbacks and serializers
@@ -174,11 +202,13 @@ public class Point2PointCommunicator extends GenericProtocol {
 		//register message serializers
 		registerMessageSerializer(tcpChannelId, Point2PointMessage.MSG_ID, Point2PointMessage.serializer);
 		registerMessageSerializer(tcpChannelId, HelperNodeMessage.MSG_ID, HelperNodeMessage.serializer);
+		registerMessageSerializer(tcpChannelId, Point2PointAckMessage.MSG_ID, Point2PointAckMessage.serializer);
 
 		//register message handlers
 		try {
-			registerMessageHandler(tcpChannelId, Point2PointMessage.MSG_ID, this::uponPoint2PointMessage, this::uponMessageFail);
+			registerMessageHandler(tcpChannelId, Point2PointMessage.MSG_ID, this::uponPoint2PointMessage, this::uponPoint2PointMessageFail);
 			registerMessageHandler(tcpChannelId, HelperNodeMessage.MSG_ID, this::uponHelperNodeMessage, this::uponHelperMessageFail);
+			registerMessageHandler(tcpChannelId, Point2PointAckMessage.MSG_ID, this::uponPoint2PointAckMessage, this::uponMessageFail);
 		} catch (HandlerRegistrationException e) {
 			logger.error("Error registering message handler: " + e.getMessage());
 			e.printStackTrace();
@@ -196,13 +226,26 @@ public class Point2PointCommunicator extends GenericProtocol {
 		messagesPendingLookup.clear();
 	}
 
+	private void uponPeerDown(PeerDownNotification notification, short sourceProto) {
+		Set<HelperNodeMessage> helperNodeMessages = helperMessagesToSend.get(notification.getPeer());
+		if (helperNodeMessages == null) return;
+
+		logger.info("Helper messages activated for peer: {} \n {}", notification.getPeer(), helperNodeMessages);
+
+		helperMessagesSending.addAll(helperNodeMessages);
+		helperNodeMessages.clear();
+	}
+
 	/*--------------------------------- Timers ---------------------------------------- */
 
 	private void helperTimer(HelperTimer timer, long timerId) {
-		logger.debug("helperTimer: {}", timerId);
+		logger.info("helperTimer: {}", timerId);
 
-		for (HelperNodeMessage helperNodeMessage : helperMessagesToSend) {
-			sendMessage(new Point2PointMessage(helperNodeMessage), helperNodeMessage.getDestination());
+		for (Point2PointMessage point2PointMessage : point2PointMessagesPendingAck.keySet()) {
+			openConnectionAndSendMessage(point2PointMessage, point2PointMessage.getDestination());
+		}
+		for (HelperNodeMessage helperNodeMessage : helperMessagesSending) {
+			openConnectionAndSendMessage(new Point2PointMessage(helperNodeMessage), helperNodeMessage.getDestination());
 		}
 	}
 

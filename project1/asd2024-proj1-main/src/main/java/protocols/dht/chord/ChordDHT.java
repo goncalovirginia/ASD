@@ -4,6 +4,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import protocols.apps.AutomatedApp;
 import protocols.dht.chord.messages.*;
+import protocols.dht.chord.notifications.PeerDownNotification;
 import protocols.dht.chord.notifications.TCPChannelCreatedNotification;
 import protocols.dht.chord.replies.LookupReply;
 import protocols.dht.chord.requests.LookupRequest;
@@ -326,6 +327,7 @@ public class ChordDHT extends GenericProtocol {
 		logger.debug("Connection to {} is down cause {}", peer, event.getCause());
 
 		fixFingersFromDisconnectingNode(peer);
+		triggerNotification(new PeerDownNotification(peer));
 	}
 
 	//triggered when an outgoing connection fails to be established

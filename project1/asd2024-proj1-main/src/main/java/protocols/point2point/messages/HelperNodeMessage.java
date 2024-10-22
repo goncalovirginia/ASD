@@ -25,17 +25,6 @@ public class HelperNodeMessage extends ProtoMessage {
 				'}';
 	}
 
-	//I'll comment DELETE later - if it is to be delete (late change - predecessor and sender)
-/* 	public HelperNodeMessage(Send send, Host sender, Host destination, Host helper) {
-		super(MSG_ID);
-		this.mid = send.getMessageID();
-		this.sender = sender;
-		this.destination = destination;
-		this.senderPeerID = send.getSenderPeerID();
-		this.destinationID = send.getDestinationPeerID();
-		this.content = send.getMessagePayload();
-	} */
-
 	public HelperNodeMessage(UUID mid, Host sender, Host destination, BigInteger senderPeerID, BigInteger destinationID, byte[] content) {
 		super(MSG_ID);
 		this.mid = mid;
@@ -58,6 +47,35 @@ public class HelperNodeMessage extends ProtoMessage {
 		this.destinationID = point2PointMessage.getDestinationID();
 
 		this.content = point2PointMessage.getContent();
+	}
+
+	public HelperNodeMessage(Point2PointAckMessage point2PointMessage) {
+		super(MSG_ID);
+		this.mid = point2PointMessage.getMid();
+		this.sender = point2PointMessage.getSender();
+		this.destination = point2PointMessage.getDestination();
+
+		this.senderPeerID = point2PointMessage.getSenderPeerID();
+		this.destinationID = point2PointMessage.getDestinationID();
+
+		this.content = null;
+	}
+
+	@Override
+	public boolean equals(Object o) {
+		if (o == this) {
+			return true;
+		} else if (!(o instanceof HelperNodeMessage)) {
+			return false;
+		} else {
+			HelperNodeMessage helperNodeMessage = (HelperNodeMessage) o;
+			return helperNodeMessage.mid.equals(this.mid);
+		}
+	}
+
+	@Override
+	public int hashCode() {
+		return mid.hashCode();
 	}
 
 	public Host getSender() {

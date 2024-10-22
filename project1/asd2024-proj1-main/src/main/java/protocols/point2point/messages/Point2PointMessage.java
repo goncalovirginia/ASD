@@ -1,6 +1,9 @@
 package protocols.point2point.messages;
 
 import io.netty.buffer.ByteBuf;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+import protocols.point2point.Point2PointCommunicator;
 import protocols.point2point.requests.Send;
 import pt.unl.fct.di.novasys.babel.generic.ProtoMessage;
 import pt.unl.fct.di.novasys.network.ISerializer;
@@ -8,9 +11,12 @@ import pt.unl.fct.di.novasys.network.data.Host;
 
 import java.io.IOException;
 import java.math.BigInteger;
+import java.util.Arrays;
+import java.util.HexFormat;
 import java.util.UUID;
 
 public class Point2PointMessage extends ProtoMessage {
+
 	public static final short MSG_ID = 401;
 
 	private final UUID mid;
@@ -21,7 +27,7 @@ public class Point2PointMessage extends ProtoMessage {
 	@Override
 	public String toString() {
 		return "Point2PointMessage{" +
-				"mid=" + mid +
+				"mid=" + mid + " sender=" + sender + " destination=" + destination + " content=" + new String(content) +
 				'}';
 	}
 
@@ -53,6 +59,33 @@ public class Point2PointMessage extends ProtoMessage {
 		this.senderPeerID = helperNodeMessage.getSenderPeerID();
 		this.destinationID = helperNodeMessage.getDestinationID();
 		this.content = helperNodeMessage.getContent();
+	}
+
+	public Point2PointMessage(Point2PointAckMessage point2PointAckMessage) {
+		super(MSG_ID);
+		this.mid = point2PointAckMessage.getMid();
+		this.sender = point2PointAckMessage.getSender();
+		this.destination = point2PointAckMessage.getDestination();
+		this.senderPeerID = point2PointAckMessage.getSenderPeerID();
+		this.destinationID = point2PointAckMessage.getDestinationID();
+		this.content = null;
+	}
+
+	@Override
+	public boolean equals(Object o) {
+		if (o == this) {
+			return true;
+		} else if (!(o instanceof Point2PointMessage)) {
+			return false;
+		} else {
+			Point2PointMessage point2PointMessage = (Point2PointMessage) o;
+			return point2PointMessage.mid.equals(this.mid);
+		}
+	}
+
+	@Override
+	public int hashCode() {
+		return mid.hashCode();
 	}
 
 	public Host getSender() {
