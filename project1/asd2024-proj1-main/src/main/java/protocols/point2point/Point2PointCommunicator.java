@@ -34,13 +34,13 @@ public class Point2PointCommunicator extends GenericProtocol {
 
 	private int tcpChannelId;
 
-	private final List<Send> messagesPendingLookup;
-	private final Map<UUID, Send> messagesPendingLookupReply;
-	private final Set<UUID> receivedMessages;
-	private final Map<Point2PointMessage, Host> point2PointMessagesPendingAck;
+	private final List<Send> messagesPendingLookup; //queued messages awaiting lookup until the Chord protocol is initialized
+	private final Map<UUID, Send> messagesPendingLookupReply; //messages with lookups awaiting reply/notification from the Chord protocol
+	private final Set<UUID> receivedMessages; //received and delivered Point2Point messages (ID's)
+	private final Map<Point2PointMessage, Host> point2PointMessagesPendingAck; //key: Point2Point messages sent to target and awaiting Ack | value: the message's corresponding backup helper node host, in case the message fails to send
 	private final Map<Host, Set<HelperNodeMessage>> helperMessagesToSend; //HelperNodeMessages I received in order to act as a helper, if the original sender goes down
-	private final Set<HelperNodeMessage> helperMessagesSending; //HelperNodeMessages I am currently sending, since the original sender went down
-	private final Map<Host, Set<HelperNodeMessage>> myHelpersMessages; //HelperNodeMessages I sent to others to be my helpers
+	private final Set<HelperNodeMessage> helperMessagesSending; //HelperNodeMessages I am currently sending, after the original sender went down
+	private final Map<Host, Set<HelperNodeMessage>> myHelpersMessages; //HelperNodeMessages I sent to others, in order to be my helpers
 
 	private boolean isDHTInitialized;
 
