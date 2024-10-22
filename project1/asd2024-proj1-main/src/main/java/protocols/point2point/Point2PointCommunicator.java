@@ -145,28 +145,8 @@ public class Point2PointCommunicator extends GenericProtocol {
 		}
 	}
 
-	private void uponHelperMessageFail(HelperNodeMessage msg, Host host, short destProto, Throwable throwable, int channelId) {
-		logger.error("Message {} to {} failed, reason: {}", msg, host, throwable);
-
-
-		//select the predecessor of helper as the next helper.
-
-		//	HelperNodeMessage helperNodeMessage = new HelperNodeMessage(msg);
-		//TODO
-		//Change impl to, forget the pre-predecessor
-		//We just store the succ and sender, when sender goes down(not suc the one returned p2p)
-		//if the helper goes down, we simply need to lookUp the DHT table for a new one for that key.
-		//Easier
-/* 		openConnection(msg.getPreHelper());
-		sendMessage(msg, msg.getPreHelper()); */
-	}
-
 	private void uponMessageFail(ProtoMessage msg, Host host, short destProto, Throwable throwable, int channelId) {
 		logger.error("Message {} to {} failed, reason: {}", msg, host, throwable);
-
-		//select the predecessor of helper as the next helper.
-
-		//	HelperNodeMessage helperNodeMessage = new HelperNodeMessage(msg);
 	}
 
 	/*--------------------------------- Notifications ---------------------------------------- */
@@ -207,11 +187,11 @@ public class Point2PointCommunicator extends GenericProtocol {
 		//register message handlers
 		try {
 			registerMessageHandler(tcpChannelId, Point2PointMessage.MSG_ID, this::uponPoint2PointMessage, this::uponPoint2PointMessageFail);
-			registerMessageHandler(tcpChannelId, HelperNodeMessage.MSG_ID, this::uponHelperNodeMessage, this::uponHelperMessageFail);
+			registerMessageHandler(tcpChannelId, HelperNodeMessage.MSG_ID, this::uponHelperNodeMessage, this::uponMessageFail);
 			registerMessageHandler(tcpChannelId, Point2PointAckMessage.MSG_ID, this::uponPoint2PointAckMessage, this::uponMessageFail);
 		} catch (HandlerRegistrationException e) {
-			logger.error("Error registering message handler: " + e.getMessage());
-			e.printStackTrace();
+			logger.error("Error registering message handler: {}", e.getMessage());
+			logger.error(e.getStackTrace());
 			System.exit(1);
 		}
 	}
