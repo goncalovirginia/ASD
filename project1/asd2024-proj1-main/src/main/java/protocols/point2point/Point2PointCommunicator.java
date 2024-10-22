@@ -102,7 +102,7 @@ public class Point2PointCommunicator extends GenericProtocol {
 	/*--------------------------------- Messages ---------------------------------------- */
 
 	private void uponPoint2PointMessage(Point2PointMessage point2PointMessage, Host from, short sourceProto, int channelId) {
-		logger.info("Received Point2Point Message: {}", point2PointMessage.toString());
+		logger.info("Received Point2PointMessage: {}", point2PointMessage.toString());
 
 		if (receivedMessages.contains(point2PointMessage.getMid())) {
 			openConnectionAndSendMessage(new Point2PointAckMessage(point2PointMessage), from);
@@ -114,7 +114,7 @@ public class Point2PointCommunicator extends GenericProtocol {
 	}
 
 	private void uponHelperNodeMessage(HelperNodeMessage helperNodeMessage, Host from, short sourceProto, int channelId) {
-		logger.info("HelperNodeMessage: sending message {} to host {}", helperNodeMessage.getMid(), helperNodeMessage.getDestination());
+		logger.info("Received HelperNodeMessage: storing message {} to host {}", helperNodeMessage.getMid(), helperNodeMessage.getDestination());
 
 		helperMessagesToSend.putIfAbsent(from, new HashSet<>());
 		helperMessagesToSend.get(from).add(helperNodeMessage);
