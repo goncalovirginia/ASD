@@ -2,11 +2,11 @@ package protocols.point2point.timers;
 
 import pt.unl.fct.di.novasys.babel.generic.ProtoTimer;
 
-public class HelperTimer extends ProtoTimer {
+public class ResendMessagesTimer extends ProtoTimer {
 
 	public static final short TIMER_ID = 401;
 
-	public HelperTimer() {
+	public ResendMessagesTimer() {
 		super(TIMER_ID);
 	}
 

@@ -13,7 +13,7 @@ import protocols.point2point.messages.Point2PointMessage;
 import protocols.point2point.notifications.DHTInitializedNotification;
 import protocols.point2point.notifications.Deliver;
 import protocols.point2point.requests.Send;
-import protocols.point2point.timers.HelperTimer;
+import protocols.point2point.timers.ResendMessagesTimer;
 import pt.unl.fct.di.novasys.babel.core.GenericProtocol;
 import pt.unl.fct.di.novasys.babel.exceptions.HandlerRegistrationException;
 import pt.unl.fct.di.novasys.babel.generic.ProtoMessage;
@@ -70,12 +70,12 @@ public class Point2PointCommunicator extends GenericProtocol {
 		subscribeNotification(PeerDownNotification.NOTIFICATION_ID, this::uponPeerDown);
 
 		//register timer handlers
-		registerTimerHandler(HelperTimer.TIMER_ID, this::helperTimer);
+		registerTimerHandler(ResendMessagesTimer.TIMER_ID, this::resendMessagesTimer);
 	}
 
 	@Override
 	public void init(Properties props) {
-		setupPeriodicTimer(new HelperTimer(), 3000, 3000);
+		setupPeriodicTimer(new ResendMessagesTimer(), 3000, 3000);
 	}
 
 	private void openConnectionAndSendMessage(ProtoMessage protoMessage, Host host) {
@@ -238,7 +238,7 @@ public class Point2PointCommunicator extends GenericProtocol {
 
 	/*--------------------------------- Timers ---------------------------------------- */
 
-	private void helperTimer(HelperTimer timer, long timerId) {
+	private void resendMessagesTimer(ResendMessagesTimer timer, long timerId) {
 		logger.info("helperTimer: {}", timerId);
 
 		for (Point2PointMessage point2PointMessage : point2PointMessagesPendingAck.keySet()) {
