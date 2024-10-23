@@ -325,7 +325,7 @@ public class ChordDHT extends GenericProtocol {
 	//triggered when an outgoing connection is down
 	private void uponOutConnectionDown(OutConnectionDown event, int channelId) {
 		Host peer = event.getNode();
-		logger.debug("Connection to {} is down cause {}", peer, event.getCause());
+		logger.debug("Connection to {} is down, cause: {}", peer, event.getCause());
 
 		fixFingersFromDisconnectingNode(peer);
 		triggerNotification(new PeerDownNotification(peer));
@@ -333,7 +333,7 @@ public class ChordDHT extends GenericProtocol {
 
 	//triggered when an outgoing connection fails to be established
 	private void uponOutConnectionFailed(OutConnectionFailed<ProtoMessage> event, int channelId) {
-		logger.debug("Connection to {} failed cause: {}", event.getNode(), event.getCause());
+		logger.debug("Connection to {} failed, cause: {}", event.getNode(), event.getCause());
 	}
 
 	//triggered when an incoming connection is up
