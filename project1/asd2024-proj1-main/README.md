@@ -1,18 +1,17 @@
-# ASD2024-Proj1
+## Instructions
 
-This is the basis for the first project of Algorithms and Distributed Systems 2024/25 Edition.
+### Compile
 
-Questions should be sent to João Leitão
+```.../asd2024-proj1-main> mvn clean compile package```
 
-## Compiling and Running
+### Run
 
-Use the command
+- `babel_config.properties`:
+  - `n_peers`: maximum amount of peers the DHT will operate with (Default value is 100)
+  - `id_bits`: number of bits used for peer ID's, either 256 or 512 (Default value is 256)
 
-'''
-mvn clean compile package
-'''
-
-to generate in the target folder a asdProj.jar. This jar contains all classes and dependencias.
-
-The properties file must be adjusted for all required properties. You can complement properties on that file with
-additional options on the command line.
+1. **First process:** `.../asd2024-proj1-main> java -cp target/asdProj.jar Main port=10101 processSequence=1`  
+2. **Second and subsequent processes:** `.../asd2024-proj1-main> java -cp target/asdProj.jar Main port=10102
+     contact=127.0.0.1:10101 processSequence=2`
+     - Use a different port and processSequence for each new process
+     - Every new process should point to an existing process via the `contact=ip:port` parameter
