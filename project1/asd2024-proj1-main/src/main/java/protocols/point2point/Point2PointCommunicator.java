@@ -89,7 +89,7 @@ public class Point2PointCommunicator extends GenericProtocol {
 		logger.info("Received SendRequest: {}", request.getMessageID());
 
 		if (!isDHTInitialized) {
-			logger.info("DHT protocol is not initialized yet, queueing message: {}", request.getMessageID());
+			logger.info("DHT protocol is not initialized, queueing message: {}", request.getMessageID());
 			messagesPendingLookup.add(request);
 			return;
 		}

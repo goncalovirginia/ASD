@@ -182,7 +182,7 @@ public class ChordDHT extends GenericProtocol {
 	/*--------------------------------- Requests ---------------------------------------- */
 
 	private void uponLookupRequest(LookupRequest request, short protoID) {
-		logger.info("Received LookupRequest: {}", request.toString());
+		logger.info("Received LookupRequest: {}", new BigInteger(1, request.getPeerID()));
 
 		FindSuccessorMessage findSuccessorMessage = new FindSuccessorMessage(request.getMid(), thisNode.getHost(), thisNode.getHost(), new BigInteger(1, request.getPeerID()));
 		lookupsPendingResponse.put(findSuccessorMessage.getMid(), findSuccessorMessage);
