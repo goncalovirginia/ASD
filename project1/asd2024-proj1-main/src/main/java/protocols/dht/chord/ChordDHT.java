@@ -176,6 +176,7 @@ public class ChordDHT extends GenericProtocol {
 		}
 		//check the successor again - if it's still pointing to thisNode, it means the node is alone in the network, and should be paused again
 		if (fingers[0].getChordNode().getHost().equals(thisNode.getHost())) {
+			predecessorNode = thisNode;
 			setIsInitialized(false);
 		}
 	}
