@@ -20,7 +20,7 @@ RUN mkdir logs
 # copy files to support latency creation
 COPY ./inet200Latencies_x0.01.txt config/latencyMap.txt
 COPY ./ips200.txt config/ips.txt
-COPY ./setupTc.sh .
+COPY ./* .
 
 COPY ./babel_config.properties .
 COPY ./log4j2.xml .

@@ -10,7 +10,7 @@ import protocols.dht.chord.requests.LookupRequest;
 import protocols.point2point.messages.HelperNodeMessage;
 import protocols.point2point.messages.Point2PointAckMessage;
 import protocols.point2point.messages.Point2PointMessage;
-import protocols.point2point.notifications.DHTInitializedNotification;
+import protocols.dht.chord.notifications.DHTInitializedNotification;
 import protocols.point2point.notifications.Deliver;
 import protocols.point2point.requests.Send;
 import protocols.point2point.timers.ResendMessagesTimer;
@@ -65,9 +65,9 @@ public class Point2PointCommunicator extends GenericProtocol {
 		registerReplyHandler(LookupReply.REPLY_ID, this::uponLookupReply);
 
 		//register notification handlers
-		subscribeNotification(TCPChannelCreatedNotification.NOTIFICATION_ID, this::uponChannelCreated);
-		subscribeNotification(DHTInitializedNotification.NOTIFICATION_ID, this::uponDHTInitialized);
-		subscribeNotification(PeerDownNotification.NOTIFICATION_ID, this::uponPeerDown);
+		subscribeNotification(TCPChannelCreatedNotification.NOTIFICATION_ID, this::uponChannelCreatedNotification);
+		subscribeNotification(DHTInitializedNotification.NOTIFICATION_ID, this::uponDHTInitializedNotification);
+		subscribeNotification(PeerDownNotification.NOTIFICATION_ID, this::uponPeerDownNotification);
 
 		//register timer handlers
 		registerTimerHandler(ResendMessagesTimer.TIMER_ID, this::resendMessagesTimer);
@@ -173,7 +173,7 @@ public class Point2PointCommunicator extends GenericProtocol {
 	}
 
 	//Upon receiving the channelId from the DHT algorithm, register our own callbacks and serializers
-	private void uponChannelCreated(TCPChannelCreatedNotification notification, short sourceProto) {
+	private void uponChannelCreatedNotification(TCPChannelCreatedNotification notification, short sourceProto) {
 		logger.info("TCPChannelCreatedNotification: {}", notification.toString());
 
 		tcpChannelId = notification.getChannelId();
@@ -196,17 +196,18 @@ public class Point2PointCommunicator extends GenericProtocol {
 		}
 	}
 
-	private void uponDHTInitialized(DHTInitializedNotification notification, short sourceProto) {
+	private void uponDHTInitializedNotification(DHTInitializedNotification notification, short sourceProto) {
 		logger.info("DHT protocol initialized.");
 
-		isDHTInitialized = true;
+		if (!(isDHTInitialized = notification.isInitialized())) return;
+
 		for (Send pendingMessage : messagesPendingLookup) {
 			uponSendRequest(pendingMessage, PROTOCOL_ID);
 		}
 		messagesPendingLookup.clear();
 	}
 
-	private void uponPeerDown(PeerDownNotification notification, short sourceProto) {
+	private void uponPeerDownNotification(PeerDownNotification notification, short sourceProto) {
 		Set<HelperNodeMessage> helperNodeMessages = helperMessagesToSend.get(notification.getPeer());
 		if (helperNodeMessages == null) return;
 
@@ -220,6 +221,8 @@ public class Point2PointCommunicator extends GenericProtocol {
 
 	private void resendMessagesTimer(ResendMessagesTimer timer, long timerId) {
 		logger.info("helperTimer: {}", timerId);
+
+		if (!isDHTInitialized) return;
 
 		for (Point2PointMessage point2PointMessage : point2PointMessagesPendingAck.keySet()) {
 			openConnectionAndSendMessage(point2PointMessage, point2PointMessage.getDestination());

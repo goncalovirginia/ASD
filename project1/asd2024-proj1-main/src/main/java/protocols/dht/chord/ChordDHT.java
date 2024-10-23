@@ -11,7 +11,7 @@ import protocols.dht.chord.requests.LookupRequest;
 import protocols.dht.chord.timers.FixFingersTimer;
 import protocols.dht.chord.timers.RetryLookupsTimer;
 import protocols.dht.chord.timers.StabilizeTimer;
-import protocols.point2point.notifications.DHTInitializedNotification;
+import protocols.dht.chord.notifications.DHTInitializedNotification;
 import pt.unl.fct.di.novasys.babel.core.GenericProtocol;
 import pt.unl.fct.di.novasys.babel.exceptions.HandlerRegistrationException;
 import pt.unl.fct.di.novasys.babel.generic.ProtoMessage;
@@ -147,10 +147,9 @@ public class ChordDHT extends GenericProtocol {
 		sendMessage(protoMessage, host);
 	}
 
-	private void setInitialized() {
-		logger.info("Initialization complete: {} - {} - {}", predecessorNode.getHost(), thisNode.getHost(), fingers[0].getChordNode().getHost());
-		isInitialized = true;
-		triggerNotification(new DHTInitializedNotification());
+	private void setIsInitialized(boolean isInitialized) {
+		logger.info("Initialization state updated: {} | Direct Peers: {} -> [{}] -> {}", isInitialized, predecessorNode.getHost(), thisNode.getHost(), fingers[0].getChordNode().getHost());
+		triggerNotification(new DHTInitializedNotification(this.isInitialized = isInitialized));
 	}
 
 	private ChordNode closestPrecedingNode(BigInteger peerID) {
@@ -174,6 +173,9 @@ public class ChordDHT extends GenericProtocol {
 		}
 		if (fingers[0].getChordNode().equals(thisNode)) {
 			fingers[0].setChordNode(successorSuccessorNode);
+		}
+		if (fingers[0].getChordNode().equals(thisNode)) {
+			setIsInitialized(false);
 		}
 	}
 
@@ -220,7 +222,7 @@ public class ChordDHT extends GenericProtocol {
 		if (!isInitialized) {
 			predecessorNode = new ChordNode(foundSuccessorMessage.getSenderPeerID(), foundSuccessorMessage.getSenderHost());
 			fingers[0].setChordNode(new ChordNode(foundSuccessorMessage.getSuccessorPeerID(), foundSuccessorMessage.getSuccessorHost()));
-			setInitialized();
+			setIsInitialized(true);
 			return;
 		}
 		//used for fix fingers responses
@@ -269,10 +271,9 @@ public class ChordDHT extends GenericProtocol {
 			logger.info("Updated predecessor: {} -> {}", predecessorNode.getHost(), notifySuccessorMessage.getSender());
 			predecessorNode = new ChordNode(notifySuccessorMessage.getSenderPeerID(), notifySuccessorMessage.getSender());
 
-			//only applies to the network's first node
 			if (!isInitialized) {
 				fingers[0].setChordNode(predecessorNode);
-				setInitialized();
+				setIsInitialized(true);
 			}
 		}
 	}
