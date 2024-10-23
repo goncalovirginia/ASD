@@ -43,7 +43,7 @@ public class LookupReply extends ProtoReply {
 	}
 
 	public String toString() {
-		StringBuilder reply = new StringBuilder("LookupReply for " + this.getId() + " containing set (" + this.peers.size() + " elements):\n");
+		StringBuilder reply = new StringBuilder("LookupReply for key: " + this.key + " containing set (" + this.peers.size() + " elements):\n");
 		for (Pair<BigInteger, Host> p : this.peers) {
 			reply.append("\t").append(p.getRight()).append("\n");
 		}
