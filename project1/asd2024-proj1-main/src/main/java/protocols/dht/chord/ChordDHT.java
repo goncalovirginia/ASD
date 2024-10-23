@@ -166,15 +166,16 @@ public class ChordDHT extends GenericProtocol {
 		fixFingersPendingResponse.remove(foundSuccessorMessage.getMid()).setChordNode(newSuccessorNode);
 	}
 
-	//replaces the ChordNodes associated to the down peer (contained in their Fingers), with the next closest known ChordNode in the Finger table (or, thisNode, if none are known)
 	private void fixFingersFromDisconnectingNode(Host disconnectingHost) {
 		for (Finger finger : fingers) {
 			if (finger.getChordNode().getHost().equals(disconnectingHost)) finger.setChordNode(thisNode);
 		}
-		if (fingers[0].getChordNode().equals(thisNode)) {
+		//if the disconnectingHost was thisNode's successor, replace it with the successor's successor
+		if (fingers[0].getChordNode().getHost().equals(thisNode.getHost())) {
 			fingers[0].setChordNode(successorSuccessorNode);
 		}
-		if (fingers[0].getChordNode().equals(thisNode)) {
+		//check the successor again - if it's still pointing to thisNode, it means the node is alone in the network, and should be paused again
+		if (fingers[0].getChordNode().getHost().equals(thisNode.getHost())) {
 			setIsInitialized(false);
 		}
 	}

@@ -197,7 +197,7 @@ public class Point2PointCommunicator extends GenericProtocol {
 	}
 
 	private void uponDHTInitializedNotification(DHTInitializedNotification notification, short sourceProto) {
-		logger.info("DHT protocol initialized.");
+		logger.info("DHT initialization state updated: {}", notification.isInitialized());
 
 		if (!(isDHTInitialized = notification.isInitialized())) return;
 
