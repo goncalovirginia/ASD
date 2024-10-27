@@ -1,9 +1,6 @@
 package protocols.point2point.messages;
 
 import io.netty.buffer.ByteBuf;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
-import protocols.point2point.Point2PointCommunicator;
 import protocols.point2point.requests.Send;
 import pt.unl.fct.di.novasys.babel.generic.ProtoMessage;
 import pt.unl.fct.di.novasys.network.ISerializer;
@@ -11,8 +8,6 @@ import pt.unl.fct.di.novasys.network.data.Host;
 
 import java.io.IOException;
 import java.math.BigInteger;
-import java.util.Arrays;
-import java.util.HexFormat;
 import java.util.UUID;
 
 public class Point2PointMessage extends ProtoMessage {

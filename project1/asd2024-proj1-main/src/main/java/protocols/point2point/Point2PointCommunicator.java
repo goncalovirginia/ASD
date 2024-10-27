@@ -3,6 +3,7 @@ package protocols.point2point;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import protocols.dht.chord.notifications.DHTInitializedNotification;
 import protocols.dht.chord.notifications.PeerDownNotification;
 import protocols.dht.chord.notifications.TCPChannelCreatedNotification;
 import protocols.dht.chord.replies.LookupReply;
@@ -10,7 +11,6 @@ import protocols.dht.chord.requests.LookupRequest;
 import protocols.point2point.messages.HelperNodeMessage;
 import protocols.point2point.messages.Point2PointAckMessage;
 import protocols.point2point.messages.Point2PointMessage;
-import protocols.dht.chord.notifications.DHTInitializedNotification;
 import protocols.point2point.notifications.Deliver;
 import protocols.point2point.requests.Send;
 import protocols.point2point.timers.ResendMessagesTimer;
@@ -111,6 +111,7 @@ public class Point2PointCommunicator extends GenericProtocol {
 
 		triggerNotification(new Deliver(point2PointMessage));
 		receivedMessages.add(point2PointMessage.getMid());
+		openConnectionAndSendMessage(new Point2PointAckMessage(point2PointMessage), from);
 	}
 
 	private void uponHelperNodeMessage(HelperNodeMessage helperNodeMessage, Host from, short sourceProto, int channelId) {
