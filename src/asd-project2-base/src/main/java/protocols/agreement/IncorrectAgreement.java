@@ -121,6 +121,7 @@ public class IncorrectAgreement extends GenericProtocol {
             prepare_ok_count ++;
             if (prepare_ok_count >= (membership.size() / 2) + 1) {
                 leader = myself;
+                prepare_ok_count = 0;
                 triggerNotification(new DecidedNotification(msg.getInstance(), msg.getOpId(), msg.getOp()));
             }
         }
@@ -138,7 +139,8 @@ public class IncorrectAgreement extends GenericProtocol {
             prepare_ok_count = 0;
             proposer_seq_number = request.getInstance();
             PrepareMessage msg = new PrepareMessage(request.getInstance(), request.getOpId(), request.getOperation());
-            membership.forEach(h -> sendMessage(msg, h));
+            membership.forEach(h -> 
+                sendMessage(msg, h));
         } else {
             logger.info("waiting...");
             /* logger.debug("Received " + request);
