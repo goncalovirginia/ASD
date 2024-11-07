@@ -108,19 +108,18 @@ public class IncorrectAgreement extends GenericProtocol {
 
     private void uponPrepareMessage(PrepareMessage msg, Host host, short sourceProto, int channelId) {
         if(joinedInstance >= 0 ){
-            logger.info("OUT");
             if(msg.getInstance() > highest_prepare) {
-                logger.info("IN");
                 highest_prepare = msg.getInstance();
                 PrepareOKMessage prepareOK = new PrepareOKMessage(msg.getInstance());
                 sendMessage(prepareOK, host);
-                leader = host;
 
-                logger.info("I AM THIS MF {} AND THIS --> {} IS THE LEADER", myself, host);
-                //triggerNotification(new NewLeaderNotification(host));
+                if(!myself.equals(host)) {
+                    leader = host;
+                    triggerNotification(new NewLeaderNotification(host));
+                }
             }
         } else {
-            //TODO: above comments
+            //TODO: uponBroadcast above comments
         }
     }
 
@@ -130,9 +129,7 @@ public class IncorrectAgreement extends GenericProtocol {
             if (prepare_ok_count >= (membership.size() / 2) + 1) {
                 leader = myself;
                 prepare_ok_count = 0;
-                logger.info("I AM THE LEADER {}", myself);
                 triggerNotification(new NewLeaderNotification(myself));
-                //triggerNotification(new DecidedNotification(msg.getInstance(), msg.getOpId(), msg.getOp()));
             }
         }
     }
@@ -145,30 +142,24 @@ public class IncorrectAgreement extends GenericProtocol {
     }
 
     private void uponPrepareRequest(PrepareRequest request, short sourceProto) {
-        prepare_ok_count = 0;
+        prepare_ok_count = 0; //this probably needs to be an actual set, for the edge case mentioned in the slides, we'll see
         proposer_seq_number = request.getInstance() + joinedInstance;
         PrepareMessage msg = new PrepareMessage(proposer_seq_number);
-        membership.forEach(h -> 
-            sendMessage(msg, h));  
+        membership.forEach(h -> sendMessage(msg, h));  
     }
 
+    //NO. This has to be changed, it is not being called yet
+    //but the logic does not make sense for the current implementation
+    //Only the LEADER receives this, when he does, we send ACCEPT to everyone
+    //And Follow Plaxos Logic to replicate, straight forward.
     private void uponProposeRequest(ProposeRequest request, short sourceProto) {
         if (leader == null) {
             prepare_ok_count = 0;
             proposer_seq_number = request.getInstance();
             PrepareMessage msg = new PrepareMessage(request.getInstance());
-
-            logger.info(msg);
-            
-            membership.forEach(h -> 
-                sendMessage(msg, h));
+            membership.forEach(h -> sendMessage(msg, h));
         } else {
             logger.info("waiting...");
-            /* logger.debug("Received " + request);
-            BroadcastMessage msg = new BroadcastMessage(request.getInstance(), request.getOpId(), request.getOperation());
-            logger.debug("Sending to: " + membership);
-
-            membership.forEach(h -> sendMessage(msg, h)); */
         }
         
     }

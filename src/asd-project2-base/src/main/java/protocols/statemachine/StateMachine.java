@@ -155,11 +155,7 @@ public class StateMachine extends GenericProtocol {
         logger.debug("Received request: " + request);
         if (state == State.JOINING) {
             //Do something smart (like buffering the requests)
-        } else if (state == State.ACTIVE) {
-            //Also do something starter, we don't want an infinite number of instances active
-        	//Maybe you should modify what is it that you are proposing so that you remember that this
-        	//operation was issued by the application (and not an internal operation, check the uponDecidedNotification)
-            
+        } else if (state == State.ACTIVE) {            
             if (leader == null) {
                 pendingOrders.add(new ProposeRequest(nextInstance++, request.getOpId(), request.getOperation()));
                 sendMessage(new LeaderElectionMessage(), membership.get(0));
@@ -169,9 +165,6 @@ public class StateMachine extends GenericProtocol {
             } else {
                 sendMessage(new LeaderOrderMessage(nextInstance++, request.getOpId(), request.getOperation()), leader);
             }
-            
-/*             sendRequest(new ProposeRequest(nextInstance++, request.getOpId(), request.getOperation()),
-                    IncorrectAgreement.PROTOCOL_ID); */
         }
     }
 
@@ -188,9 +181,6 @@ public class StateMachine extends GenericProtocol {
         logger.debug("Received notification: " + notification);
         
         leader = notification.getLeader();
-
-        logger.info("I AM {} -- MY LEADER IS {}", self, leader);
-
     }
 
     /*--------------------------------- Messages ---------------------------------------- */
