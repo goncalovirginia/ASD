@@ -1,4 +1,4 @@
-package protocols.agreement.messages;
+package protocols.statemachine.messages;
 
 import io.netty.buffer.ByteBuf;
 import org.apache.commons.codec.binary.Hex;
@@ -11,15 +11,15 @@ import java.util.UUID;
  * This is here just as an example, your solution
  * probably needs to use different message types
  *************************************************/
-public class BroadcastMessage extends ProtoMessage {
+public class LeaderOrderMessage extends ProtoMessage {
 
-    public final static short MSG_ID = 199;
+    public final static short MSG_ID = 124;
 
     private final UUID opId;
     private final int instance;
     private final byte[] op;
 
-    public BroadcastMessage(int instance, UUID opId, byte[] op) {
+    public LeaderOrderMessage(int instance, UUID opId, byte[] op) {
         super(MSG_ID);
         this.instance = instance;
         this.op = op;
@@ -40,16 +40,16 @@ public class BroadcastMessage extends ProtoMessage {
 
     @Override
     public String toString() {
-        return "BroadcastMessage{" +
+        return "LeaderOrderMessage{" +
                 "opId=" + opId +
                 ", instance=" + instance +
                 ", op=" + Hex.encodeHexString(op) +
                 '}';
     }
 
-    public static ISerializer<BroadcastMessage> serializer = new ISerializer<BroadcastMessage>() {
+    public static ISerializer<LeaderOrderMessage> serializer = new ISerializer<LeaderOrderMessage>() {
         @Override
-        public void serialize(BroadcastMessage msg, ByteBuf out) {
+        public void serialize(LeaderOrderMessage msg, ByteBuf out) {
             out.writeInt(msg.instance);
             out.writeLong(msg.opId.getMostSignificantBits());
             out.writeLong(msg.opId.getLeastSignificantBits());
@@ -58,14 +58,14 @@ public class BroadcastMessage extends ProtoMessage {
         }
 
         @Override
-        public BroadcastMessage deserialize(ByteBuf in) {
+        public LeaderOrderMessage deserialize(ByteBuf in) {
             int instance = in.readInt();
             long highBytes = in.readLong();
             long lowBytes = in.readLong();
             UUID opId = new UUID(highBytes, lowBytes);
             byte[] op = new byte[in.readInt()];
             in.readBytes(op);
-            return new BroadcastMessage(instance, opId, op);
+            return new LeaderOrderMessage(instance, opId, op);
         }
     };
 

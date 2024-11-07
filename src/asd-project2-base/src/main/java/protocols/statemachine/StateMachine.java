@@ -1,6 +1,7 @@
 package protocols.statemachine;
 
 import protocols.agreement.notifications.JoinedNotification;
+import protocols.agreement.notifications.NewLeaderNotification;
 import pt.unl.fct.di.novasys.babel.core.GenericProtocol;
 import pt.unl.fct.di.novasys.babel.exceptions.HandlerRegistrationException;
 import pt.unl.fct.di.novasys.babel.generic.ProtoMessage;
@@ -10,8 +11,13 @@ import pt.unl.fct.di.novasys.network.data.Host;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import protocols.agreement.IncorrectAgreement;
+import protocols.agreement.messages.PrepareMessage;
+import protocols.agreement.messages.PrepareOKMessage;
+import protocols.statemachine.messages.LeaderElectionMessage;
+import protocols.statemachine.messages.LeaderOrderMessage;
 import protocols.statemachine.notifications.ChannelReadyNotification;
 import protocols.agreement.notifications.DecidedNotification;
+import protocols.agreement.requests.PrepareRequest;
 import protocols.agreement.requests.ProposeRequest;
 import protocols.statemachine.notifications.ExecuteNotification;
 import protocols.statemachine.requests.OrderRequest;
@@ -50,9 +56,14 @@ public class StateMachine extends GenericProtocol {
     private List<Host> membership;
     private int nextInstance;
 
+    private Host leader;
+
+    private List<ProposeRequest> pendingOrders;
+
     public StateMachine(Properties props) throws IOException, HandlerRegistrationException {
         super(PROTOCOL_NAME, PROTOCOL_ID);
         nextInstance = 0;
+        leader = null;
 
         String address = props.getProperty("address");
         String port = props.getProperty("p2p_port");
@@ -68,6 +79,13 @@ public class StateMachine extends GenericProtocol {
         channelProps.setProperty(TCPChannel.CONNECT_TIMEOUT_KEY, "1000");
         channelId = createChannel(TCPChannel.NAME, channelProps);
 
+        registerMessageSerializer(channelId, LeaderElectionMessage.MSG_ID, LeaderElectionMessage.serializer);
+        registerMessageSerializer(channelId, LeaderOrderMessage.MSG_ID, LeaderOrderMessage.serializer);
+
+        registerMessageHandler(channelId, LeaderElectionMessage.MSG_ID, this::uponLeaderElection, this::uponMsgFail);
+        registerMessageHandler(channelId, LeaderOrderMessage.MSG_ID, this::uponLeaderOrderMessage, this::uponMsgFail);
+        
+
         /*-------------------- Register Channel Events ------------------------------- */
         registerChannelEventHandler(channelId, OutConnectionDown.EVENT_ID, this::uponOutConnectionDown);
         registerChannelEventHandler(channelId, OutConnectionFailed.EVENT_ID, this::uponOutConnectionFailed);
@@ -80,12 +98,15 @@ public class StateMachine extends GenericProtocol {
 
         /*--------------------- Register Notification Handlers ----------------------------- */
         subscribeNotification(DecidedNotification.NOTIFICATION_ID, this::uponDecidedNotification);
+        subscribeNotification(NewLeaderNotification.NOTIFICATION_ID, this::uponNewLeaderNotification);
     }
 
     @Override
     public void init(Properties props) {
         //Inform the state machine protocol about the channel we created in the constructor
         triggerNotification(new ChannelReadyNotification(channelId, self));
+
+        pendingOrders = new LinkedList<>();
 
         String host = props.getProperty("initial_membership");
         String[] hosts = host.split(",");
@@ -117,6 +138,18 @@ public class StateMachine extends GenericProtocol {
 
     }
 
+    private void uponLeaderElection(LeaderElectionMessage msg, Host host, short sourceProto, int channelId) {
+        sendRequest(new PrepareRequest(nextInstance), IncorrectAgreement.PROTOCOL_ID);
+    }
+
+    private void uponLeaderOrderMessage(LeaderOrderMessage msg, Host host, short sourceProto, int channelId) {
+        logger.info("Received Leader Order Message: ");
+
+        //send
+        /* sendRequest(new ProposeRequest(msg.getInstance(), msg.getOpId(), msg.getOp()),
+                    IncorrectAgreement.PROTOCOL_ID);  */
+    }
+
     /*--------------------------------- Requests ---------------------------------------- */
     private void uponOrderRequest(OrderRequest request, short sourceProto) {
         logger.debug("Received request: " + request);
@@ -126,15 +159,20 @@ public class StateMachine extends GenericProtocol {
             //Also do something starter, we don't want an infinite number of instances active
         	//Maybe you should modify what is it that you are proposing so that you remember that this
         	//operation was issued by the application (and not an internal operation, check the uponDecidedNotification)
-            sendRequest(new ProposeRequest(nextInstance++, request.getOpId(), request.getOperation()),
-                    IncorrectAgreement.PROTOCOL_ID);
+            
+            if (leader == null) {
+                pendingOrders.add(new ProposeRequest(nextInstance++, request.getOpId(), request.getOperation()));
+                sendMessage(new LeaderElectionMessage(), membership.get(0));
+            } else if(self.equals(leader)) {
+                sendRequest(new ProposeRequest(nextInstance++, request.getOpId(), request.getOperation()),
+                    IncorrectAgreement.PROTOCOL_ID); 
+            } else {
+                sendMessage(new LeaderOrderMessage(nextInstance++, request.getOpId(), request.getOperation()), leader);
+            }
+            
+/*             sendRequest(new ProposeRequest(nextInstance++, request.getOpId(), request.getOperation()),
+                    IncorrectAgreement.PROTOCOL_ID); */
         }
-
-        //The leader should be the one that gets the Orders
-        //If there is a leader, just send request to leader --> ACCEPT --> ACCEPT_OK 
-        //If there is no leader, then Propose a leader.
-        //All State Machines should have a var that is the leader, after Propose, all replicas
-        //Send up a notification saying the new Leader of the SMR.
     }
 
     /*--------------------------------- Notifications ---------------------------------------- */
@@ -144,6 +182,15 @@ public class StateMachine extends GenericProtocol {
         //You should be careful and check if this operation if an application operation (and send it up)
         //or if this is an operations that was executed by the state machine itself (in which case you should execute)
         triggerNotification(new ExecuteNotification(notification.getOpId(), notification.getOperation()));
+    }
+
+    private void uponNewLeaderNotification(NewLeaderNotification notification, short sourceProto) {
+        logger.debug("Received notification: " + notification);
+        
+        leader = notification.getLeader();
+
+        logger.info("I AM {} -- MY LEADER IS {}", self, leader);
+
     }
 
     /*--------------------------------- Messages ---------------------------------------- */

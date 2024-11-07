@@ -4,7 +4,9 @@ import protocols.agreement.messages.BroadcastMessage;
 import protocols.agreement.messages.PrepareMessage;
 import protocols.agreement.messages.PrepareOKMessage;
 import protocols.agreement.notifications.JoinedNotification;
+import protocols.agreement.notifications.NewLeaderNotification;
 import protocols.agreement.requests.AddReplicaRequest;
+import protocols.agreement.requests.PrepareRequest;
 import protocols.agreement.requests.RemoveReplicaRequest;
 import pt.unl.fct.di.novasys.babel.core.GenericProtocol;
 import pt.unl.fct.di.novasys.babel.exceptions.HandlerRegistrationException;
@@ -55,6 +57,7 @@ public class IncorrectAgreement extends GenericProtocol {
         /*--------------------- Register Timer Handlers ----------------------------- */
 
         /*--------------------- Register Request Handlers ----------------------------- */
+        registerRequestHandler(PrepareRequest.REQUEST_ID, this::uponPrepareRequest);
         registerRequestHandler(ProposeRequest.REQUEST_ID, this::uponProposeRequest);
         registerRequestHandler(AddReplicaRequest.REQUEST_ID, this::uponAddReplica);
         registerRequestHandler(RemoveReplicaRequest.REQUEST_ID, this::uponRemoveReplica);
@@ -105,11 +108,16 @@ public class IncorrectAgreement extends GenericProtocol {
 
     private void uponPrepareMessage(PrepareMessage msg, Host host, short sourceProto, int channelId) {
         if(joinedInstance >= 0 ){
+            logger.info("OUT");
             if(msg.getInstance() > highest_prepare) {
+                logger.info("IN");
                 highest_prepare = msg.getInstance();
-                PrepareOKMessage prepareOK = new PrepareOKMessage(msg.getInstance(), msg.getOpId(), msg.getOp());
+                PrepareOKMessage prepareOK = new PrepareOKMessage(msg.getInstance());
                 sendMessage(prepareOK, host);
                 leader = host;
+
+                logger.info("I AM THIS MF {} AND THIS --> {} IS THE LEADER", myself, host);
+                //triggerNotification(new NewLeaderNotification(host));
             }
         } else {
             //TODO: above comments
@@ -117,12 +125,14 @@ public class IncorrectAgreement extends GenericProtocol {
     }
 
     private void uponPrepareOKMessage(PrepareOKMessage msg, Host host, short sourceProto, int channelId) {
-        if (proposer_seq_number == msg.getInstance()) {
+        if (proposer_seq_number == msg.getInstance() && msg.getInstance() == highest_prepare) {
             prepare_ok_count ++;
             if (prepare_ok_count >= (membership.size() / 2) + 1) {
                 leader = myself;
                 prepare_ok_count = 0;
-                triggerNotification(new DecidedNotification(msg.getInstance(), msg.getOpId(), msg.getOp()));
+                logger.info("I AM THE LEADER {}", myself);
+                triggerNotification(new NewLeaderNotification(myself));
+                //triggerNotification(new DecidedNotification(msg.getInstance(), msg.getOpId(), msg.getOp()));
             }
         }
     }
@@ -134,11 +144,22 @@ public class IncorrectAgreement extends GenericProtocol {
         logger.info("Agreement starting at instance {},  membership: {}", joinedInstance, membership);
     }
 
+    private void uponPrepareRequest(PrepareRequest request, short sourceProto) {
+        prepare_ok_count = 0;
+        proposer_seq_number = request.getInstance() + joinedInstance;
+        PrepareMessage msg = new PrepareMessage(proposer_seq_number);
+        membership.forEach(h -> 
+            sendMessage(msg, h));  
+    }
+
     private void uponProposeRequest(ProposeRequest request, short sourceProto) {
         if (leader == null) {
             prepare_ok_count = 0;
             proposer_seq_number = request.getInstance();
-            PrepareMessage msg = new PrepareMessage(request.getInstance(), request.getOpId(), request.getOperation());
+            PrepareMessage msg = new PrepareMessage(request.getInstance());
+
+            logger.info(msg);
+            
             membership.forEach(h -> 
                 sendMessage(msg, h));
         } else {
