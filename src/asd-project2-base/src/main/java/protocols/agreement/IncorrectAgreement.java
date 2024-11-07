@@ -109,6 +109,7 @@ public class IncorrectAgreement extends GenericProtocol {
                 highest_prepare = msg.getInstance();
                 PrepareOKMessage prepareOK = new PrepareOKMessage(msg.getInstance(), msg.getOpId(), msg.getOp());
                 sendMessage(prepareOK, host);
+                leader = host;
             }
         } else {
             //TODO: above comments
@@ -116,7 +117,7 @@ public class IncorrectAgreement extends GenericProtocol {
     }
 
     private void uponPrepareOKMessage(PrepareOKMessage msg, Host host, short sourceProto, int channelId) {
-        if (proposer_seq_number == msg.getInstance() && leader == null) {
+        if (proposer_seq_number == msg.getInstance()) {
             prepare_ok_count ++;
             if (prepare_ok_count >= (membership.size() / 2) + 1) {
                 leader = myself;
@@ -137,16 +138,14 @@ public class IncorrectAgreement extends GenericProtocol {
             prepare_ok_count = 0;
             proposer_seq_number = request.getInstance();
             PrepareMessage msg = new PrepareMessage(request.getInstance(), request.getOpId(), request.getOperation());
-            membership.forEach(h -> {
-                if (h != myself)
-                    sendMessage(msg, h);
-            });
+            membership.forEach(h -> sendMessage(msg, h));
         } else {
-            logger.debug("Received " + request);
+            logger.info("waiting...");
+            /* logger.debug("Received " + request);
             BroadcastMessage msg = new BroadcastMessage(request.getInstance(), request.getOpId(), request.getOperation());
             logger.debug("Sending to: " + membership);
 
-            membership.forEach(h -> sendMessage(msg, h));
+            membership.forEach(h -> sendMessage(msg, h)); */
         }
         
     }
