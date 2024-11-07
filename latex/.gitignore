@@ -1,0 +1,12 @@
+*.aux
+.DS_Store
+*.bbl
+*.blg
+*.log
+*.out
+*.synctex.gz
+*.pdf
+*.bst
+*.fdb*
+*.fls
+!lab01-notes.pdf
