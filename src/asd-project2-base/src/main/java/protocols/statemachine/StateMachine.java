@@ -42,7 +42,7 @@ import java.util.UUID;
  * Do not assume that any logic implemented here is correct, think for yourself!
  */
 public class StateMachine extends GenericProtocol {
-    
+
     private class OperationState {
         private final UUID opId;
         private final byte[] operation; 
@@ -154,30 +154,6 @@ public class StateMachine extends GenericProtocol {
             //You have to do something to join the system and know which instance you joined
             // (and copy the state of that instance)
         }
-
-    }
-
-    private void uponLeaderElection(LeaderElectionMessage msg, Host host, short sourceProto, int channelId) {
-        sendRequest(new PrepareRequest(nextInstance), PaxosAgreement.PROTOCOL_ID);
-    }
-
-    private void uponLeaderOrderMessage(LeaderOrderMessage msg, Host host, short sourceProto, int channelId) {
-        logger.info("Received Leader Order Message: ");
-        //the leader is not initialized(has not received majority yet)
-        if (leader == null) {
-            logger.info("Leader still waiting majority, pending...");
-            pendingOrders.add(new ProposeRequest(msg));
-            return;
-        } else if(pendingOrders.size() > 0) { //this is probably not needed
-            logger.info("NEEDED AFTER ALL?...");
-            pendingOrders.forEach(m -> 
-            sendRequest(new ProposeRequest(nextInstance++, m.getOpId(), m.getOperation()), PaxosAgreement.PROTOCOL_ID));
-        }
-
-        logger.info("Normal functioning");
-        sendRequest(new ProposeRequest(nextInstance++, msg.getOpId(), msg.getOp()),
-                    PaxosAgreement.PROTOCOL_ID); 
-        
     }
 
     /*--------------------------------- Requests ---------------------------------------- */
@@ -200,11 +176,12 @@ public class StateMachine extends GenericProtocol {
 
     /*--------------------------------- Notifications ---------------------------------------- */
     private void uponDecidedNotification(DecidedNotification notification, short sourceProto) {
-        logger.info("Received notification: " + notification);
         if(leader.equals(self)) {
+            logger.info("LEADER On Instance {} Received notification: {}", notification.getInstance(), notification.getOpId());
             machineStateOps.put(notification.getInstance(), new OperationState(notification.getOpId(), notification.getOperation()));
             triggerNotification(new ExecuteNotification(notification.getOpId(), notification.getOperation()));        
         } else {
+            logger.info("{} On Instance {} Received notification: {}", self, notification.getInstance(), notification.getOpId());
             machineStateOps.put(notification.getInstance(), new OperationState(notification.getOpId(), notification.getOperation()));
         }
     }
@@ -226,6 +203,28 @@ public class StateMachine extends GenericProtocol {
     }
 
     /*--------------------------------- Messages ---------------------------------------- */
+    private void uponLeaderElection(LeaderElectionMessage msg, Host host, short sourceProto, int channelId) {
+        sendRequest(new PrepareRequest(nextInstance), PaxosAgreement.PROTOCOL_ID);
+    }
+
+    private void uponLeaderOrderMessage(LeaderOrderMessage msg, Host host, short sourceProto, int channelId) {
+        logger.info("Received Leader Order Message: ");
+        //the leader is not initialized(has not received majority yet)
+        if (leader == null) {
+            logger.info("Leader still waiting majority, pending...");
+            pendingOrders.add(new ProposeRequest(msg));
+            return;
+        } else if(pendingOrders.size() > 0) { //this is probably not needed
+            logger.info("NEEDED AFTER ALL?...");
+            pendingOrders.forEach(m -> 
+            sendRequest(new ProposeRequest(nextInstance++, m.getOpId(), m.getOperation()), PaxosAgreement.PROTOCOL_ID));
+        }
+
+        logger.info("Normal functioning");
+        sendRequest(new ProposeRequest(nextInstance++, msg.getOpId(), msg.getOp()),
+                    PaxosAgreement.PROTOCOL_ID); 
+    }
+
     private void uponMsgFail(ProtoMessage msg, Host host, short destProto, Throwable throwable, int channelId) {
         //If a message fails to be sent, for whatever reason, log the message and the reason
         logger.error("Message {} to {} failed, reason: {}", msg, host, throwable);
