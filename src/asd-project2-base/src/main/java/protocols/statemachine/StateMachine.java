@@ -17,9 +17,13 @@ import protocols.statemachine.notifications.ChannelReadyNotification;
 import protocols.agreement.notifications.DecidedNotification;
 import protocols.agreement.requests.PrepareRequest;
 import protocols.agreement.requests.ProposeRequest;
+import protocols.app.HashApp;
+import protocols.app.requests.InstallStateRequest;
 import protocols.statemachine.notifications.ExecuteNotification;
 import protocols.statemachine.requests.OrderRequest;
 
+import java.io.ByteArrayOutputStream;
+import java.io.DataOutputStream;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
@@ -175,15 +179,40 @@ public class StateMachine extends GenericProtocol {
     }
 
     /*--------------------------------- Notifications ---------------------------------------- */
+    private byte[] createStateMessage(int executedOps, byte[] cumulativeHash) throws IOException {
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        DataOutputStream dos = new DataOutputStream(baos);
+
+        dos.writeInt(executedOps);
+        dos.writeInt(cumulativeHash.length);
+        dos.write(cumulativeHash);
+
+        dos.writeInt(machineStateOps.size());
+        for (Map.Entry<Integer, OperationState> entry : machineStateOps.entrySet()) {
+            OperationState state = entry.getValue();
+            dos.writeUTF(state.getOpId().toString()); 
+            dos.writeInt(state.getOperation().length); 
+            dos.write(state.getOperation()); 
+        }
+
+        return baos.toByteArray(); 
+    }
+    
     private void uponDecidedNotification(DecidedNotification notification, short sourceProto) {
+        machineStateOps.put(notification.getInstance(), new OperationState(notification.getOpId(), notification.getOperation()));
+        try {
+            byte[] stateMessage = createStateMessage(notification.getInstance(), notification.getOperation());
+            sendRequest(new InstallStateRequest(stateMessage), HashApp.PROTO_ID);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
         if(leader.equals(self)) {
             logger.info("LEADER On Instance {} Received notification: {}", notification.getInstance(), notification.getOpId());
-            machineStateOps.put(notification.getInstance(), new OperationState(notification.getOpId(), notification.getOperation()));
+            
             triggerNotification(new ExecuteNotification(notification.getOpId(), notification.getOperation()));        
-        } else {
+        } else
             logger.info("{} On Instance {} Received notification: {}", self, notification.getInstance(), notification.getOpId());
-            machineStateOps.put(notification.getInstance(), new OperationState(notification.getOpId(), notification.getOperation()));
-        }
     }
 
     private void uponNewLeaderNotification(NewLeaderNotification notification, short sourceProto) {
