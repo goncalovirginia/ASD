@@ -144,10 +144,21 @@ public class StateMachine extends GenericProtocol {
 
     private void uponLeaderOrderMessage(LeaderOrderMessage msg, Host host, short sourceProto, int channelId) {
         logger.info("Received Leader Order Message: ");
+        //the leader is not initialized(has not received majority yet)
+        if (leader == null) {
+            logger.info("Leader still waiting majority, pending...");
+            pendingOrders.add(new ProposeRequest(msg));
+            return;
+        } else if(pendingOrders.size() > 0) { //this is probably not needed
+            logger.info("NEEDED AFTER ALL...");
+            pendingOrders.forEach(m -> 
+            sendRequest(new ProposeRequest(nextInstance++, m.getOpId(), m.getOperation()), IncorrectAgreement.PROTOCOL_ID));
+        }
 
-        //send
-        /* sendRequest(new ProposeRequest(msg.getInstance(), msg.getOpId(), msg.getOp()),
-                    IncorrectAgreement.PROTOCOL_ID);  */
+        logger.info("Normal functioning");
+        sendRequest(new ProposeRequest(nextInstance++, msg.getOpId(), msg.getOp()),
+                    IncorrectAgreement.PROTOCOL_ID); 
+        
     }
 
     /*--------------------------------- Requests ---------------------------------------- */
@@ -171,16 +182,31 @@ public class StateMachine extends GenericProtocol {
     /*--------------------------------- Notifications ---------------------------------------- */
     private void uponDecidedNotification(DecidedNotification notification, short sourceProto) {
         logger.debug("Received notification: " + notification);
-        //Maybe we should make sure operations are executed in order?
+        if(leader.equals(self)) {
+            logger.info("LEADER ON INSTANCE {} WITH OP ID {}", notification.getInstance(), notification.getOpId());
+            triggerNotification(new ExecuteNotification(notification.getOpId(), notification.getOperation()));
+        } else
+            logger.info("DO NOTHING, I AM {} ON INSTANCE {} WITH OP ID {}", self, notification.getInstance(), notification.getOpId());        
+            //Maybe we should make sure operations are executed in order?
         //You should be careful and check if this operation if an application operation (and send it up)
         //or if this is an operations that was executed by the state machine itself (in which case you should execute)
-        triggerNotification(new ExecuteNotification(notification.getOpId(), notification.getOperation()));
+        
     }
 
     private void uponNewLeaderNotification(NewLeaderNotification notification, short sourceProto) {
         logger.debug("Received notification: " + notification);
         
         leader = notification.getLeader();
+        if (leader.equals(self)) {
+            logger.info("Leader, flushing");
+            pendingOrders.forEach(m -> 
+            sendRequest(new ProposeRequest(nextInstance++, m.getOpId(), m.getOperation()), IncorrectAgreement.PROTOCOL_ID));
+        } else {
+            logger.info("non leader yet");
+            pendingOrders.forEach(m -> 
+                sendMessage(new LeaderOrderMessage(m.getInstance(), m.getOpId(), m.getOperation()), leader));
+        }
+        pendingOrders = new LinkedList<>();
     }
 
     /*--------------------------------- Messages ---------------------------------------- */

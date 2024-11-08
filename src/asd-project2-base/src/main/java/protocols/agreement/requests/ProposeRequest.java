@@ -3,6 +3,8 @@ package protocols.agreement.requests;
 import pt.unl.fct.di.novasys.babel.generic.ProtoRequest;
 import org.apache.commons.codec.binary.Hex;
 
+import protocols.statemachine.messages.LeaderOrderMessage;
+
 import java.util.UUID;
 
 public class ProposeRequest extends ProtoRequest {
@@ -18,6 +20,13 @@ public class ProposeRequest extends ProtoRequest {
         this.instance = instance;
         this.opId = opId;
         this.operation = operation;
+    }
+
+    public ProposeRequest(LeaderOrderMessage msg) {
+        super(REQUEST_ID);
+        this.instance = msg.getInstance();
+        this.opId = msg.getOpId();
+        this.operation = msg.getOp();
     }
 
     public int getInstance() {

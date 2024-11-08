@@ -1,5 +1,7 @@
 package protocols.agreement;
 
+import protocols.agreement.messages.AcceptMessage;
+import protocols.agreement.messages.AcceptOKMessage;
 import protocols.agreement.messages.BroadcastMessage;
 import protocols.agreement.messages.PrepareMessage;
 import protocols.agreement.messages.PrepareOKMessage;
@@ -30,6 +32,32 @@ import java.util.*;
  */
 public class IncorrectAgreement extends GenericProtocol {
 
+    private static class AgreementInstanceState {
+        private int acceptOkCount;
+        private boolean decided;
+    
+        public AgreementInstanceState() {
+            this.acceptOkCount = 0;
+            this.decided = false;
+        }
+
+        public int getAcceptokCount() {
+            return acceptOkCount;
+        }
+
+        public void incrementAcceptCount() {
+            acceptOkCount ++;
+        }
+
+        public boolean decided() {
+            return decided;
+        }
+
+        public void decide() {
+            decided = true;
+        }
+    }
+
     private static final Logger logger = LogManager.getLogger(IncorrectAgreement.class);
 
     //Protocol information, to register in babel
@@ -37,23 +65,27 @@ public class IncorrectAgreement extends GenericProtocol {
     public final static String PROTOCOL_NAME = "EmptyAgreement";
 
     private Host myself;
-    private Host leader;
     private int joinedInstance;
     private int prepare_ok_count;
+    private int accept_ok_count;
     private int highest_prepare;
     private int proposer_seq_number;
     private List<Host> membership;
+    private boolean decided;
+
+    private Map<Integer, AgreementInstanceState> instanceStateMap; 
 
     public IncorrectAgreement(Properties props) throws IOException, HandlerRegistrationException {
         super(PROTOCOL_NAME, PROTOCOL_ID);
         joinedInstance = -1; //-1 means we have not yet joined the system
         membership = null;
-        leader = null;
         prepare_ok_count = 0;
+        accept_ok_count = 0;
         highest_prepare = -1;
         proposer_seq_number = -1;
 
-
+        decided = false;
+        instanceStateMap = new HashMap<>();
         /*--------------------- Register Timer Handlers ----------------------------- */
 
         /*--------------------- Register Request Handlers ----------------------------- */
@@ -85,11 +117,16 @@ public class IncorrectAgreement extends GenericProtocol {
         registerMessageSerializer(cId, PrepareMessage.MSG_ID, PrepareMessage.serializer);
         registerMessageSerializer(cId, PrepareOKMessage.MSG_ID, PrepareOKMessage.serializer);
 
+        registerMessageSerializer(cId, AcceptMessage.MSG_ID, AcceptMessage.serializer);
+        registerMessageSerializer(cId, AcceptOKMessage.MSG_ID, AcceptOKMessage.serializer);
+
         /*---------------------- Register Message Handlers -------------------------- */
         try {
               registerMessageHandler(cId, BroadcastMessage.MSG_ID, this::uponBroadcastMessage, this::uponMsgFail);
               registerMessageHandler(cId, PrepareMessage.MSG_ID, this::uponPrepareMessage, this::uponMsgFail);
               registerMessageHandler(cId, PrepareOKMessage.MSG_ID, this::uponPrepareOKMessage, this::uponMsgFail);
+              registerMessageHandler(cId, AcceptMessage.MSG_ID, this::uponAcceptMessage, this::uponMsgFail);
+              registerMessageHandler(cId, AcceptOKMessage.MSG_ID, this::uponAcceptOKMessage, this::uponMsgFail);
         } catch (HandlerRegistrationException e) {
             throw new AssertionError("Error registering message handler.", e);
         }
@@ -106,6 +143,13 @@ public class IncorrectAgreement extends GenericProtocol {
         }
     }
 
+    private void uponPrepareRequest(PrepareRequest request, short sourceProto) {
+        prepare_ok_count = 0; //this probably needs to be an actual set, for the edge case mentioned in the slides, we'll see
+        proposer_seq_number = request.getInstance() + joinedInstance;
+        PrepareMessage msg = new PrepareMessage(proposer_seq_number);
+        membership.forEach(h -> sendMessage(msg, h));  
+    }
+
     private void uponPrepareMessage(PrepareMessage msg, Host host, short sourceProto, int channelId) {
         if(joinedInstance >= 0 ){
             if(msg.getInstance() > highest_prepare) {
@@ -114,7 +158,6 @@ public class IncorrectAgreement extends GenericProtocol {
                 sendMessage(prepareOK, host);
 
                 if(!myself.equals(host)) {
-                    leader = host;
                     triggerNotification(new NewLeaderNotification(host));
                 }
             }
@@ -124,10 +167,9 @@ public class IncorrectAgreement extends GenericProtocol {
     }
 
     private void uponPrepareOKMessage(PrepareOKMessage msg, Host host, short sourceProto, int channelId) {
-        if (proposer_seq_number == msg.getInstance() && msg.getInstance() == highest_prepare) {
+        if (proposer_seq_number == msg.getInstance()) {
             prepare_ok_count ++;
             if (prepare_ok_count >= (membership.size() / 2) + 1) {
-                leader = myself;
                 prepare_ok_count = 0;
                 triggerNotification(new NewLeaderNotification(myself));
             }
@@ -141,28 +183,31 @@ public class IncorrectAgreement extends GenericProtocol {
         logger.info("Agreement starting at instance {},  membership: {}", joinedInstance, membership);
     }
 
-    private void uponPrepareRequest(PrepareRequest request, short sourceProto) {
-        prepare_ok_count = 0; //this probably needs to be an actual set, for the edge case mentioned in the slides, we'll see
-        proposer_seq_number = request.getInstance() + joinedInstance;
-        PrepareMessage msg = new PrepareMessage(proposer_seq_number);
-        membership.forEach(h -> sendMessage(msg, h));  
+    private void uponProposeRequest(ProposeRequest request, short sourceProto) {
+        instanceStateMap.putIfAbsent(request.getInstance(), new AgreementInstanceState());
+        AcceptMessage msg = new AcceptMessage(request.getInstance(), request.getOpId(), request.getOperation());
+        membership.forEach(h -> sendMessage(msg, h));          
     }
 
-    //NO. This has to be changed, it is not being called yet
-    //but the logic does not make sense for the current implementation
-    //Only the LEADER receives this, when he does, we send ACCEPT to everyone
-    //And Follow Plaxos Logic to replicate, straight forward.
-    private void uponProposeRequest(ProposeRequest request, short sourceProto) {
-        if (leader == null) {
-            prepare_ok_count = 0;
-            proposer_seq_number = request.getInstance();
-            PrepareMessage msg = new PrepareMessage(request.getInstance());
-            membership.forEach(h -> sendMessage(msg, h));
-        } else {
-            logger.info("waiting...");
-        }
+    private void uponAcceptMessage(AcceptMessage msg, Host host, short sourceProto, int channelId) {        
+        if (!host.equals(myself))
+            triggerNotification(new DecidedNotification(msg.getInstance(), msg.getOpId(), msg.getOp()));
         
+        AcceptOKMessage acceptOK = new AcceptOKMessage(msg);
+        sendMessage(acceptOK, host);
     }
+
+    private void uponAcceptOKMessage(AcceptOKMessage msg, Host host, short sourceProto, int channelId) {
+        AgreementInstanceState state = instanceStateMap.get(msg.getInstance());
+        if (state != null) {
+            state.incrementAcceptCount();
+            if (state.getAcceptokCount() >= (membership.size() / 2) + 1 && !state.decided()) {
+                state.decide();
+                triggerNotification(new DecidedNotification(msg.getInstance(), msg.getOpId(), msg.getOp()));
+            }
+        }
+    }
+
     private void uponAddReplica(AddReplicaRequest request, short sourceProto) {
         logger.debug("Received " + request);
         //The AddReplicaRequest contains an "instance" field, which we ignore in this incorrect protocol.
