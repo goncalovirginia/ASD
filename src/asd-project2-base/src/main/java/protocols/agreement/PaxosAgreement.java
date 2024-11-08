@@ -23,13 +23,6 @@ import protocols.agreement.requests.ProposeRequest;
 import java.io.IOException;
 import java.util.*;
 
-/**
- * This is NOT a correct agreement protocol (it is actually a VERY wrong one)
- * This is simply an example of things you can do, and can be used as a starting point.
- *
- * You are free to change/delete ANYTHING in this class, including its fields.
- * Do not assume that any logic implemented here is correct, think for yourself!
- */
 public class PaxosAgreement extends GenericProtocol {
 
     private static class AgreementInstanceState {
@@ -109,10 +102,8 @@ public class PaxosAgreement extends GenericProtocol {
         registerSharedChannel(cId);
         /*---------------------- Register Message Serializers ---------------------- */
         registerMessageSerializer(cId, BroadcastMessage.MSG_ID, BroadcastMessage.serializer);
-
         registerMessageSerializer(cId, PrepareMessage.MSG_ID, PrepareMessage.serializer);
         registerMessageSerializer(cId, PrepareOKMessage.MSG_ID, PrepareOKMessage.serializer);
-
         registerMessageSerializer(cId, AcceptMessage.MSG_ID, AcceptMessage.serializer);
         registerMessageSerializer(cId, AcceptOKMessage.MSG_ID, AcceptOKMessage.serializer);
 
@@ -129,6 +120,7 @@ public class PaxosAgreement extends GenericProtocol {
 
     }
 
+    //TO DELETE AFTER DEALING WITH COMMENTS
     private void uponBroadcastMessage(BroadcastMessage msg, Host host, short sourceProto, int channelId) {
         if(joinedInstance >= 0 ){
             //Obviously your agreement protocols will not decide things as soon as you receive the first message
@@ -174,6 +166,8 @@ public class PaxosAgreement extends GenericProtocol {
 
     private void uponJoinedNotification(JoinedNotification notification, short sourceProto) {
         //We joined the system and can now start doing things
+        //The joining instances are sequential, the initial membership is 1,2,3,etc...
+        //so in the joining proccess, we should take that into account.
         joinedInstance = notification.getJoinInstance();
         membership = new LinkedList<>(notification.getMembership());
         logger.info("Agreement starting at instance {},  membership: {}", joinedInstance, membership);
@@ -203,7 +197,7 @@ public class PaxosAgreement extends GenericProtocol {
             }
         }
     }
-
+    
     private void uponAddReplica(AddReplicaRequest request, short sourceProto) {
         logger.debug("Received " + request);
         //The AddReplicaRequest contains an "instance" field, which we ignore in this incorrect protocol.

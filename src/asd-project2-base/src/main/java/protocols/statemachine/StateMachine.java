@@ -28,7 +28,6 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
-import java.util.TreeMap;
 import java.util.UUID;
 
 /**
@@ -43,6 +42,7 @@ import java.util.UUID;
  * Do not assume that any logic implemented here is correct, think for yourself!
  */
 public class StateMachine extends GenericProtocol {
+    
     private class OperationState {
         private final UUID opId;
         private final byte[] operation; 
@@ -200,20 +200,13 @@ public class StateMachine extends GenericProtocol {
 
     /*--------------------------------- Notifications ---------------------------------------- */
     private void uponDecidedNotification(DecidedNotification notification, short sourceProto) {
-        logger.debug("Received notification: " + notification);
+        logger.info("Received notification: " + notification);
         if(leader.equals(self)) {
-            logger.info("LEADER ON INSTANCE {} WITH OP ID {}", notification.getInstance(), notification.getOpId());
             machineStateOps.put(notification.getInstance(), new OperationState(notification.getOpId(), notification.getOperation()));
             triggerNotification(new ExecuteNotification(notification.getOpId(), notification.getOperation()));        
         } else {
             machineStateOps.put(notification.getInstance(), new OperationState(notification.getOpId(), notification.getOperation()));
-            logger.info("DO NOTHING, I AM {} ON INSTANCE {} WITH OP ID {}", self, notification.getInstance(), notification.getOpId());      
         }
-              
-            //Maybe we should make sure operations are executed in order?
-        //You should be careful and check if this operation if an application operation (and send it up)
-        //or if this is an operations that was executed by the state machine itself (in which case you should execute)
-        
     }
 
     private void uponNewLeaderNotification(NewLeaderNotification notification, short sourceProto) {
