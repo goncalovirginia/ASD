@@ -10,7 +10,7 @@ import pt.unl.fct.di.novasys.channel.tcp.events.*;
 import pt.unl.fct.di.novasys.network.data.Host;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import protocols.agreement.IncorrectAgreement;
+import protocols.agreement.PaxosAgreement;
 import protocols.statemachine.messages.LeaderElectionMessage;
 import protocols.statemachine.messages.LeaderOrderMessage;
 import protocols.statemachine.notifications.ChannelReadyNotification;
@@ -137,7 +137,7 @@ public class StateMachine extends GenericProtocol {
     }
 
     private void uponLeaderElection(LeaderElectionMessage msg, Host host, short sourceProto, int channelId) {
-        sendRequest(new PrepareRequest(nextInstance), IncorrectAgreement.PROTOCOL_ID);
+        sendRequest(new PrepareRequest(nextInstance), PaxosAgreement.PROTOCOL_ID);
     }
 
     private void uponLeaderOrderMessage(LeaderOrderMessage msg, Host host, short sourceProto, int channelId) {
@@ -150,12 +150,12 @@ public class StateMachine extends GenericProtocol {
         } else if(pendingOrders.size() > 0) { //this is probably not needed
             logger.info("NEEDED AFTER ALL?...");
             pendingOrders.forEach(m -> 
-            sendRequest(new ProposeRequest(nextInstance++, m.getOpId(), m.getOperation()), IncorrectAgreement.PROTOCOL_ID));
+            sendRequest(new ProposeRequest(nextInstance++, m.getOpId(), m.getOperation()), PaxosAgreement.PROTOCOL_ID));
         }
 
         logger.info("Normal functioning");
         sendRequest(new ProposeRequest(nextInstance++, msg.getOpId(), msg.getOp()),
-                    IncorrectAgreement.PROTOCOL_ID); 
+                    PaxosAgreement.PROTOCOL_ID); 
         
     }
 
@@ -170,7 +170,7 @@ public class StateMachine extends GenericProtocol {
                 sendMessage(new LeaderElectionMessage(), membership.get(0));
             } else if(self.equals(leader)) {
                 sendRequest(new ProposeRequest(nextInstance++, request.getOpId(), request.getOperation()),
-                    IncorrectAgreement.PROTOCOL_ID); 
+                    PaxosAgreement.PROTOCOL_ID); 
             } else {
                 sendMessage(new LeaderOrderMessage(nextInstance++, request.getOpId(), request.getOperation()), leader);
             }
@@ -198,7 +198,7 @@ public class StateMachine extends GenericProtocol {
         if (leader.equals(self)) {
             logger.info("Leader, flushing");
             pendingOrders.forEach(m -> 
-            sendRequest(new ProposeRequest(nextInstance++, m.getOpId(), m.getOperation()), IncorrectAgreement.PROTOCOL_ID));
+            sendRequest(new ProposeRequest(nextInstance++, m.getOpId(), m.getOperation()), PaxosAgreement.PROTOCOL_ID));
         } else {
             logger.info("non leader yet");
             pendingOrders.forEach(m -> 

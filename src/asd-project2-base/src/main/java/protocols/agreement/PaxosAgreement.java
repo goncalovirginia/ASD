@@ -30,7 +30,7 @@ import java.util.*;
  * You are free to change/delete ANYTHING in this class, including its fields.
  * Do not assume that any logic implemented here is correct, think for yourself!
  */
-public class IncorrectAgreement extends GenericProtocol {
+public class PaxosAgreement extends GenericProtocol {
 
     private static class AgreementInstanceState {
         private int acceptOkCount;
@@ -58,11 +58,11 @@ public class IncorrectAgreement extends GenericProtocol {
         }
     }
 
-    private static final Logger logger = LogManager.getLogger(IncorrectAgreement.class);
+    private static final Logger logger = LogManager.getLogger(PaxosAgreement.class);
 
     //Protocol information, to register in babel
     public final static short PROTOCOL_ID = 100;
-    public final static String PROTOCOL_NAME = "EmptyAgreement";
+    public final static String PROTOCOL_NAME = "Agreement";
 
     private Host myself;
     private int joinedInstance;
@@ -73,7 +73,7 @@ public class IncorrectAgreement extends GenericProtocol {
 
     private Map<Integer, AgreementInstanceState> instanceStateMap; 
 
-    public IncorrectAgreement(Properties props) throws IOException, HandlerRegistrationException {
+    public PaxosAgreement(Properties props) throws IOException, HandlerRegistrationException {
         super(PROTOCOL_NAME, PROTOCOL_ID);
         joinedInstance = -1; //-1 means we have not yet joined the system
         membership = null;

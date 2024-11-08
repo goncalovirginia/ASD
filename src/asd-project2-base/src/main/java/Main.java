@@ -3,7 +3,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 //import protocols.abd.ABD;
-import protocols.agreement.IncorrectAgreement;
+import protocols.agreement.PaxosAgreement;
 import protocols.app.HashApp;
 import protocols.app.HashApp.ReplicationStrategy;
 import protocols.statemachine.StateMachine;
@@ -49,7 +49,7 @@ public class Main {
 		HashApp hashApp = new HashApp(props);
 		StateMachine sm  = null;
 		//ABD abd = null;
-		IncorrectAgreement agreement = null;
+		PaxosAgreement agreement = null;
 		
 		//Register applications in babel
 		babel.registerProtocol(hashApp);
@@ -60,7 +60,7 @@ public class Main {
 			// StateMachine Protocol
 			sm = new StateMachine(props);
 			// Agreement Protocol
-			agreement = new IncorrectAgreement(props);
+			agreement = new PaxosAgreement(props);
 			babel.registerProtocol(sm);
 			babel.registerProtocol(agreement);
 		} else {
