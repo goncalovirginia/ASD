@@ -11,8 +11,6 @@ import pt.unl.fct.di.novasys.network.data.Host;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import protocols.agreement.IncorrectAgreement;
-import protocols.agreement.messages.PrepareMessage;
-import protocols.agreement.messages.PrepareOKMessage;
 import protocols.statemachine.messages.LeaderElectionMessage;
 import protocols.statemachine.messages.LeaderOrderMessage;
 import protocols.statemachine.notifications.ChannelReadyNotification;
@@ -150,7 +148,7 @@ public class StateMachine extends GenericProtocol {
             pendingOrders.add(new ProposeRequest(msg));
             return;
         } else if(pendingOrders.size() > 0) { //this is probably not needed
-            logger.info("NEEDED AFTER ALL...");
+            logger.info("NEEDED AFTER ALL?...");
             pendingOrders.forEach(m -> 
             sendRequest(new ProposeRequest(nextInstance++, m.getOpId(), m.getOperation()), IncorrectAgreement.PROTOCOL_ID));
         }

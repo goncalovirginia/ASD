@@ -1,1 +1,3 @@
-2024-11-08 00:47:48:058 0 sec: 0 operations; est completion in 0 second 
+2024-11-08 01:10:05:194 0 sec: 0 operations; est completion in 0 second 
+2024-11-08 01:10:10:171 5 sec: 452 operations; 90.38 current ops/sec; est completion in 55 minutes [UPDATE AverageLatency(us)=2217.43] 
+2024-11-08 01:10:15:178 10 sec: 452 operations; 0 current ops/sec; est completion in 1 hour 50 minutes  

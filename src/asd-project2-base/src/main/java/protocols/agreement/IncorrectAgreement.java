@@ -67,11 +67,9 @@ public class IncorrectAgreement extends GenericProtocol {
     private Host myself;
     private int joinedInstance;
     private int prepare_ok_count;
-    private int accept_ok_count;
     private int highest_prepare;
     private int proposer_seq_number;
     private List<Host> membership;
-    private boolean decided;
 
     private Map<Integer, AgreementInstanceState> instanceStateMap; 
 
@@ -80,11 +78,9 @@ public class IncorrectAgreement extends GenericProtocol {
         joinedInstance = -1; //-1 means we have not yet joined the system
         membership = null;
         prepare_ok_count = 0;
-        accept_ok_count = 0;
         highest_prepare = -1;
         proposer_seq_number = -1;
 
-        decided = false;
         instanceStateMap = new HashMap<>();
         /*--------------------- Register Timer Handlers ----------------------------- */
 
