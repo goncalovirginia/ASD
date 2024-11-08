@@ -191,7 +191,7 @@ public class HashApp extends GenericProtocol {
 			Pair<Host, Long> pair = clientIdMapper.remove(not.getOpId());
 			
 			if (pair != null) {
-				logger.info("Generating response to the client: instance - {}, opId - {}", executedOps, not.getOpId());
+				logger.info("Generating response to the client: instance - {}, opId - {}", pair.getRight(), not.getOpId());
 				//Generate a response to the client
 				ResponseMessage resp;
 				if (op.getOpType() == RequestMessage.WRITE)

@@ -199,6 +199,8 @@ public class StateMachine extends GenericProtocol {
     }
     
     private void uponDecidedNotification(DecidedNotification notification, short sourceProto) {
+        logger.info("{} On Instance {} Received notification: {}", leader.equals(self) ? "LEADER" : self, notification.getInstance(), notification.getOpId());
+        
         machineStateOps.put(notification.getInstance(), new OperationState(notification.getOpId(), notification.getOperation()));
         try {
             byte[] stateMessage = createStateMessage(notification.getInstance(), notification.getOperation());
@@ -207,12 +209,9 @@ public class StateMachine extends GenericProtocol {
             e.printStackTrace();
         }
 
-        if(leader.equals(self)) {
-            logger.info("LEADER On Instance {} Received notification: {}", notification.getInstance(), notification.getOpId());
-            
+        if(leader.equals(self)) {            
             triggerNotification(new ExecuteNotification(notification.getOpId(), notification.getOperation()));        
-        } else
-            logger.info("{} On Instance {} Received notification: {}", self, notification.getInstance(), notification.getOpId());
+        }   
     }
 
     private void uponNewLeaderNotification(NewLeaderNotification notification, short sourceProto) {
