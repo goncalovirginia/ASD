@@ -23,9 +23,13 @@ import protocols.statemachine.requests.OrderRequest;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
+import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 import java.util.Properties;
+import java.util.TreeMap;
+import java.util.UUID;
 
 /**
  * This is NOT fully functional StateMachine implementation.
@@ -39,6 +43,24 @@ import java.util.Properties;
  * Do not assume that any logic implemented here is correct, think for yourself!
  */
 public class StateMachine extends GenericProtocol {
+    private class OperationState {
+        private final UUID opId;
+        private final byte[] operation; 
+    
+        public OperationState(UUID opId, byte[] operation) {
+            this.opId = opId;
+            this.operation = operation;
+        }
+    
+        public UUID getOpId() {
+            return opId;
+        }
+    
+        public byte[] getOperation() {
+            return operation;
+        }
+    }
+
     private static final Logger logger = LogManager.getLogger(StateMachine.class);
 
     private enum State {JOINING, ACTIVE}
@@ -49,13 +71,11 @@ public class StateMachine extends GenericProtocol {
 
     private final Host self;     //My own address/port
     private final int channelId; //Id of the created channel
-
     private State state;
     private List<Host> membership;
     private int nextInstance;
-
     private Host leader;
-
+    private Map<Integer, OperationState> machineStateOps;
     private List<ProposeRequest> pendingOrders;
 
     public StateMachine(Properties props) throws IOException, HandlerRegistrationException {
@@ -105,6 +125,7 @@ public class StateMachine extends GenericProtocol {
         triggerNotification(new ChannelReadyNotification(channelId, self));
 
         pendingOrders = new LinkedList<>();
+        machineStateOps = new HashMap<>();
 
         String host = props.getProperty("initial_membership");
         String[] hosts = host.split(",");
@@ -182,9 +203,13 @@ public class StateMachine extends GenericProtocol {
         logger.debug("Received notification: " + notification);
         if(leader.equals(self)) {
             logger.info("LEADER ON INSTANCE {} WITH OP ID {}", notification.getInstance(), notification.getOpId());
-            triggerNotification(new ExecuteNotification(notification.getOpId(), notification.getOperation()));
-        } else
-            logger.info("DO NOTHING, I AM {} ON INSTANCE {} WITH OP ID {}", self, notification.getInstance(), notification.getOpId());        
+            machineStateOps.put(notification.getInstance(), new OperationState(notification.getOpId(), notification.getOperation()));
+            triggerNotification(new ExecuteNotification(notification.getOpId(), notification.getOperation()));        
+        } else {
+            machineStateOps.put(notification.getInstance(), new OperationState(notification.getOpId(), notification.getOperation()));
+            logger.info("DO NOTHING, I AM {} ON INSTANCE {} WITH OP ID {}", self, notification.getInstance(), notification.getOpId());      
+        }
+              
             //Maybe we should make sure operations are executed in order?
         //You should be careful and check if this operation if an application operation (and send it up)
         //or if this is an operations that was executed by the state machine itself (in which case you should execute)
