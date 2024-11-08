@@ -141,6 +141,7 @@ public class HashApp extends GenericProtocol {
 
 	private void uponRequestMessage(RequestMessage msg, Host host, short sourceProto, int channelId) {
 		logger.debug("Request received: " + msg + " from " + host);
+		logger.info("requesting...");
 		UUID opUUID = UUID.randomUUID();
 		clientIdMapper.put(opUUID, Pair.of(host, msg.getOpId()));
 		if(strategy == ReplicationStrategy.SMR) {
@@ -190,6 +191,7 @@ public class HashApp extends GenericProtocol {
 			Pair<Host, Long> pair = clientIdMapper.remove(not.getOpId());
 			
 			if (pair != null) {
+				logger.info("Generating response to the client: instance - {}, opId - {}", executedOps, not.getOpId());
 				//Generate a response to the client
 				ResponseMessage resp;
 				if (op.getOpType() == RequestMessage.WRITE)
