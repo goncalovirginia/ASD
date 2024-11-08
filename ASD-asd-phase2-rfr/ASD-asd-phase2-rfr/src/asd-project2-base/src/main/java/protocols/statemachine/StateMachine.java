@@ -202,13 +202,13 @@ public class StateMachine extends GenericProtocol {
         logger.info("{} On Instance {} Received notification: {}", leader.equals(self) ? "LEADER" : self, notification.getInstance(), notification.getOpId());
         
         machineStateOps.put(notification.getInstance(), new OperationState(notification.getOpId(), notification.getOperation()));
-        try {
+/*       try { FOR JOIN
             byte[] stateMessage = createStateMessage(notification.getInstance(), notification.getOperation());
             sendRequest(new InstallStateRequest(stateMessage), HashApp.PROTO_ID);
         } catch (IOException e) {
             e.printStackTrace();
         }
-
+*/
         if(leader.equals(self)) {            
             triggerNotification(new ExecuteNotification(notification.getOpId(), notification.getOperation()));        
         }   
