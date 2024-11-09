@@ -1,6 +1,7 @@
 package protocols.statemachine;
 
 import protocols.agreement.notifications.JoinedNotification;
+import protocols.agreement.notifications.MembershipChangedNotification;
 import protocols.agreement.notifications.NewLeaderNotification;
 import pt.unl.fct.di.novasys.babel.core.GenericProtocol;
 import pt.unl.fct.di.novasys.babel.exceptions.HandlerRegistrationException;
@@ -11,13 +12,18 @@ import pt.unl.fct.di.novasys.network.data.Host;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import protocols.agreement.PaxosAgreement;
+import protocols.statemachine.messages.AddReplicaMessage;
 import protocols.statemachine.messages.LeaderElectionMessage;
 import protocols.statemachine.messages.LeaderOrderMessage;
+import protocols.statemachine.messages.ReplicaAddedMessage;
 import protocols.statemachine.notifications.ChannelReadyNotification;
 import protocols.agreement.notifications.DecidedNotification;
+import protocols.agreement.requests.AddReplicaRequest;
 import protocols.agreement.requests.PrepareRequest;
 import protocols.agreement.requests.ProposeRequest;
 import protocols.app.HashApp;
+import protocols.app.requests.CurrentStateReply;
+import protocols.app.requests.CurrentStateRequest;
 import protocols.app.requests.InstallStateRequest;
 import protocols.statemachine.notifications.ExecuteNotification;
 import protocols.statemachine.requests.OrderRequest;
@@ -25,6 +31,7 @@ import protocols.statemachine.requests.OrderRequest;
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
+import java.math.BigInteger;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.util.HashMap;
@@ -103,10 +110,14 @@ public class StateMachine extends GenericProtocol {
 
         registerMessageSerializer(channelId, LeaderElectionMessage.MSG_ID, LeaderElectionMessage.serializer);
         registerMessageSerializer(channelId, LeaderOrderMessage.MSG_ID, LeaderOrderMessage.serializer);
+        registerMessageSerializer(channelId, AddReplicaMessage.MSG_ID, AddReplicaMessage.serializer);
+        registerMessageSerializer(channelId, ReplicaAddedMessage.MSG_ID, ReplicaAddedMessage.serializer);
 
         registerMessageHandler(channelId, LeaderElectionMessage.MSG_ID, this::uponLeaderElection, this::uponMsgFail);
         registerMessageHandler(channelId, LeaderOrderMessage.MSG_ID, this::uponLeaderOrderMessage, this::uponMsgFail);
-        
+        registerMessageHandler(channelId, AddReplicaMessage.MSG_ID, this::uponAddReplicaMessage, this::uponMsgFail);
+        registerMessageHandler(channelId, ReplicaAddedMessage.MSG_ID, this::uponReplicaAddedMessage, this::uponMsgFail);
+
 
         /*-------------------- Register Channel Events ------------------------------- */
         registerChannelEventHandler(channelId, OutConnectionDown.EVENT_ID, this::uponOutConnectionDown);
@@ -117,10 +128,12 @@ public class StateMachine extends GenericProtocol {
 
         /*--------------------- Register Request Handlers ----------------------------- */
         registerRequestHandler(OrderRequest.REQUEST_ID, this::uponOrderRequest);
+        registerReplyHandler(CurrentStateReply.REQUEST_ID, this::uponCurrentStateReply);
 
         /*--------------------- Register Notification Handlers ----------------------------- */
         subscribeNotification(DecidedNotification.NOTIFICATION_ID, this::uponDecidedNotification);
         subscribeNotification(NewLeaderNotification.NOTIFICATION_ID, this::uponNewLeaderNotification);
+        subscribeNotification(MembershipChangedNotification.NOTIFICATION_ID, this::uponMembershipChangeNotification);
     }
 
     @Override
@@ -155,6 +168,20 @@ public class StateMachine extends GenericProtocol {
         } else {
             state = State.JOINING;
             logger.info("Starting in JOINING as I am not part of initial membership");
+
+            String contact = props.getProperty("contact");
+			try {
+                String[] hostElems = contact.split(":");
+                Host contactHost = new Host(InetAddress.getByName(hostElems[0]), Short.parseShort(hostElems[1]));
+                openConnection(contactHost);
+		        sendMessage(new AddReplicaMessage(self), contactHost);
+            } catch (Exception e) {
+                logger.error("Invalid contact on configuration: {}", contact);
+			    logger.error(e.getStackTrace());
+			    System.exit(-1);
+                e.printStackTrace();
+            }
+            
             //You have to do something to join the system and know which instance you joined
             // (and copy the state of that instance)
         }
@@ -179,7 +206,19 @@ public class StateMachine extends GenericProtocol {
     }
 
     /*--------------------------------- Notifications ---------------------------------------- */
-    private byte[] createStateMessage(int executedOps, byte[] cumulativeHash) throws IOException {
+    private void uponCurrentStateReply(CurrentStateReply reply, short protoID) {
+		logger.info("Received Current State Reply: {}", reply.toString());
+
+		//
+        Host newReplica = membership.get(reply.getInstance());
+        openConnection(newReplica);
+        sendMessage(new ReplicaAddedMessage(reply.getInstance(), reply.getState(), membership), newReplica);
+	}
+
+    
+    
+    /*         
+        private byte[] createStateMessage(int executedOps, byte[] cumulativeHash) throws IOException {
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
         DataOutputStream dos = new DataOutputStream(baos);
 
@@ -196,19 +235,21 @@ public class StateMachine extends GenericProtocol {
         }
 
         return baos.toByteArray(); 
-    }
+        }
     
-    private void uponDecidedNotification(DecidedNotification notification, short sourceProto) {
-        logger.info("{} On Instance {} Received notification: {}", leader.equals(self) ? "LEADER" : self, notification.getInstance(), notification.getOpId());
-        
-        machineStateOps.put(notification.getInstance(), new OperationState(notification.getOpId(), notification.getOperation()));
-/*         try {
+    
+        try {
             byte[] stateMessage = createStateMessage(notification.getInstance(), notification.getOperation());
             sendRequest(new InstallStateRequest(stateMessage), HashApp.PROTO_ID);
         } catch (IOException e) {
             e.printStackTrace();
         }
- */
+     */
+
+    private void uponDecidedNotification(DecidedNotification notification, short sourceProto) {
+        logger.info("{} On Instance {} Received notification: {}", leader.equals(self) ? "LEADER" : self, notification.getInstance(), notification.getOpId());
+        
+        machineStateOps.put(notification.getInstance(), new OperationState(notification.getOpId(), notification.getOperation()));
         if(leader.equals(self)) {            
             triggerNotification(new ExecuteNotification(notification.getOpId(), notification.getOperation()));        
         }   
@@ -230,9 +271,27 @@ public class StateMachine extends GenericProtocol {
         pendingOrders = new LinkedList<>();
     }
 
+    private void uponMembershipChangeNotification(MembershipChangedNotification notification, short sourceProto) {
+        logger.debug("Membership changed notification: " + notification);
+        
+        if (notification.isAdding()) {
+            openConnection(notification.getReplica());
+            membership.add(notification.getReplica());
+        } else {
+            closeConnection(notification.getReplica());
+            membership.remove(notification.getReplica());
+        }
+    }
+
     /*--------------------------------- Messages ---------------------------------------- */
     private void uponLeaderElection(LeaderElectionMessage msg, Host host, short sourceProto, int channelId) {
         sendRequest(new PrepareRequest(nextInstance), PaxosAgreement.PROTOCOL_ID);
+    }
+
+    private void uponReplicaAddedMessage(ReplicaAddedMessage msg, Host host, short sourceProto, int channelId) {
+        //sendRequest(new PrepareRequest(nextInstance), PaxosAgreement.PROTOCOL_ID);
+        //copy state
+    
     }
 
     private void uponLeaderOrderMessage(LeaderOrderMessage msg, Host host, short sourceProto, int channelId) {
@@ -248,9 +307,24 @@ public class StateMachine extends GenericProtocol {
             sendRequest(new ProposeRequest(nextInstance++, m.getOpId(), m.getOperation()), PaxosAgreement.PROTOCOL_ID));
         }
 
-        logger.info("Normal functioning");
         sendRequest(new ProposeRequest(nextInstance++, msg.getOpId(), msg.getOp()),
                     PaxosAgreement.PROTOCOL_ID); 
+    }
+
+    private void uponAddReplicaMessage(AddReplicaMessage msg, Host host, short sourceProto, int channelId) {
+        logger.info("Received Add Replica Message: ");
+        //the leader is not initialized(has not received majority yet) 
+
+        if(!leader.equals(self)) { //this is probably not needed
+            sendMessage(new AddReplicaMessage(msg.getNewReplica()), leader);
+        } else if(leader.equals(self)) {
+            membership.add(msg.getNewReplica());    
+            sendRequest(new CurrentStateRequest(membership.size()-1), HashApp.PROTO_ID);
+
+            sendRequest(new AddReplicaRequest(nextInstance, msg.getNewReplica()), PaxosAgreement.PROTOCOL_ID);
+        } else {
+            logger.info("leader null, try to become leader? Later");
+        }
     }
 
     private void uponMsgFail(ProtoMessage msg, Host host, short destProto, Throwable throwable, int channelId) {
