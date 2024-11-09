@@ -13,6 +13,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import protocols.agreement.PaxosAgreement;
 import protocols.statemachine.messages.AddReplicaMessage;
+import protocols.statemachine.messages.LeaderDecisionMessage;
 import protocols.statemachine.messages.LeaderElectionMessage;
 import protocols.statemachine.messages.LeaderOrderMessage;
 import protocols.statemachine.messages.ReplicaAddedMessage;
@@ -31,9 +32,15 @@ import protocols.statemachine.requests.OrderRequest;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
+import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 import java.util.Properties;
+import java.util.SortedMap;
+import java.util.TreeMap;
+import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.ConcurrentSkipListMap;
 
 /**
  * This is NOT fully functional StateMachine implementation.
@@ -63,6 +70,7 @@ public class StateMachine extends GenericProtocol {
     private int nextInstance;
     private Host leader;
     private List<ProposeRequest> pendingOrders;
+    private ConcurrentMap<Integer, ExecuteNotification> pendingExecs; 
 
     public StateMachine(Properties props) throws IOException, HandlerRegistrationException {
         super(PROTOCOL_NAME, PROTOCOL_ID);
@@ -87,11 +95,13 @@ public class StateMachine extends GenericProtocol {
         registerMessageSerializer(channelId, LeaderOrderMessage.MSG_ID, LeaderOrderMessage.serializer);
         registerMessageSerializer(channelId, AddReplicaMessage.MSG_ID, AddReplicaMessage.serializer);
         registerMessageSerializer(channelId, ReplicaAddedMessage.MSG_ID, ReplicaAddedMessage.serializer);
+        registerMessageSerializer(channelId, LeaderDecisionMessage.MSG_ID, LeaderDecisionMessage.serializer);
 
         registerMessageHandler(channelId, LeaderElectionMessage.MSG_ID, this::uponLeaderElection, this::uponMsgFail);
         registerMessageHandler(channelId, LeaderOrderMessage.MSG_ID, this::uponLeaderOrderMessage, this::uponMsgFail);
         registerMessageHandler(channelId, AddReplicaMessage.MSG_ID, this::uponAddReplicaMessage, this::uponMsgFail);
         registerMessageHandler(channelId, ReplicaAddedMessage.MSG_ID, this::uponReplicaAddedMessage, this::uponMsgFail);
+        registerMessageHandler(channelId, LeaderDecisionMessage.MSG_ID, this::uponLeaderDecisionMessage, this::uponMsgFail);
 
 
         /*-------------------- Register Channel Events ------------------------------- */
@@ -117,6 +127,7 @@ public class StateMachine extends GenericProtocol {
         triggerNotification(new ChannelReadyNotification(channelId, self));
 
         pendingOrders = new LinkedList<>();
+        this.pendingExecs = new ConcurrentSkipListMap<>();
 
         String host = props.getProperty("initial_membership");
         String[] hosts = host.split(",");
@@ -168,7 +179,7 @@ public class StateMachine extends GenericProtocol {
             //Do something smart (like buffering the requests)
         } else if (state == State.ACTIVE) {            
             if (leader == null) {
-                pendingOrders.add(new ProposeRequest(nextInstance++, request.getOpId(), request.getOperation()));
+                pendingOrders.add(new ProposeRequest(nextInstance, request.getOpId(), request.getOperation()));
                 sendMessage(new LeaderElectionMessage(), membership.get(0));
             } else if(self.equals(leader)) {
                 sendRequest(new ProposeRequest(nextInstance++, request.getOpId(), request.getOperation()),
@@ -188,13 +199,27 @@ public class StateMachine extends GenericProtocol {
         sendMessage(new ReplicaAddedMessage(reply.getInstance(), reply.getState(), membership), newReplica);
 	}
 
-
     private void uponDecidedNotification(DecidedNotification notification, short sourceProto) {
         logger.info("{} On Instance {} Received notification: {}", leader.equals(self) ? "LEADER" : self, notification.getInstance(), notification.getOpId());
         
+        //they receive well but generate response out of order except leader, why?
+        //this logic needs to change, the leader is the one that makes the decision
+        //the original sender, can only reply to the client once the leader reaches majority.
+        //so, the leader needs to send the message to the original sender and the original sender executes only then 
+
         if(leader.equals(self)) {            
-            triggerNotification(new ExecuteNotification(notification.getOpId(), notification.getOperation()));        
-        } 
+            triggerNotification(new ExecuteNotification(notification.getOpId(), notification.getOperation()));
+             membership.forEach(h -> 
+                {   
+                    if (h != self)
+                        sendMessage(new LeaderDecisionMessage(notification.getInstance(), notification.getOpId(), notification.getOperation()), h);
+                }
+            );       
+        }
+        //change to only trigger on sender after leader is done
+        //if(leader.equals(self)) {            
+        //triggerNotification(new ExecuteNotification(notification.getOpId(), notification.getOperation()));        
+        //} 
     }
 
     private void uponNewLeaderNotification(NewLeaderNotification notification, short sourceProto) {
@@ -203,9 +228,11 @@ public class StateMachine extends GenericProtocol {
         leader = notification.getLeader();
         if (leader.equals(self)) {
             logger.info("Leader, flushing");
-            pendingOrders.forEach(m -> 
-            sendRequest(new ProposeRequest(nextInstance++, m.getOpId(), m.getOperation()), PaxosAgreement.PROTOCOL_ID));
-        } else {
+            nextInstance ++;
+            pendingOrders.forEach(m -> {
+                    sendRequest(new ProposeRequest(nextInstance++, m.getOpId(), m.getOperation()), PaxosAgreement.PROTOCOL_ID); });
+                
+            } else {
             logger.info("non leader yet");
             pendingOrders.forEach(m -> 
                 sendMessage(new LeaderOrderMessage(m.getInstance(), m.getOpId(), m.getOperation()), leader));
@@ -228,6 +255,25 @@ public class StateMachine extends GenericProtocol {
     /*--------------------------------- Messages ---------------------------------------- */
     private void uponLeaderElection(LeaderElectionMessage msg, Host host, short sourceProto, int channelId) {
         sendRequest(new PrepareRequest(nextInstance), PaxosAgreement.PROTOCOL_ID);
+    }
+
+    private void addPendingExecution(int instance, ExecuteNotification execNotification) {
+        pendingExecs.put(instance, execNotification);
+    }
+
+    private void uponLeaderDecisionMessage(LeaderDecisionMessage msg, Host host, short sourceProto, int channelId) {
+        logger.info("Received Leader Decision Message: INSTANCE {} ---- opId - {}", msg.getInstance(), msg.getOpId());
+
+        addPendingExecution(msg.getInstance(), new ExecuteNotification(msg.getOpId(), msg.getOp()));
+        for (Map.Entry<Integer, ExecuteNotification> entry : pendingExecs.entrySet()) {
+            logger.info("Pending Exec: ----INSTANCE {} -  opId - {}", entry.getKey(), entry.getValue().getOpId());
+            ExecuteNotification execNotification = entry.getValue();
+            // Trigger the notification (process the execution)
+            triggerNotification(execNotification);
+        }
+        pendingExecs.clear();
+
+        triggerNotification(new ExecuteNotification(msg.getOpId(), msg.getOp()));
     }
 
     private void uponLeaderOrderMessage(LeaderOrderMessage msg, Host host, short sourceProto, int channelId) {

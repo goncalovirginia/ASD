@@ -209,7 +209,8 @@ public class PaxosAgreement extends GenericProtocol {
     private void uponAcceptMessage(AcceptMessage msg, Host host, short sourceProto, int channelId) {        
         if (!host.equals(myself)) {
             if(!msg.isAddOrRemoving())
-                triggerNotification(new DecidedNotification(msg.getInstance(), msg.getOpId(), msg.getOp()));
+                logger.info("do nothing");
+                //triggerNotification(new DecidedNotification(msg.getInstance(), msg.getOpId(), msg.getOp()));
             else if(msg.isAdding()) {
                 membership.add(msg.getNewReplica());
                 triggerNotification(new MembershipChangedNotification(msg.getNewReplica(), true));
