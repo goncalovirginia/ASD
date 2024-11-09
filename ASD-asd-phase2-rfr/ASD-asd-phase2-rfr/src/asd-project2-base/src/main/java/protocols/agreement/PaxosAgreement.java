@@ -6,6 +6,7 @@ import protocols.agreement.messages.BroadcastMessage;
 import protocols.agreement.messages.PrepareMessage;
 import protocols.agreement.messages.PrepareOKMessage;
 import protocols.agreement.notifications.JoinedNotification;
+import protocols.agreement.notifications.MembershipChangedNotification;
 import protocols.agreement.notifications.NewLeaderNotification;
 import protocols.agreement.requests.AddReplicaRequest;
 import protocols.agreement.requests.PrepareRequest;
@@ -28,14 +29,24 @@ public class PaxosAgreement extends GenericProtocol {
     private static class AgreementInstanceState {
         private int acceptOkCount;
         private boolean decided;
-    
-        public AgreementInstanceState() {
+        private boolean adding;
+        private boolean removing;
+        private Host replica;
+
+        public AgreementInstanceState(Host replica) {
             this.acceptOkCount = 0;
             this.decided = false;
+            this.adding = false;
+            this.removing = false;
+            this.replica = replica;
         }
 
         public int getAcceptokCount() {
             return acceptOkCount;
+        }
+
+        public Host getReplica() {
+            return replica;
         }
 
         public void incrementAcceptCount() {
@@ -44,6 +55,22 @@ public class PaxosAgreement extends GenericProtocol {
 
         public boolean decided() {
             return decided;
+        }
+
+        public void add() {
+            adding = true;
+        }
+
+        public void remove() {
+            removing = true;
+        }
+
+        public boolean isAdding() {
+            return adding;
+        }
+
+        public boolean isRemoving() {
+            return removing;
         }
 
         public void decide() {
@@ -174,15 +201,24 @@ public class PaxosAgreement extends GenericProtocol {
     }
 
     private void uponProposeRequest(ProposeRequest request, short sourceProto) {
-        instanceStateMap.putIfAbsent(request.getInstance(), new AgreementInstanceState());
+        instanceStateMap.putIfAbsent(request.getInstance(), new AgreementInstanceState(null));
         AcceptMessage msg = new AcceptMessage(request.getInstance(), request.getOpId(), request.getOperation());
         membership.forEach(h -> sendMessage(msg, h));          
     }
 
     private void uponAcceptMessage(AcceptMessage msg, Host host, short sourceProto, int channelId) {        
-        if (!host.equals(myself))
-            triggerNotification(new DecidedNotification(msg.getInstance(), msg.getOpId(), msg.getOp()));
-        
+        if (!host.equals(myself)) {
+            if(!msg.isAddOrRemoving())
+                triggerNotification(new DecidedNotification(msg.getInstance(), msg.getOpId(), msg.getOp()));
+            else if(msg.isAdding()) {
+                membership.add(msg.getNewReplica());
+                triggerNotification(new MembershipChangedNotification(msg.getNewReplica(), true));
+            } else {
+                membership.remove(msg.getNewReplica());
+                triggerNotification(new MembershipChangedNotification(msg.getNewReplica(), false));
+            }    
+        }
+            
         AcceptOKMessage acceptOK = new AcceptOKMessage(msg);
         sendMessage(acceptOK, host);
     }
@@ -193,16 +229,30 @@ public class PaxosAgreement extends GenericProtocol {
             state.incrementAcceptCount();
             if (state.getAcceptokCount() >= (membership.size() / 2) + 1 && !state.decided()) {
                 state.decide();
-                triggerNotification(new DecidedNotification(msg.getInstance(), msg.getOpId(), msg.getOp()));
+                if (state.isAdding()) {
+                    membership.add(state.getReplica());
+                    triggerNotification(new MembershipChangedNotification(state.getReplica(), true));
+                } else if (state.isRemoving()) {
+                    membership.remove(state.getReplica());
+                    triggerNotification(new MembershipChangedNotification(state.getReplica(), false));
+                } else 
+                    triggerNotification(new DecidedNotification(msg.getInstance(), msg.getOpId(), msg.getOp()));
+                
             }
         }
     }
     
     private void uponAddReplica(AddReplicaRequest request, short sourceProto) {
-        logger.debug("Received " + request);
+        logger.debug("Received Add Replica Request: " + request);
+        instanceStateMap.putIfAbsent(request.getInstance()+1, new AgreementInstanceState(request.getReplica()));
+        AgreementInstanceState state = instanceStateMap.get(request.getInstance()+1);
+        state.add();
+
+        AcceptMessage msg = new AcceptMessage(request.getInstance(), request.getReplica(), true);
+        membership.forEach(h -> sendMessage(msg, h)); 
+
         //The AddReplicaRequest contains an "instance" field, which we ignore in this incorrect protocol.
         //You should probably take it into account while doing whatever you do here.
-        membership.add(request.getReplica());
     }
     private void uponRemoveReplica(RemoveReplicaRequest request, short sourceProto) {
         logger.debug("Received " + request);

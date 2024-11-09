@@ -4,13 +4,8 @@ import io.netty.buffer.ByteBuf;
 import org.apache.commons.codec.binary.Hex;
 import pt.unl.fct.di.novasys.babel.generic.ProtoMessage;
 import pt.unl.fct.di.novasys.network.ISerializer;
-
 import java.util.UUID;
 
-/*************************************************
- * This is here just as an example, your solution
- * probably needs to use different message types
- *************************************************/
 public class LeaderOrderMessage extends ProtoMessage {
 
     public final static short MSG_ID = 124;
