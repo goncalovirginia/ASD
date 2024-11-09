@@ -174,7 +174,7 @@ public class StateMachine extends GenericProtocol {
                 sendRequest(new ProposeRequest(nextInstance++, request.getOpId(), request.getOperation()),
                     PaxosAgreement.PROTOCOL_ID); 
             } else {
-                sendMessage(new LeaderOrderMessage(nextInstance++, request.getOpId(), request.getOperation()), leader);
+                sendMessage(new LeaderOrderMessage(nextInstance, request.getOpId(), request.getOperation()), leader);
             }
         }
     }
@@ -194,7 +194,7 @@ public class StateMachine extends GenericProtocol {
         
         if(leader.equals(self)) {            
             triggerNotification(new ExecuteNotification(notification.getOpId(), notification.getOperation()));        
-        } else triggerNotification(new ExecuteNotification(notification.getOpId(), notification.getOperation()));
+        } 
     }
 
     private void uponNewLeaderNotification(NewLeaderNotification notification, short sourceProto) {
