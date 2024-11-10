@@ -235,7 +235,7 @@ public class PaxosAgreement extends GenericProtocol {
         if (!host.equals(myself)) {
             int lastChosen = 0;
             for(Map.Entry<Integer, ToBeDecided> entry : currentOps.entrySet()) {
-                if (msg.getOpId().equals(entry.getValue().opId) || (msg.getLastUnchosen() == entry.getKey() -1)) 
+                if (msg.getOpId().equals(entry.getValue().opId) || (msg.getLastUnchosen() == entry.getKey())) 
                     entry.getValue().accept();
                 
                 if(!entry.getValue().accepted() || !entry.getValue().finalized())
@@ -260,6 +260,7 @@ public class PaxosAgreement extends GenericProtocol {
                 triggerNotification(new MembershipChangedNotification(msg.getNewReplica(), false));
             }    
         }
+        
         AcceptOKMessage acceptOK = new AcceptOKMessage(msg);
         sendMessage(acceptOK, host);
     }
