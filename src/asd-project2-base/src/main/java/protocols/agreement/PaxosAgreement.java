@@ -23,32 +23,22 @@ import protocols.agreement.requests.ProposeRequest;
 
 import java.io.IOException;
 import java.util.*;
+import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.ConcurrentSkipListMap;
 
 public class PaxosAgreement extends GenericProtocol {
 
     private static class AgreementInstanceState {
         private int acceptOkCount;
         private boolean decided;
-        private boolean adding;
-        private boolean removing;
-        private Host replica;
-
-        public AgreementInstanceState(Host replica) {
+        public AgreementInstanceState() {
             this.acceptOkCount = 0;
             this.decided = false;
-            this.adding = false;
-            this.removing = false;
-            this.replica = replica;
         }
 
         public int getAcceptokCount() {
             return acceptOkCount;
         }
-
-        public Host getReplica() {
-            return replica;
-        }
-
         public void incrementAcceptCount() {
             acceptOkCount ++;
         }
@@ -57,24 +47,46 @@ public class PaxosAgreement extends GenericProtocol {
             return decided;
         }
 
-        public void add() {
-            adding = true;
-        }
-
-        public void remove() {
-            removing = true;
-        }
-
-        public boolean isAdding() {
-            return adding;
-        }
-
-        public boolean isRemoving() {
-            return removing;
-        }
-
         public void decide() {
             decided = true;
+        }
+    }
+
+    private static class ToBeDecided {
+        private UUID opId;
+        private byte[] operation;
+        private boolean accepted;
+        private boolean executed;
+
+        public ToBeDecided(UUID opId, byte[] operation, boolean accepted) {
+            this.opId = opId;
+            this.operation = operation;
+            this.accepted = accepted;
+            this.executed = false;
+        }
+
+        public UUID getOpId() {
+            return opId;
+        }
+
+        public byte[] getOp() {
+            return operation;
+        }
+
+        public boolean accepted() {
+            return accepted;
+        }
+
+        public boolean finalized() {
+            return executed;
+        }
+
+        public void accept() {
+            accepted = true;
+        }
+
+        public void finalize() {
+            executed = true;
         }
     }
 
@@ -85,21 +97,30 @@ public class PaxosAgreement extends GenericProtocol {
     public final static String PROTOCOL_NAME = "Agreement";
 
     private Host myself;
+    private Host newLeader;
     private int joinedInstance;
     private int prepare_ok_count;
     private int highest_prepare;
     private int proposer_seq_number;
     private List<Host> membership;
 
+    private int lastUnchosen;
+
     private Map<Integer, AgreementInstanceState> instanceStateMap; 
+
+    private ConcurrentMap<Integer, ToBeDecided> currentOps;
+
 
     public PaxosAgreement(Properties props) throws IOException, HandlerRegistrationException {
         super(PROTOCOL_NAME, PROTOCOL_ID);
         joinedInstance = -1; //-1 means we have not yet joined the system
         membership = null;
         prepare_ok_count = 0;
+        lastUnchosen = 0;
         highest_prepare = -1;
         proposer_seq_number = -1;
+
+        this.currentOps = new ConcurrentSkipListMap<>();
 
         instanceStateMap = new HashMap<>();
         /*--------------------- Register Timer Handlers ----------------------------- */
@@ -158,6 +179,7 @@ public class PaxosAgreement extends GenericProtocol {
         }
     }
 
+    //highest joinedInstance wins
     private void uponPrepareRequest(PrepareRequest request, short sourceProto) {
         prepare_ok_count = 0; //this probably needs to be an actual set, for the edge case mentioned in the slides, we'll see
         proposer_seq_number = request.getInstance() + joinedInstance;
@@ -172,9 +194,11 @@ public class PaxosAgreement extends GenericProtocol {
                 PrepareOKMessage prepareOK = new PrepareOKMessage(msg.getInstance());
                 sendMessage(prepareOK, host);
 
-                if(!myself.equals(host)) {
+                if(host.equals(newLeader)) {
                     triggerNotification(new NewLeaderNotification(host));
+                    highest_prepare--;
                 }
+                newLeader = host;
             }
         } else {
             //TODO: uponBroadcast above comments
@@ -182,11 +206,16 @@ public class PaxosAgreement extends GenericProtocol {
     }
 
     private void uponPrepareOKMessage(PrepareOKMessage msg, Host host, short sourceProto, int channelId) {
-        if (proposer_seq_number == msg.getInstance()) {
+        if (proposer_seq_number == msg.getInstance() && proposer_seq_number >= highest_prepare) {
             prepare_ok_count ++;
             if (prepare_ok_count >= (membership.size() / 2) + 1) {
-                prepare_ok_count = 0;
+                prepare_ok_count = -1;
+
                 triggerNotification(new NewLeaderNotification(myself));
+                membership.forEach(h -> {
+                    if (!h.equals(myself))
+                        sendMessage(new PrepareMessage(proposer_seq_number+1), h);
+                });
             }
         }
     }
@@ -201,17 +230,33 @@ public class PaxosAgreement extends GenericProtocol {
     }
 
     private void uponProposeRequest(ProposeRequest request, short sourceProto) {
-        instanceStateMap.putIfAbsent(request.getInstance(), new AgreementInstanceState(null));
-        AcceptMessage msg = new AcceptMessage(request.getInstance(), request.getOpId(), request.getOperation());
+        instanceStateMap.putIfAbsent(request.getInstance(), new AgreementInstanceState());
+        AcceptMessage msg = new AcceptMessage(request.getInstance(), request.getOpId(), request.getOperation(), lastUnchosen);
         membership.forEach(h -> sendMessage(msg, h));          
     }
 
     private void uponAcceptMessage(AcceptMessage msg, Host host, short sourceProto, int channelId) {        
         if (!host.equals(myself)) {
-            if(!msg.isAddOrRemoving())
-                logger.info("do nothing");
-                //triggerNotification(new DecidedNotification(msg.getInstance(), msg.getOpId(), msg.getOp()));
-            else if(msg.isAdding()) {
+            int lastChosen = 0;
+            for(Map.Entry<Integer, ToBeDecided> entry : currentOps.entrySet()) {
+                if (msg.getOpId().equals(entry.getValue().opId) || (msg.getLastUnchosen() == entry.getKey())) 
+                    entry.getValue().accept();
+                
+                if(!entry.getValue().accepted() || !entry.getValue().finalized())
+                     lastChosen = entry.getKey() -1; 
+            }
+
+            for(int i = 1; i <= lastChosen; i++) {
+                ToBeDecided tb = currentOps.get(i);
+                if (!tb.finalized()) {
+                    triggerNotification(new DecidedNotification(i, tb.getOpId(), tb.getOp()));
+                    currentOps.get(i).finalize();
+                }
+            }
+
+            if(!msg.isAddOrRemoving()) {
+                currentOps.putIfAbsent(msg.getInstance(), new ToBeDecided(msg.getOpId(), msg.getOp(), false));
+            } else if(msg.isAdding()) {
                 membership.add(msg.getNewReplica());
                 triggerNotification(new MembershipChangedNotification(msg.getNewReplica(), true));
             } else {
@@ -219,7 +264,7 @@ public class PaxosAgreement extends GenericProtocol {
                 triggerNotification(new MembershipChangedNotification(msg.getNewReplica(), false));
             }    
         }
-            
+        
         AcceptOKMessage acceptOK = new AcceptOKMessage(msg);
         sendMessage(acceptOK, host);
     }
@@ -230,24 +275,29 @@ public class PaxosAgreement extends GenericProtocol {
             state.incrementAcceptCount();
             if (state.getAcceptokCount() >= (membership.size() / 2) + 1 && !state.decided()) {
                 state.decide();
-                if (state.isAdding()) {
+                triggerNotification(new DecidedNotification(msg.getInstance(), msg.getOpId(), msg.getOp()));
+                lastUnchosen = msg.getInstance();
+
+                membership.forEach(h -> 
+                    sendMessage(new AcceptMessage(msg.getInstance(), msg.getOpId(), msg.getOp(), lastUnchosen), h));
+                          
+            }
+        }
+
+        //Change the message instead like in Accept
+/*                 if (state.isAdding()) {
                     membership.add(state.getReplica());
                     triggerNotification(new MembershipChangedNotification(state.getReplica(), true));
                 } else if (state.isRemoving()) {
                     membership.remove(state.getReplica());
                     triggerNotification(new MembershipChangedNotification(state.getReplica(), false));
-                } else 
-                    triggerNotification(new DecidedNotification(msg.getInstance(), msg.getOpId(), msg.getOp()));
-                
-            }
-        }
+                } else {  } */
     }
     
+    //Change Message instead, dunno if addReplica is added to Log  of State Machine
     private void uponAddReplica(AddReplicaRequest request, short sourceProto) {
         logger.debug("Received Add Replica Request: " + request);
-        instanceStateMap.putIfAbsent(request.getInstance()+1, new AgreementInstanceState(request.getReplica()));
-        AgreementInstanceState state = instanceStateMap.get(request.getInstance()+1);
-        state.add();
+        instanceStateMap.putIfAbsent(request.getInstance(), new AgreementInstanceState());
 
         AcceptMessage msg = new AcceptMessage(request.getInstance(), request.getReplica(), true);
         membership.forEach(h -> sendMessage(msg, h)); 

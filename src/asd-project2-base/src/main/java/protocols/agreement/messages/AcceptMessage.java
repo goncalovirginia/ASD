@@ -23,8 +23,9 @@ public class AcceptMessage extends ProtoMessage {
     private final Host newReplica;
     private final boolean changingMembership;
     private final boolean adding;
+    private final int lastUnchosen;
 
-    public AcceptMessage(int instance, UUID opId, byte[] op) {
+    public AcceptMessage(int instance, UUID opId, byte[] op, int last) {
         super(MSG_ID);
         this.instance = instance;
         this.op = op;
@@ -32,6 +33,7 @@ public class AcceptMessage extends ProtoMessage {
         this.changingMembership = false;
         this.newReplica = null;
         this.adding = false;
+        this.lastUnchosen = last;
     }
 
     public AcceptMessage(int instance, Host host, boolean adding) {
@@ -42,10 +44,15 @@ public class AcceptMessage extends ProtoMessage {
         this.changingMembership = true;
         this.newReplica = host;
         this.adding = adding;
+        this.lastUnchosen = 0;
     }
     
     public int getInstance() {
         return instance;
+    }
+
+    public int getLastUnchosen() {
+        return lastUnchosen;
     }
 
     public UUID getOpId() {
@@ -102,6 +109,7 @@ public class AcceptMessage extends ProtoMessage {
                 out.writeLong(msg.opId.getLeastSignificantBits());
                 out.writeInt(msg.op.length);
                 out.writeBytes(msg.op);
+                out.writeInt(msg.lastUnchosen);
             }   
         }
 
@@ -120,7 +128,8 @@ public class AcceptMessage extends ProtoMessage {
                 UUID opId = new UUID(highBytes, lowBytes);
                 byte[] op = new byte[in.readInt()];
                 in.readBytes(op);
-                return new AcceptMessage(instance, opId, op);
+                int last = in.readInt();
+                return new AcceptMessage(instance, opId, op, last);
             } 
         }
     };

@@ -141,7 +141,6 @@ public class HashApp extends GenericProtocol {
 
 	private void uponRequestMessage(RequestMessage msg, Host host, short sourceProto, int channelId) {
 		logger.debug("Request received: " + msg + " from " + host);
-		logger.info("requesting...");
 		UUID opUUID = UUID.randomUUID();
 		clientIdMapper.put(opUUID, Pair.of(host, msg.getOpId()));
 		if(strategy == ReplicationStrategy.SMR) {
@@ -187,11 +186,13 @@ public class HashApp extends GenericProtocol {
 				logger.info("Current state N_OPS= {}, MAP_SIZE={}, HASH={}",
 						executedOps, data.size(), Hex.encodeHexString(cumulativeHash));
 			}
+
+			logger.info("Executed in app state: instance - {}, opId - {}", executedOps, not.getOpId());
+			
 			//Check if the operation was issued by me
 			Pair<Host, Long> pair = clientIdMapper.remove(not.getOpId());
-			
 			if (pair != null) {
-				logger.info("Generating response to the client: instance - {}, opId - {}", pair.getRight(), not.getOpId());
+				//logger.info("Generating response to the client: instance - {}, opId - {}", pair.getRight(), not.getOpId());
 				//Generate a response to the client
 				ResponseMessage resp;
 				if (op.getOpType() == RequestMessage.WRITE)
@@ -200,7 +201,7 @@ public class HashApp extends GenericProtocol {
 					resp = new ResponseMessage(pair.getRight(), data.getOrDefault(op.getKey(), new byte[0]));
 				//Respond
 				sendMessage(resp, pair.getLeft());
-			}
+			} 
 
 		} catch (IOException e) {
 			e.printStackTrace();
