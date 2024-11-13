@@ -9,10 +9,6 @@ import pt.unl.fct.di.novasys.network.data.Host;
 import java.io.IOException;
 import java.util.UUID;
 
-/*************************************************
- * This is here just as an example, your solution
- * probably needs to use different message types
- *************************************************/
 public class AcceptMessage extends ProtoMessage {
 
     public final static short MSG_ID = 198;
@@ -20,7 +16,9 @@ public class AcceptMessage extends ProtoMessage {
     private final UUID opId;
     private final int instance;
     private final byte[] op;
-    private final Host newReplica;
+    private final Host replica;
+    private final int replicaInstance;
+
     private final boolean changingMembership;
     private final boolean adding;
     private final int lastChosen;
@@ -31,18 +29,20 @@ public class AcceptMessage extends ProtoMessage {
         this.op = op;
         this.opId = opId;
         this.changingMembership = false;
-        this.newReplica = null;
+        this.replica = null;
+        replicaInstance = -1;
         this.adding = false;
         this.lastChosen = last;
     }
 
-    public AcceptMessage(int instance, Host host, boolean adding) {
+    public AcceptMessage(int instance, Host host, int replicaInstance, boolean adding) {
         super(MSG_ID);
         this.instance = instance;
         this.op = null;
         this.opId = null;
         this.changingMembership = true;
-        this.newReplica = host;
+        this.replica = host;
+        this.replicaInstance = replicaInstance;
         this.adding = adding;
         this.lastChosen = 0;
     }
@@ -63,8 +63,12 @@ public class AcceptMessage extends ProtoMessage {
         return op;
     }
 
-    public Host getNewReplica() {
-        return newReplica;
+    public Host getReplica() {
+        return replica;
+    }
+
+    public int getReplicaInstance() {
+        return replicaInstance;
     }
 
     public boolean isAddOrRemoving() {
@@ -90,7 +94,7 @@ public class AcceptMessage extends ProtoMessage {
         } else {
             return "AcceptAddRemoveMessage{" +
                     ", instance=" + instance +
-                    ", newReplica=" + newReplica +
+                    ", newReplica=" + replica +
                     '}';
         }
     }
@@ -102,7 +106,8 @@ public class AcceptMessage extends ProtoMessage {
             out.writeBoolean(msg.changingMembership);
 
             if (msg.changingMembership) {
-                Host.serializer.serialize(msg.newReplica, out);
+                Host.serializer.serialize(msg.replica, out);
+                out.writeInt(msg.replicaInstance);
                 out.writeBoolean(msg.adding);
             } else {
                 out.writeLong(msg.opId.getMostSignificantBits());
@@ -120,8 +125,9 @@ public class AcceptMessage extends ProtoMessage {
 
             if (isReplicaOp) {
                 Host nReplica = Host.serializer.deserialize(in);
+                int nReplicaInstance = in.readInt();
                 boolean add = in.readBoolean();
-                return new AcceptMessage(instance, nReplica, add);    
+                return new AcceptMessage(instance, nReplica, nReplicaInstance, add);    
             } else {
                 long highBytes = in.readLong();
                 long lowBytes = in.readLong();

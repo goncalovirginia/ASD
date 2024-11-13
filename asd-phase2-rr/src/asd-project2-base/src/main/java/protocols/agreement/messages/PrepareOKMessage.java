@@ -4,6 +4,7 @@ import io.netty.buffer.ByteBuf;
 import pt.unl.fct.di.novasys.babel.generic.ProtoMessage;
 import pt.unl.fct.di.novasys.network.ISerializer;
 
+//ADD MESSAGES OF INSTANCES > CURR LEADER OPSEQ
 public class PrepareOKMessage extends ProtoMessage {
 
     public final static short MSG_ID = 107;

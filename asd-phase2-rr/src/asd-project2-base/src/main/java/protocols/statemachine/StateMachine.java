@@ -143,18 +143,10 @@ public class StateMachine extends GenericProtocol {
             state = State.JOINING;
             logger.info("Starting in JOINING as I am not part of initial membership");
 
-            String contact = props.getProperty("contact");
-			try {
-                String[] hostElems = contact.split(":");
-                Host contactHost = new Host(InetAddress.getByName(hostElems[0]), Short.parseShort(hostElems[1]));
-                openConnection(contactHost);
-		        sendMessage(new AddReplicaMessage(self), contactHost);
-            } catch (Exception e) {
-                logger.error("Invalid contact on configuration: {}", contact);
-			    logger.error(e.getStackTrace());
-			    System.exit(-1);
-                e.printStackTrace();
-            }
+            //IF NOT PART OF INITIAL MEMBERSHIP
+                //CONTACT MEMBER OF INITIAL MEMBERSHIP TO JOIN
+                // (message? see if we can re-use old logic) with the membership
+                // this new Host joins and flushes the messages toBeDecided to the leader if it has any.
             
             //You have to do something to join the system and know which instance you joined
             // (and copy the state of that instance)
@@ -186,7 +178,7 @@ public class StateMachine extends GenericProtocol {
     private void uponCurrentStateReply(CurrentStateReply reply, short protoID) {
 		logger.info("Received Current State Reply: {}", reply.toString());
 
-        Host newReplica = membership.get(reply.getInstance());
+        Host newReplica = membership.get(membership.size()-1);
         openConnection(newReplica);
         sendMessage(new ReplicaAddedMessage(reply.getInstance(), reply.getState(), membership), newReplica);
 	}
@@ -221,8 +213,6 @@ public class StateMachine extends GenericProtocol {
             openConnection(notification.getReplica());
             membership.add(notification.getReplica());
         } else {
-
-
             closeConnection(notification.getReplica());
             membership.remove(notification.getReplica());
         }
@@ -268,9 +258,10 @@ public class StateMachine extends GenericProtocol {
         nextInstance = msg.getInstance();
         membership = new LinkedList<>(msg.getMembership());
         membership.forEach(this::openConnection);
+        sendRequest(new InstallStateRequest(msg.getState()), HashApp.PROTO_ID);
+        
         triggerNotification(new JoinedNotification(membership, membership.indexOf(self)));
         state = State.ACTIVE;
-        sendRequest(new InstallStateRequest(msg.getState()), HashApp.PROTO_ID);		
     }
 
     private void uponMsgFail(ProtoMessage msg, Host host, short destProto, Throwable throwable, int channelId) {

@@ -66,7 +66,7 @@ public class PaxosAgreement extends GenericProtocol {
     private List<Host> membership;
 
     private int lastChosen;
-    private int lastDecided;
+    private int lastToBeDecided;
 
     private Map<Integer, AgreementInstanceState> instanceStateMap; 
 
@@ -85,7 +85,7 @@ public class PaxosAgreement extends GenericProtocol {
         
         
         lastChosen = 0; //
-        lastDecided = 1; //
+        lastToBeDecided = 1; //
 
         toBeDecidedMessages = new TreeMap<>();
         executedMessages = new TreeMap<>();
@@ -204,23 +204,27 @@ public class PaxosAgreement extends GenericProtocol {
         membership.forEach(h -> sendMessage(msg, h));          
     }
 
-    //joinInstance -1 case
+    //joinInstance -1 case: just pend the messages on toBeDecidedMessages, and on triggerJoin
+    //send them to the leader. Simple
     private void uponAcceptMessage(AcceptMessage msg, Host host, short sourceProto, int channelId) {        
         if (!host.equals(myself)) {
-            for(; lastDecided <= msg.getLastChosen(); lastDecided++) {
-                Pair<UUID, byte[]> pair = toBeDecidedMessages.remove(lastDecided);
+            for(; lastToBeDecided <= msg.getLastChosen(); lastToBeDecided++) {
+                Pair<UUID, byte[]> pair = toBeDecidedMessages.remove(lastToBeDecided);
                 if(pair != null) {
                     if(!msg.isAddOrRemoving()) {
-                        triggerNotification(new DecidedNotification(lastDecided, pair.getLeft(), pair.getRight()));
+                        triggerNotification(new DecidedNotification(lastToBeDecided, pair.getLeft(), pair.getRight()));
                     } else if(msg.isAdding()) {
-                        membership.add(msg.getNewReplica());
-                        triggerNotification(new MembershipChangedNotification(msg.getNewReplica(), true));
+                        membership.add(msg.getReplica());
+                        triggerNotification(new MembershipChangedNotification(msg.getReplica(), true));
                     } else {
-                        membership.remove(msg.getNewReplica());
-                        triggerNotification(new MembershipChangedNotification(msg.getNewReplica(), false));
+                        if (msg.getReplicaInstance() < joinedInstance) 
+                            joinedInstance --;
+
+                        membership.remove(msg.getReplica());
+                        triggerNotification(new MembershipChangedNotification(msg.getReplica(), false));
                     }
                     
-                    executedMessages.put(lastDecided, pair);
+                    executedMessages.put(lastToBeDecided, pair);
                 } else break;
             }
 
@@ -261,7 +265,7 @@ public class PaxosAgreement extends GenericProtocol {
         logger.debug("Received Add Replica Request: " + request);
         instanceStateMap.putIfAbsent(request.getInstance(), new AgreementInstanceState());
 
-        AcceptMessage msg = new AcceptMessage(request.getInstance(), request.getReplica(), true);
+        AcceptMessage msg = new AcceptMessage(request.getInstance(), request.getReplica(), joinedInstance, true);
         membership.forEach(h -> sendMessage(msg, h)); 
 
         //The AddReplicaRequest contains an "instance" field, which we ignore in this incorrect protocol.
