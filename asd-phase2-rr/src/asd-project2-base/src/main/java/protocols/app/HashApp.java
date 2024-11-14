@@ -209,6 +209,21 @@ public class HashApp extends GenericProtocol {
 		}
 
 	}
+	/*** 
+	 * To test Add Replica:
+	 * add a config property, on the state machine, based on that config property we either do a normal join
+	 * or a addReplica, where the process is similar to normal join but with a state transfer 
+	 * also, unlike normal join, addReplica is a Operation
+	 * 
+	 * To test Remove Replica:
+	 * Simply manufacture a operation on a random host to do this
+	 * 
+	 * In both these operations, since the client does not send them, we simply execute them at the 
+	 * App Layer without replying to any client
+	 * ----> Check if there is any issues in executedOps but it should be fine.
+	 * ***/
+
+
 
 /* 	//The following 3 handlers are are executed only for the abd stack
 	private void uponReadCompleteNotification(ReadCompleteNotification not, short sourceProto) {
