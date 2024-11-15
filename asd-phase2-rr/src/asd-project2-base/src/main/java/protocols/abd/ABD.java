@@ -42,16 +42,16 @@ public class ABD extends GenericProtocol {
 
     private List<Host> membership;
     private int nextInstance; //opSeq
-    private int processSequence;
+    private int processSequence; //processSequence
 
     private Map<Integer, List<Pair<Integer, Integer>>> roundAnswers; 
     
 
-    private final Map<String, Pair<Integer, Integer>> tags;
-    private final Map<String, byte[]> values;
-    private final Map<String, UUID> operations;
+    private final Map<String, Pair<Integer, Integer>> tags; //HashMap key-(opSeq, processSeq) pair
+    private final Map<String, byte[]> values; //HashMap key-values
+    private final Map<String, UUID> operations; //HashMap key-operations
 
-    private byte[] pending;
+    private byte[] pending; //value pending to be written
 
     public ABD(Properties props) throws IOException, HandlerRegistrationException {
         super(PROTOCOL_NAME, PROTOCOL_ID);
@@ -100,7 +100,6 @@ public class ABD extends GenericProtocol {
         registerRequestHandler(WriteRequest.REQUEST_ID, this::uponWriteRequest);
 
         /*--------------------- Register Notification Handlers ----------------------------- */
-        //subscribeNotification(MembershipChangedNotification.NOTIFICATION_ID, this::uponMembershipChangeNotification);
     }
 
     @Override
@@ -154,31 +153,7 @@ public class ABD extends GenericProtocol {
         membership.forEach(h -> sendMessage(new ReadTagMessage(nextInstance, key), h));
     } 
 
-    /*--------------------------------- Notifications ---------------------------------------- */
-    //not being used here at all, but maybe
-/*     private void uponMembershipChangeNotification(MembershipChangedNotification notification, short sourceProto) {
-        logger.debug("Membership changed notification: " + notification);
-        
-        if (notification.isAdding()) {
-            openConnection(notification.getReplica());
-            membership.add(notification.getReplica());
-        } else {
-            closeConnection(notification.getReplica());
-            membership.remove(notification.getReplica());
-        }
-    } */
-
-    /*--------------------------------- Messages ---------------------------------------- */
-    private void uponReadTagMessage(ReadTagMessage msg, Host host, short sourceProto, int channelId) {
-        logger.debug("Received READTAG message: " + msg);
-        Pair<Integer, Integer> ntag = tags.get(msg.getKey());
-        if(ntag == null) {
-            ntag = Pair.of(msg.getOpSeq(), processSequence);
-            tags.put(msg.getKey(), ntag);
-        }
-        sendMessage(new ReadTagReplyMessage(msg.getOpSeq(), ntag, msg.getKey()), host);
-    }
-
+    /*--------------------------------- Procedures ---------------------------------------- */
     private int maxSQTag(List<Pair<Integer, Integer>> ans) {
         Pair<Integer, Integer> max = Pair.of(0, 0);
         for (Pair<Integer, Integer> h : ans) {
@@ -192,12 +167,23 @@ public class ABD extends GenericProtocol {
         return max.getLeft();
     }
 
+    /*--------------------------------- Messages ---------------------------------------- */
+    private void uponReadTagMessage(ReadTagMessage msg, Host host, short sourceProto, int channelId) {
+        logger.debug("Received READTAG message: " + msg);
+        Pair<Integer, Integer> ntag = tags.get(msg.getKey());
+        if(ntag == null) {
+            ntag = Pair.of(msg.getOpSeq(), processSequence);
+            tags.put(msg.getKey(), ntag);
+        }
+        sendMessage(new ReadTagReplyMessage(msg.getOpSeq(), ntag, msg.getKey()), host);
+    }
+
     private void uponReadTagReplyMessage(ReadTagReplyMessage msg, Host host, short sourceProto, int channelId) {
         
         if (nextInstance == msg.getOpId()) {
             List<Pair<Integer, Integer>> answers = new LinkedList<>();
-            if (pending != null) {
-                answers = roundAnswers.get(nextInstance);
+            if (pending != null) { //After majority Decision, no more adds, or it can mess up ACK
+                answers = roundAnswers.get(nextInstance); 
                 answers.add(msg.getTag());
             }
                 
