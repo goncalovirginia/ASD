@@ -7,30 +7,30 @@ import java.util.List;
 
 public class JoinedNotification extends ProtoNotification {
 
-	public static final short NOTIFICATION_ID = 402;
+    public static final short NOTIFICATION_ID = 402;
 
-	private final List<Host> membership;
-	private final int joinInstance;
+    private final List<Host> membership;
+    private final int joinInstance;
 
-	public JoinedNotification(List<Host> membership, int joinInstance) {
-		super(NOTIFICATION_ID);
-		this.membership = membership;
-		this.joinInstance = joinInstance;
-	}
+    public JoinedNotification(List<Host> membership, int joinInstance) {
+        super(NOTIFICATION_ID);
+        this.membership = membership;
+        this.joinInstance = joinInstance;
+    }
 
-	public int getJoinInstance() {
-		return joinInstance;
-	}
+    public int getJoinInstance() {
+        return joinInstance;
+    }
 
-	public List<Host> getMembership() {
-		return membership;
-	}
+    public List<Host> getMembership() {
+        return membership;
+    }
 
-	@Override
-	public String toString() {
-		return "JoinedNotification{" +
-				"membership=" + membership +
-				", joinInstance=" + joinInstance +
-				'}';
-	}
+    @Override
+    public String toString() {
+        return "JoinedNotification{" +
+                "membership=" + membership +
+                ", joinInstance=" + joinInstance +
+                '}';
+    }
 }

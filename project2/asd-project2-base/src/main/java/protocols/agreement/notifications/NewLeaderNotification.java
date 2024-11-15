@@ -5,22 +5,22 @@ import pt.unl.fct.di.novasys.network.data.Host;
 
 public class NewLeaderNotification extends ProtoNotification {
 
-	public static final short NOTIFICATION_ID = 403;
+    public static final short NOTIFICATION_ID = 403;
 
-	private final Host leader;
+    private final Host leader;
 
-	public NewLeaderNotification(Host membership) {
-		super(NOTIFICATION_ID);
-		this.leader = membership;
-	}
+    public NewLeaderNotification(Host membership) {
+        super(NOTIFICATION_ID);
+        this.leader = membership;
+    }
 
-	public Host getLeader() {
-		return leader;
-	}
+    public Host getLeader() {
+        return leader;
+    }
 
-	@Override
-	public String toString() {
-		return "NewLeaderNotification{" +
-				"leader=" + leader + '}';
-	}
+    @Override
+    public String toString() {
+        return "NewLeaderNotification{" +
+                "leader=" + leader + '}';
+    }
 }
