@@ -44,8 +44,8 @@ public class ABD extends GenericProtocol {
     private int nextInstance; //opSeq
     private int processSequence; //processSequence
 
-    private Map<Integer, List<Pair<Integer, Integer>>> roundAnswers; 
-    
+    //private Map<Integer, List<Pair<Integer, Integer>>> roundAnswers; 
+    private List<Pair<Integer, Integer>> answers;
 
     private final Map<String, Pair<Integer, Integer>> tags; //HashMap key-(opSeq, processSeq) pair
     private final Map<String, byte[]> values; //HashMap key-values
@@ -56,7 +56,7 @@ public class ABD extends GenericProtocol {
     public ABD(Properties props) throws IOException, HandlerRegistrationException {
         super(PROTOCOL_NAME, PROTOCOL_ID);
         nextInstance = 0;
-        roundAnswers = new HashMap<>();
+        answers = new LinkedList<>();
 
         tags = new HashMap<>();
         values = new HashMap<>();
@@ -142,9 +142,10 @@ public class ABD extends GenericProtocol {
 
     private void uponWriteRequest(WriteRequest request, short sourceProto) {
         logger.info("Received WRITE request: " + request);
+
         nextInstance ++;
         pending = request.getData();
-        roundAnswers.put(nextInstance, new LinkedList<>());
+        answers = new LinkedList<>();
 
         String key = new String(request.getKey(), 0, request.getKey().length);
         operations.put(key, request.getOpId());
@@ -170,6 +171,7 @@ public class ABD extends GenericProtocol {
     /*--------------------------------- Messages ---------------------------------------- */
     private void uponReadTagMessage(ReadTagMessage msg, Host host, short sourceProto, int channelId) {
         logger.debug("Received READTAG message: " + msg);
+        
         Pair<Integer, Integer> ntag = tags.get(msg.getKey());
         if(ntag == null) {
             ntag = Pair.of(msg.getOpSeq(), processSequence);
@@ -181,19 +183,18 @@ public class ABD extends GenericProtocol {
     private void uponReadTagReplyMessage(ReadTagReplyMessage msg, Host host, short sourceProto, int channelId) {
         
         if (nextInstance == msg.getOpId()) {
-            List<Pair<Integer, Integer>> answers = new LinkedList<>();
-            if (pending != null) { //After majority Decision, no more adds, or it can mess up ACK
-                answers = roundAnswers.get(nextInstance); 
+            if (pending != null)//After majority Decision, no more adds, or it can mess up ACK
                 answers.add(msg.getTag());
-            }
                 
             if(answers.size() == (membership.size()/ 2) + 1 ) {
                 int maxSQTag = maxSQTag(answers);
-                roundAnswers.put(nextInstance, new LinkedList<>());
+                answers = new LinkedList<>();
+                nextInstance ++;
                 membership.forEach(h -> {
                         sendMessage(new WriteMessage(
                             nextInstance, msg.getKey(), Pair.of(maxSQTag +1, processSequence), pending), h); 
                 });
+                
                 pending = null;
             }
         }
@@ -207,9 +208,11 @@ public class ABD extends GenericProtocol {
 
             tags.put(msg.getKey(), msg.getTag());
             values.put(msg.getKey(), msg.getValue());
+
+            logger.info("Updated -> WRITE message: MSG: {} ", msg);
         }
 
-        sendMessage(new ACKMessage(nextInstance, msg.getKey()), host);
+        sendMessage(new ACKMessage(msg.getOpId(), msg.getKey()), host);
     }
 
     private void uponACKMessage(ACKMessage msg, Host host, short sourceProto, int channelId) {
@@ -217,14 +220,11 @@ public class ABD extends GenericProtocol {
                         self, nextInstance, msg.getOpId());
 
         if(nextInstance == msg.getOpId()) {
-            List<Pair<Integer, Integer>> answers = new LinkedList<>();
-            answers = roundAnswers.get(nextInstance);
             answers.add(Pair.of(msg.getOpId(), processSequence));
-
             if (answers.size() == (membership.size() / 2) + 1) {
-                roundAnswers.put(nextInstance, new LinkedList<>());
+                answers = new LinkedList<>();
                 if (pending == null) {
-                    logger.info("NEW WRITE: instance {} - opSeq {} - key {} - opId {}", nextInstance, msg.getOpId(), msg.getKey(), operations.get(msg.getKey()));
+                    logger.info("NEW RRITE: opSeq {} - key {} - opId {}", msg.getOpId(), msg.getKey(), operations.get(msg.getKey()));
                     triggerNotification(new WriteCompleteNotification(
                         nextInstance, msg.getKey().getBytes(), values.get(msg.getKey()), operations.get(msg.getKey())));
                 }
