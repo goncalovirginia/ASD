@@ -21,14 +21,16 @@ mvn compile package
 
 ### Run replicas
 
-You can use the `start-processes-local.sh` script file to start multiple client processes. For example, the following command starts 3 replicas with p2p ports 34000-34002, and server ports 35000-35002.
+You can use the `start-processes-local.sh` script file to start multiple client processes. For example, the following
+command starts 3 replicas with p2p ports 34000-34002, and server ports 35000-35002.
 
 ```bash
 cd src/asd-project2-base
 bash start-processes-local.sh 3
 ```
 
-You can also start a process manually by running the following command, where you must modify `config.properties` or use flags to indicate the ports/network interfaces that you would like to use.
+You can also start a process manually by running the following command, where you must modify `config.properties` or use
+flags to indicate the ports/network interfaces that you would like to use.
 
 ```bash
 java -cp target/asdProj2.jar Main
