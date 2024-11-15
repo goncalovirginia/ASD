@@ -2,7 +2,7 @@ import pt.unl.fct.di.novasys.babel.core.Babel;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-//import protocols.abd.ABD;
+import protocols.abd.ABD;
 import protocols.agreement.PaxosAgreement;
 import protocols.app.HashApp;
 import protocols.app.HashApp.ReplicationStrategy;
@@ -48,7 +48,7 @@ public class Main {
 		// Application
 		HashApp hashApp = new HashApp(props);
 		StateMachine sm  = null;
-		//ABD abd = null;
+		ABD abd = null;
 		PaxosAgreement agreement = null;
 		
 		//Register applications in babel
@@ -66,8 +66,8 @@ public class Main {
 		} else {
 			System.err.println("Loading ABD protocol stack");
 
-			//abd = new ABD(props);
-			//babel.registerProtocol(abd);
+			abd = new ABD(props);
+			babel.registerProtocol(abd);
 		}
 
 
@@ -78,7 +78,7 @@ public class Main {
 			sm.init(props);
 			agreement.init(props);
 		} else {
-			//abd.init(props);
+			abd.init(props);
 		}
 
 		//Start babel and protocol threads
