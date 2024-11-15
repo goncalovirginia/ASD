@@ -10,16 +10,16 @@ public class ReadRequest extends ProtoRequest {
     public static final short REQUEST_ID = 510;
 
     private final UUID opId;
-    private final byte[] operation;
+    private final byte[] key;
 
-    public ReadRequest(UUID opId, byte[] operation) {
+    public ReadRequest(UUID opId, byte[] key) {
         super(REQUEST_ID);
         this.opId = opId;
-        this.operation = operation;
+        this.key = key;
     }
 
-    public byte[] getOperation() {
-        return operation;
+    public byte[] getKey() {
+        return key;
     }
 
     public UUID getOpId() {
@@ -30,7 +30,7 @@ public class ReadRequest extends ProtoRequest {
     public String toString() {
         return "ReadRequest{" +
                 "opId=" + opId +
-                ", operation=" + Hex.encodeHexString(operation) +
+                ", key=" + Hex.encodeHexString(key) +
                 '}';
     }
 }

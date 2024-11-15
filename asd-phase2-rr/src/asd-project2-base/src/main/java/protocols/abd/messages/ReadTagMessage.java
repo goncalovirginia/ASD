@@ -10,11 +10,13 @@ public class ReadTagMessage extends ProtoMessage {
 
     private final int opSeq;
     private final String key;
+    private final boolean reading;
 
-    public ReadTagMessage(int opSeq, String key) {
+    public ReadTagMessage(int opSeq, String key, boolean r) {
         super(MSG_ID);
         this.opSeq = opSeq;
         this.key = key;
+        this.reading = r;
     }
 
     public int getOpSeq() {
@@ -25,9 +27,19 @@ public class ReadTagMessage extends ProtoMessage {
         return key;
     }
 
+    public boolean isReading() {
+        return reading;
+    }
+
     @Override
     public String toString() {
-        return "ReadTagMessage{" +
+        String start = "";
+        if (reading)
+            start = "ReadMessage{";
+        else
+            start = "ReadTagMessage{";
+
+        return  start +
                 "opSeq=" + opSeq +
                 ", key=" + key +
                 '}';
@@ -40,6 +52,7 @@ public class ReadTagMessage extends ProtoMessage {
             byte[] keyBytes = msg.key.getBytes();  
             out.writeInt(keyBytes.length);
             out.writeBytes(keyBytes); 
+            out.writeBoolean(msg.reading);
         }
 
         @Override
@@ -50,8 +63,9 @@ public class ReadTagMessage extends ProtoMessage {
             in.readBytes(keyBytes);
             
             String key = new String(keyBytes); 
+            boolean reading = in.readBoolean();
 
-            return new ReadTagMessage(instance, key);
+            return new ReadTagMessage(instance, key, reading);
         }
     };
 

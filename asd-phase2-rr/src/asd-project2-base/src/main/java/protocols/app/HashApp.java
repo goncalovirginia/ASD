@@ -13,6 +13,8 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import protocols.abd.ABD;
+import protocols.abd.renotifications.ReadCompleteNotification;
+import protocols.abd.renotifications.UpdateValueNotification;
 import protocols.abd.renotifications.WriteCompleteNotification;
 /*
 import protocols.abd.renotifications.ReadCompleteNotification;
@@ -104,9 +106,8 @@ public class HashApp extends GenericProtocol {
 		/*-------------------- Register Execute Notification Handler --------------- */
 		subscribeNotification(ExecuteNotification.NOTIFICATION_ID, this::uponExecuteNotification); //For Paxos interaction
 		subscribeNotification(WriteCompleteNotification.NOTIFICATION_ID, this::uponWriteCompleteNotification);
-/* 		subscribeNotification(ReadCompleteNotification.NOTIFICATION_ID, this::uponReadCompleteNotification); //For ABD interaction
-		subscribeNotification(WriteCompleteNotification.NOTIFICATION_ID, this::uponWriteCompleteNotification); //For ABD interaction
-		subscribeNotification(UpdateValueNotification.NOTIFICATION_ID, this::uponUpdateValueNotification); //For ABD interaction */
+ 		subscribeNotification(ReadCompleteNotification.NOTIFICATION_ID, this::uponReadCompleteNotification); //For ABD interaction 
+		subscribeNotification(UpdateValueNotification.NOTIFICATION_ID, this::uponUpdateValueNotification); //For ABD interaction 
 
 		/*-------------------- Register Request Handler ---------------------------- */
 		registerRequestHandler(CurrentStateRequest.REQUEST_ID, this::uponCurrentStateRequest);
@@ -228,11 +229,11 @@ public class HashApp extends GenericProtocol {
 	 * ***/
 
 	 private void uponWriteCompleteNotification(WriteCompleteNotification not, short sourceProto) {
+		logger.info("Writting in App and returning op to client...: " + not);
+
 		String key = new String(not.getKey(),0,not.getKey().length);
 		this.data.put(key, not.getValue());
 		
-		logger.info("Writting in App...: " + not);
-
 		Pair<Host, Long> pair = clientIdMapper.remove(not.getOpId());
 		
 		sendMessage(new ResponseMessage(pair.getRight(), new byte[0]), pair.getLeft());
@@ -240,8 +241,10 @@ public class HashApp extends GenericProtocol {
 		this.updateOperationCountAndPrintHash();
 	}
 
-/* 	//The following 3 handlers are are executed only for the abd stack
+	//The following 3 handlers are are executed only for the abd stack
 	private void uponReadCompleteNotification(ReadCompleteNotification not, short sourceProto) {
+		logger.info("Reading in App and returning op to client...: " + not);
+
 		String key = new String(not.getKey(),0,not.getKey().length);
 		this.data.put(key, not.getValue());
 		
@@ -250,17 +253,16 @@ public class HashApp extends GenericProtocol {
 		sendMessage(new ResponseMessage(pair.getRight(), data.getOrDefault(key, new byte[0])), pair.getLeft());
 
 		this.updateOperationCountAndPrintHash();
-	}
-
+	}	
 	
 
 	private void uponUpdateValueNotification(UpdateValueNotification not, short sourceProto) {
-		logger.debug("Updating key due to a remote update.");
+		logger.info("Updating key due to a remote update: " + not);
+		//logger.debug("Updating key due to a remote update.");
 		data.put(new String(not.getKey(),0,not.getKey().length), not.getValue());
 
 		this.updateOperationCountAndPrintHash();
 	} 
-	*/
 
 	private void updateOperationCountAndPrintHash() {
 		executedOps++;

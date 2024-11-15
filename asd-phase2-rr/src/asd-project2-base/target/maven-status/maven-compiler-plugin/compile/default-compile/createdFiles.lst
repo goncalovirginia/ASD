@@ -11,6 +11,7 @@ protocols\agreement\messages\PrepareMessage.class
 protocols\statemachine\messages\AddReplicaMessage.class
 protocols\agreement\notifications\MembershipChangedNotification.class
 protocols\app\HashApp.class
+protocols\abd\messages\ReadReplyMessage$1.class
 protocols\abd\messages\WriteMessage$1.class
 protocols\app\messages\RequestMessage$1.class
 protocols\app\messages\ResponseMessage$1.class
@@ -27,7 +28,9 @@ protocols\app\requests\CurrentStateReply.class
 Main.class
 protocols\statemachine\notifications\ChannelReadyNotification.class
 protocols\agreement\messages\AcceptMessage$1.class
+protocols\abd\messages\ReadReplyMessage.class
 protocols\statemachine\StateMachine$State.class
+protocols\abd\renotifications\UpdateValueNotification.class
 protocols\statemachine\messages\ReplicaAddedMessage.class
 protocols\app\requests\CurrentStateRequest.class
 protocols\agreement\requests\RemoveReplicaRequest.class
@@ -47,6 +50,7 @@ protocols\agreement\messages\PrepareOKMessage$1.class
 protocols\agreement\notifications\NewLeaderNotification.class
 protocols\abd\messages\ACKMessage.class
 protocols\abd\messages\ReadTagMessage.class
+protocols\abd\renotifications\ReadCompleteNotification.class
 protocols\abd\messages\ACKMessage$1.class
 protocols\agreement\notifications\JoinedNotification.class
 protocols\agreement\messages\AcceptOKMessage$1.class

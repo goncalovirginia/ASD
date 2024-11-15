@@ -1,10 +1,13 @@
 C:\ASD\asd-phase2-rr\src\asd-project2-base\src\main\java\protocols\agreement\messages\AcceptOKMessage.java
+C:\ASD\asd-phase2-rr\src\asd-project2-base\src\main\java\protocols\abd\renotifications\UpdateValueNotification.java
 C:\ASD\asd-phase2-rr\src\asd-project2-base\src\main\java\protocols\statemachine\messages\AddReplicaMessage.java
 C:\ASD\asd-phase2-rr\src\asd-project2-base\src\main\java\protocols\abd\messages\WriteMessage.java
 C:\ASD\asd-phase2-rr\src\asd-project2-base\src\main\java\protocols\agreement\messages\BroadcastMessage.java
 C:\ASD\asd-phase2-rr\src\asd-project2-base\src\main\java\protocols\app\utils\Operation.java
+C:\ASD\asd-phase2-rr\src\asd-project2-base\src\main\java\protocols\abd\renotifications\ReadCompleteNotification.java
 C:\ASD\asd-phase2-rr\src\asd-project2-base\src\main\java\protocols\statemachine\notifications\ChannelReadyNotification.java
 C:\ASD\asd-phase2-rr\src\asd-project2-base\src\main\java\protocols\statemachine\requests\OrderRequest.java
+C:\ASD\asd-phase2-rr\src\asd-project2-base\src\main\java\protocols\abd\messages\ReadReplyMessage.java
 C:\ASD\asd-phase2-rr\src\asd-project2-base\src\main\java\protocols\agreement\notifications\DecidedNotification.java
 C:\ASD\asd-phase2-rr\src\asd-project2-base\src\main\java\protocols\statemachine\messages\LeaderElectionMessage.java
 C:\ASD\asd-phase2-rr\src\asd-project2-base\src\main\java\protocols\app\requests\InstallStateRequest.java

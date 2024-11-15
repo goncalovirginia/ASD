@@ -14,9 +14,12 @@ import org.apache.logging.log4j.Logger;
 import protocols.abd.requests.ReadRequest;
 import protocols.abd.requests.WriteRequest;
 import protocols.abd.messages.ACKMessage;
+import protocols.abd.messages.ReadReplyMessage;
 import protocols.abd.messages.ReadTagMessage;
 import protocols.abd.messages.ReadTagReplyMessage;
 import protocols.abd.messages.WriteMessage;
+import protocols.abd.renotifications.ReadCompleteNotification;
+import protocols.abd.renotifications.UpdateValueNotification;
 import protocols.abd.renotifications.WriteCompleteNotification;
 import protocols.statemachine.notifications.ChannelReadyNotification;
 
@@ -45,7 +48,7 @@ public class ABD extends GenericProtocol {
     private int processSequence; //processSequence
 
     //private Map<Integer, List<Pair<Integer, Integer>>> roundAnswers; 
-    private List<Pair<Integer, Integer>> answers;
+    private List<Pair<Pair<Integer, Integer>, byte[]>> answers;
 
     private final Map<String, Pair<Integer, Integer>> tags; //HashMap key-(opSeq, processSeq) pair
     private final Map<String, byte[]> values; //HashMap key-values
@@ -79,6 +82,7 @@ public class ABD extends GenericProtocol {
         /*-------------------- Register Message Serializers ------------------------------- */
         registerMessageSerializer(channelId, ReadTagMessage.MSG_ID, ReadTagMessage.serializer);
         registerMessageSerializer(channelId, ReadTagReplyMessage.MSG_ID, ReadTagReplyMessage.serializer);
+        registerMessageSerializer(channelId, ReadReplyMessage.MSG_ID, ReadReplyMessage.serializer);
         registerMessageSerializer(channelId, WriteMessage.MSG_ID, WriteMessage.serializer);
         registerMessageSerializer(channelId, ACKMessage.MSG_ID, ACKMessage.serializer);
 
@@ -87,6 +91,7 @@ public class ABD extends GenericProtocol {
         registerMessageHandler(channelId, ReadTagReplyMessage.MSG_ID, this::uponReadTagReplyMessage, this::uponMsgFail);
         registerMessageHandler(channelId, WriteMessage.MSG_ID, this::uponWriteMessage, this::uponMsgFail);
         registerMessageHandler(channelId, ACKMessage.MSG_ID, this::uponACKMessage, this::uponMsgFail);
+        registerMessageHandler(channelId, ReadReplyMessage.MSG_ID, this::uponReadReplyMessage, this::uponMsgFail);
 
         /*-------------------- Register Channel Events ------------------------------- */
         registerChannelEventHandler(channelId, OutConnectionDown.EVENT_ID, this::uponOutConnectionDown);
@@ -135,11 +140,6 @@ public class ABD extends GenericProtocol {
     }
 
     /*--------------------------------- Requests ---------------------------------------- */
-    private void uponReadRequest(ReadRequest request, short sourceProto) {
-        logger.debug("Received READ request: " + request);
-
-    }    
-
     private void uponWriteRequest(WriteRequest request, short sourceProto) {
         logger.info("Received WRITE request: " + request);
 
@@ -151,40 +151,74 @@ public class ABD extends GenericProtocol {
         operations.put(key, request.getOpId());
         tags.put(key, Pair.of(nextInstance, processSequence));
         
-        membership.forEach(h -> sendMessage(new ReadTagMessage(nextInstance, key), h));
+        membership.forEach(h -> sendMessage(new ReadTagMessage(nextInstance, key, false), h));
+    } 
+
+    private void uponReadRequest(ReadRequest request, short sourceProto) {
+        logger.info("Received ReadRequest: " + request);
+
+        pending = null;
+        nextInstance ++;
+        answers = new LinkedList<>();
+
+        String key = new String(request.getKey(), 0, request.getKey().length);
+        operations.put(key, request.getOpId());
+        tags.put(key, Pair.of(nextInstance, processSequence));
+        
+        membership.forEach(h -> sendMessage(new ReadTagMessage(nextInstance, key, true), h));
     } 
 
     /*--------------------------------- Procedures ---------------------------------------- */
-    private int maxSQTag(List<Pair<Integer, Integer>> ans) {
+    private int maxSQTag(List<Pair<Pair<Integer, Integer>, byte[]>> ans) {
         Pair<Integer, Integer> max = Pair.of(0, 0);
-        for (Pair<Integer, Integer> h : ans) {
-            if (h != null) {
-                if (h.getLeft() > max.getLeft() || 
-                    (h.getLeft() == max.getLeft() && h.getRight() > max.getRight()))
-                    max = Pair.of(h.getLeft(), h.getRight());
-            }    
+        for (Pair<Pair<Integer, Integer>, byte[]> pair : ans) {
+            Pair<Integer, Integer> h = pair.getLeft(); 
+            if (h.getLeft() > max.getLeft() || 
+                (h.getLeft() == max.getLeft() && h.getRight() > max.getRight()))
+                max = Pair.of(h.getLeft(), h.getRight());    
         }
 
         return max.getLeft();
     }
 
+    private Pair<Pair<Integer, Integer>, byte[]> maxTag(List<Pair<Pair<Integer, Integer>, byte[]>> ans) {
+        Pair<Pair<Integer, Integer>, byte[]> max = Pair.of(Pair.of(0, 0), null);
+        for (Pair<Pair<Integer, Integer>, byte[]> pair : ans) {
+            Pair<Integer, Integer> h = pair.getLeft();
+            Pair<Integer, Integer> m = max.getLeft(); 
+            if (h.getLeft() > m.getLeft() || 
+                (h.getLeft() == m.getLeft() && h.getRight() > m.getRight()))
+                    max = pair;
+        }
+
+        return max;
+    }
+
     /*--------------------------------- Messages ---------------------------------------- */
     private void uponReadTagMessage(ReadTagMessage msg, Host host, short sourceProto, int channelId) {
-        logger.debug("Received READTAG message: " + msg);
-        
+        logger.debug("Received ReadTagMessage: " + msg);
+
         Pair<Integer, Integer> ntag = tags.get(msg.getKey());
         if(ntag == null) {
-            ntag = Pair.of(msg.getOpSeq(), processSequence);
+            ntag = Pair.of(0, processSequence);
             tags.put(msg.getKey(), ntag);
         }
-        sendMessage(new ReadTagReplyMessage(msg.getOpSeq(), ntag, msg.getKey()), host);
+
+        if(msg.isReading()) {
+            byte[] val =  values.get(msg.getKey()); 
+            if (val == null) val = new byte[0];
+
+            sendMessage(new ReadReplyMessage(msg.getOpSeq(), ntag, msg.getKey(), val), host);
+        }else 
+            sendMessage(new ReadTagReplyMessage(msg.getOpSeq(), ntag, msg.getKey()), host);
     }
 
     private void uponReadTagReplyMessage(ReadTagReplyMessage msg, Host host, short sourceProto, int channelId) {
-        
+        logger.debug("Received ReadTagReplyMessage: " + msg);
+
         if (nextInstance == msg.getOpId()) {
             if (pending != null)//After majority Decision, no more adds, or it can mess up ACK
-                answers.add(msg.getTag());
+                answers.add(Pair.of(msg.getTag(), null));
                 
             if(answers.size() == (membership.size()/ 2) + 1 ) {
                 int maxSQTag = maxSQTag(answers);
@@ -200,33 +234,62 @@ public class ABD extends GenericProtocol {
         }
     }
 
+    private void uponReadReplyMessage(ReadReplyMessage msg, Host host, short sourceProto, int channelId) {
+        logger.debug("Received ReadTagReplyMessage: " + msg);
+
+        if (nextInstance == msg.getOpId()) {
+            if (pending == null)//After majority Decision, no more adds, or it can mess up ACK
+                answers.add(Pair.of(msg.getTag(), null));
+                
+            if(answers.size() == (membership.size()/ 2) + 1 ) {
+                Pair<Pair<Integer, Integer>, byte[]> maxTag = maxTag(answers);
+                Pair<Integer, Integer> tag = maxTag.getLeft();
+                pending = (maxTag.getRight() == null) ? new byte[0] : maxTag.getRight();
+                answers = new LinkedList<>();
+                nextInstance ++;
+                membership.forEach(h -> {
+                        sendMessage(new WriteMessage(
+                            nextInstance, msg.getKey(), tag, pending), h); 
+                });
+            }
+        }
+    }
+
     private void uponWriteMessage(WriteMessage msg, Host host, short sourceProto, int channelId) { 
-        logger.debug("Received WRITE message: INSTANCE {} - MSG: {} ", nextInstance, msg);
+        logger.debug("Received WriteMessage: INSTANCE {} - MSG: {} ", nextInstance, msg);
+
         Pair<Integer, Integer> tt = tags.get(msg.getKey());
-        if (msg.getTag().getLeft() > tt.getLeft() ||  (msg.getTag().getLeft() == tt.getLeft() 
+        Pair<Integer, Integer> prevTT = tt;
+        if ( (msg.getTag().getLeft() > tt.getLeft()) || (msg.getTag().getLeft() == tt.getLeft() 
                 && msg.getTag().getRight() > tt.getRight()) ) {
 
             tags.put(msg.getKey(), msg.getTag());
             values.put(msg.getKey(), msg.getValue());
-
-            logger.info("Updated -> WRITE message: MSG: {} ", msg);
+  
+            if(self != host) {
+                logger.info("Updated -> message: MSG: {} TAGMsg {} PrevTag {} ", msg, msg.getTag(), prevTT);
+                triggerNotification(new UpdateValueNotification(msg.getOpId(), msg.getKey().getBytes(), msg.getValue()));
+            }
         }
 
         sendMessage(new ACKMessage(msg.getOpId(), msg.getKey()), host);
     }
 
     private void uponACKMessage(ACKMessage msg, Host host, short sourceProto, int channelId) {
-        logger.debug("I AM {} and I Received ACK message: instance {} - opSeq {} - key {} - opID {} - SIZE {}", 
-                        self, nextInstance, msg.getOpId());
+        if(nextInstance == msg.getOpId()) {//change ACK to send value
+            answers.add(Pair.of(Pair.of(msg.getOpId(), processSequence), pending));
 
-        if(nextInstance == msg.getOpId()) {
-            answers.add(Pair.of(msg.getOpId(), processSequence));
             if (answers.size() == (membership.size() / 2) + 1) {
+                logger.info("NEW {}: opSeq {} - key {} - opId {}", (pending == null)? "WRITE" : "READ",
+                                msg.getOpId(), msg.getKey(), operations.get(msg.getKey()));
+
                 answers = new LinkedList<>();
-                if (pending == null) {
-                    logger.info("NEW RRITE: opSeq {} - key {} - opId {}", msg.getOpId(), msg.getKey(), operations.get(msg.getKey()));
+                if (pending == null) {      
                     triggerNotification(new WriteCompleteNotification(
                         nextInstance, msg.getKey().getBytes(), values.get(msg.getKey()), operations.get(msg.getKey())));
+                } else {                    
+                    triggerNotification(new ReadCompleteNotification(
+                        nextInstance, msg.getKey().getBytes(), pending, operations.get(msg.getKey())));
                 }
                     
             }
