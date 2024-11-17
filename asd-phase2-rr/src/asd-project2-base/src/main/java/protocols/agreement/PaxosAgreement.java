@@ -283,7 +283,6 @@ public class PaxosAgreement extends GenericProtocol {
 
             Pair<UUID, byte[]> val = toBeDecidedMessages.putIfAbsent(msg.getInstance(), Pair.of(msg.getOpId(), msg.getOp()));
             if ( val != null) {
-                logger.info("Is it possible?");
                 return; //twice already
             }
                 
