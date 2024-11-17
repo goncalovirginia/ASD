@@ -11,11 +11,13 @@ public class JoinedNotification extends ProtoNotification {
 
     private final List<Host> membership;
     private final int joinInstance;
+    private final boolean initial;
 
-    public JoinedNotification(List<Host> membership, int joinInstance) {
+    public JoinedNotification(List<Host> membership, int joinInstance, boolean initial) {
         super(NOTIFICATION_ID);
         this.membership = membership;
         this.joinInstance = joinInstance;
+        this.initial = initial;
     }
 
     public int getJoinInstance() {
@@ -24,6 +26,10 @@ public class JoinedNotification extends ProtoNotification {
 
     public List<Host> getMembership() {
         return membership;
+    }
+
+    public boolean isInInitialMembership() {
+        return initial;
     }
 
     @Override

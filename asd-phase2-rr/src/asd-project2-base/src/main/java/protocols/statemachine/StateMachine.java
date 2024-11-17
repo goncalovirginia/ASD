@@ -33,6 +33,7 @@ import java.net.UnknownHostException;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Properties;
+import java.util.UUID;
 
 /**
  * This is NOT fully functional StateMachine implementation.
@@ -138,18 +139,18 @@ public class StateMachine extends GenericProtocol {
             //I'm part of the initial membership, so I'm assuming the system is bootstrapping
             membership = new LinkedList<>(initialMembership);
             membership.forEach(this::openConnection);
-            triggerNotification(new JoinedNotification(membership, initialMembership.indexOf(self)));
+            triggerNotification(new JoinedNotification(membership, initialMembership.indexOf(self), true));
         } else {
             state = State.JOINING;
             logger.info("Starting in JOINING as I am not part of initial membership");
 
-            //IF NOT PART OF INITIAL MEMBERSHIP
-                //CONTACT MEMBER OF INITIAL MEMBERSHIP TO JOIN
-                // (message? see if we can re-use old logic) with the membership
-                // this new Host joins and flushes the messages toBeDecided to the leader if it has any.
-            
-            //You have to do something to join the system and know which instance you joined
-            // (and copy the state of that instance)
+            membership = new LinkedList<>(initialMembership);
+            membership.forEach(this::openConnection);
+            membership.add(self);
+
+            Host target = initialMembership.get(0);
+            openConnection(target);
+            sendMessage(new AddReplicaMessage(self, 0), target);
         }
     }
 
@@ -179,14 +180,14 @@ public class StateMachine extends GenericProtocol {
 		logger.info("Received Current State Reply: {}", reply.toString());
 
         Host newReplica = membership.get(membership.size()-1);
-        openConnection(newReplica);
         sendMessage(new ReplicaAddedMessage(reply.getInstance(), reply.getState(), membership), newReplica);
 	}
 
 
     private void uponDecidedNotification(DecidedNotification notification, short sourceProto) {
-        logger.info("{} On Instance {} Received notification: {}", leader.equals(self) ? "LEADERR" : self, notification.getInstance(), notification.getOpId());
-        
+        //logger.info("{} On Instance {} Received notification: {}", leader.equals(self) ? "LEADERRR" : self, notification.getInstance(), notification.getOpId());
+
+        if(!self.equals(leader)) nextInstance = notification.getInstance();
         triggerNotification(new ExecuteNotification(notification.getOpId(), notification.getOperation()));        
     }
 
@@ -210,8 +211,14 @@ public class StateMachine extends GenericProtocol {
         logger.debug("Membership changed notification: " + notification);
         
         if (notification.isAdding()) {
-            openConnection(notification.getReplica());
-            membership.add(notification.getReplica());
+            if(membership.contains(notification.getReplica()))
+                sendRequest(new CurrentStateRequest(0), HashApp.PROTO_ID);
+            else { 
+                openConnection(notification.getReplica());
+                membership.add(notification.getReplica());
+            }
+            //triggerNotification(new ExecuteNotification(UUID.randomUUID(), "AddReplica".getBytes()));   
+            
         } else {
             closeConnection(notification.getReplica());
             membership.remove(notification.getReplica());
@@ -224,7 +231,7 @@ public class StateMachine extends GenericProtocol {
     } */
 
     private void uponLeaderOrderMessage(LeaderOrderMessage msg, Host host, short sourceProto, int channelId) {
-        logger.info("Received Leader Order Message: ");
+        logger.debug("Received Leader Order Message: " + msg);
         //the leader is not initialized(has not received majority yet)
         if (leader == null) {
             logger.info("Leader still waiting majority, pending...");
@@ -237,19 +244,17 @@ public class StateMachine extends GenericProtocol {
     }
 
     private void uponAddReplicaMessage(AddReplicaMessage msg, Host host, short sourceProto, int channelId) {
-        logger.info("Received Add Replica Message: ");
-        //the leader is not initialized(has not received majority yet) 
-
-        if(!leader.equals(self)) { //this is probably not needed
-            sendMessage(new AddReplicaMessage(msg.getNewReplica()), leader);
-        } else if(leader.equals(self)) {
-            membership.add(msg.getNewReplica());    
-            sendRequest(new CurrentStateRequest(nextInstance), HashApp.PROTO_ID);
-
-            sendRequest(new AddReplicaRequest(nextInstance, msg.getNewReplica()), PaxosAgreement.PROTOCOL_ID);
-        } else {
-            logger.info("leader null, is this possible? Later");
+        logger.info("Received Add Replica Message: " + msg);
+        
+        if(!self.equals(leader)) {
+            openConnection(msg.getNewReplica());
+            membership.add(msg.getNewReplica());
+            sendMessage(new AddReplicaMessage(msg.getNewReplica(), nextInstance), leader);
+            return;
         }
+
+        openConnection(msg.getNewReplica());        
+        sendRequest(new AddReplicaRequest(nextInstance, msg.getNewReplica()), PaxosAgreement.PROTOCOL_ID);
     }
 
     private void uponReplicaAddedMessage(ReplicaAddedMessage msg, Host host, short sourceProto, int channelId) {
@@ -260,7 +265,7 @@ public class StateMachine extends GenericProtocol {
         membership.forEach(this::openConnection);
         sendRequest(new InstallStateRequest(msg.getState()), HashApp.PROTO_ID);
         
-        triggerNotification(new JoinedNotification(membership, membership.indexOf(self)));
+        triggerNotification(new JoinedNotification(membership, membership.indexOf(self), false));
         state = State.ACTIVE;
     }
 

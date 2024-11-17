@@ -3,6 +3,8 @@ package protocols.agreement;
 import protocols.agreement.messages.AcceptMessage;
 import protocols.agreement.messages.AcceptOKMessage;
 import protocols.agreement.messages.BroadcastMessage;
+import protocols.agreement.messages.ChangeMembershipMessage;
+import protocols.agreement.messages.ChangeMembershipOKMessage;
 import protocols.agreement.messages.PrepareMessage;
 import protocols.agreement.messages.PrepareOKMessage;
 import protocols.agreement.notifications.JoinedNotification;
@@ -18,6 +20,7 @@ import pt.unl.fct.di.novasys.network.data.Host;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.apache.commons.lang3.tuple.Pair;
+
 import protocols.statemachine.notifications.ChannelReadyNotification;
 import protocols.agreement.notifications.DecidedNotification;
 import protocols.agreement.requests.ProposeRequest;
@@ -124,6 +127,9 @@ public class PaxosAgreement extends GenericProtocol {
         registerMessageSerializer(cId, AcceptMessage.MSG_ID, AcceptMessage.serializer);
         registerMessageSerializer(cId, AcceptOKMessage.MSG_ID, AcceptOKMessage.serializer);
 
+        registerMessageSerializer(cId, ChangeMembershipMessage.MSG_ID, ChangeMembershipMessage.serializer);
+        registerMessageSerializer(cId, ChangeMembershipOKMessage.MSG_ID, ChangeMembershipOKMessage.serializer);
+
         /*---------------------- Register Message Handlers -------------------------- */
         try {
               registerMessageHandler(cId, BroadcastMessage.MSG_ID, this::uponBroadcastMessage, this::uponMsgFail);
@@ -131,6 +137,9 @@ public class PaxosAgreement extends GenericProtocol {
               registerMessageHandler(cId, PrepareOKMessage.MSG_ID, this::uponPrepareOKMessage, this::uponMsgFail);
               registerMessageHandler(cId, AcceptMessage.MSG_ID, this::uponAcceptMessage, this::uponMsgFail);
               registerMessageHandler(cId, AcceptOKMessage.MSG_ID, this::uponAcceptOKMessage, this::uponMsgFail);
+
+              registerMessageHandler(cId, ChangeMembershipMessage.MSG_ID, this::uponChangeMembershipMessage, this::uponMsgFail);
+              registerMessageHandler(cId, ChangeMembershipOKMessage.MSG_ID, this::uponChangeMembershipOKMessage, this::uponMsgFail);
         } catch (HandlerRegistrationException e) {
             throw new AssertionError("Error registering message handler.", e);
         }
@@ -196,6 +205,20 @@ public class PaxosAgreement extends GenericProtocol {
         joinedInstance = notification.getJoinInstance();
         membership = new LinkedList<>(notification.getMembership());
         logger.info("Agreement starting at instance {},  membership: {}", joinedInstance, membership);
+
+        logger.info("TOBEDECIDED {}", lastToBeDecided);
+        
+    }
+
+    private void uponAddReplica(AddReplicaRequest request, short sourceProto) {
+        //membership.add(request.getReplica());
+        instanceStateMap.put(0, new AgreementInstanceState());
+        logger.debug("Received Add Replica Request: " + request);
+        
+        sendMessage(new ChangeMembershipMessage(request.getReplica(), request.getInstance(), true), request.getReplica());
+
+        membership.forEach(h -> 
+            sendMessage(new ChangeMembershipMessage(request.getReplica(), request.getInstance(), false), h));
     }
 
     private void uponProposeRequest(ProposeRequest request, short sourceProto) {
@@ -204,30 +227,71 @@ public class PaxosAgreement extends GenericProtocol {
         membership.forEach(h -> sendMessage(msg, h));          
     }
 
+    //TODO - INCORPORATE THIS IN ACCEPT ? MAYBE NOT BECAUSE MESSAGES ARE TOO DIFFERENT? NO OPID/DATA?
+    private void uponChangeMembershipMessage(ChangeMembershipMessage msg, Host host, short sourceProto, int channelId) {        
+        if (msg.isOK()) {
+            if(msg.getNewReplica().equals(myself)) {
+                lastToBeDecided = msg.getInstance();
+                return;
+            }
+
+            membership.add(msg.getNewReplica());
+            triggerNotification(new MembershipChangedNotification(msg.getNewReplica(), true, channelId));
+            return;
+        }
+        
+        ChangeMembershipOKMessage acceptOK = new ChangeMembershipOKMessage(msg.getNewReplica(), msg.getInstance());
+        sendMessage(acceptOK, host);
+    }
+
+    private void uponChangeMembershipOKMessage(ChangeMembershipOKMessage msg, Host host, short sourceProto, int channelId) {        
+        AgreementInstanceState state = instanceStateMap.get(0);
+        if (state != null) {
+            state.incrementAcceptCount();
+            if (state.getAcceptokCount() >= (membership.size() / 2) + 1 && !state.decided()) {
+                state.decide();
+
+                membership.forEach(h ->  { 
+                    if (!h.equals(myself)) {
+                            sendMessage(new ChangeMembershipMessage(msg.getNewReplica(), msg.getInstance(), true), h);
+                        }
+                    });
+
+                membership.add(msg.getNewReplica());
+                triggerNotification(new MembershipChangedNotification(msg.getNewReplica(), true, channelId));              
+            }
+        }
+    }
+
     //joinInstance -1 case: just pend the messages on toBeDecidedMessages, and on triggerJoin
     //send them to the leader. Simple
-    private void uponAcceptMessage(AcceptMessage msg, Host host, short sourceProto, int channelId) {        
+    private void uponAcceptMessage(AcceptMessage msg, Host host, short sourceProto, int channelId) {   
         if (!host.equals(myself)) {
+
+            boolean found = false;
             for(; lastToBeDecided <= msg.getLastChosen(); lastToBeDecided++) {
                 Pair<UUID, byte[]> pair = toBeDecidedMessages.remove(lastToBeDecided);
                 if(pair != null) {
-                    if(!msg.isAddOrRemoving()) {
-                        triggerNotification(new DecidedNotification(lastToBeDecided, pair.getLeft(), pair.getRight()));
-                    } else if(msg.isAdding()) {
-                        membership.add(msg.getReplica());
-                        triggerNotification(new MembershipChangedNotification(msg.getReplica(), true));
-                    } else {
-                        if (msg.getReplicaInstance() < joinedInstance) 
-                            joinedInstance --;
-
-                        membership.remove(msg.getReplica());
-                        triggerNotification(new MembershipChangedNotification(msg.getReplica(), false));
-                    }
+                    if (lastToBeDecided == msg.getInstance())
+                        found = true;
                     
-                    executedMessages.put(lastToBeDecided, pair);
-                } else break;
+                    if (joinedInstance >= 0) {
+                        triggerNotification(new DecidedNotification(lastToBeDecided, pair.getLeft(), pair.getRight()));
+                        executedMessages.put(lastToBeDecided, pair);
+                    }
+                } else {
+                    if (joinedInstance >= 0) {
+                        AcceptOKMessage m = new AcceptOKMessage(lastToBeDecided, msg.getOpId(), new byte[0], lastToBeDecided);
+                        sendMessage(m, host);
+                        return;
+                    }
+                    break;
+                }
             }
 
+            if (found) { //no point in bothering the leader anymore
+                return;  
+            }
             toBeDecidedMessages.putIfAbsent(msg.getInstance(), Pair.of(msg.getOpId(), msg.getOp()));
         }
         
@@ -238,39 +302,30 @@ public class PaxosAgreement extends GenericProtocol {
     private void uponAcceptOKMessage(AcceptOKMessage msg, Host host, short sourceProto, int channelId) {
         AgreementInstanceState state = instanceStateMap.get(msg.getInstance());
         if (state != null) {
+            if(msg.getMissingIndex() != -1) {
+                Pair<UUID, byte[]> pair = executedMessages.get(lastToBeDecided);
+                sendMessage(new AcceptMessage(lastToBeDecided, pair.getLeft(), pair.getRight(), lastChosen), host);
+                return;
+            }
+
             state.incrementAcceptCount();
             if (state.getAcceptokCount() >= (membership.size() / 2) + 1 && !state.decided()) {
                 state.decide();
                 triggerNotification(new DecidedNotification(msg.getInstance(), msg.getOpId(), msg.getOp()));
+                
                 lastChosen = msg.getInstance();
-
+                executedMessages.putIfAbsent(msg.getInstance(), Pair.of(msg.getOpId(), msg.getOp()));
                 membership.forEach(h -> 
                     sendMessage(new AcceptMessage(msg.getInstance(), msg.getOpId(), msg.getOp(), lastChosen), h));
                           
             }
         }
-
-        //Change the message instead like in Accept
-/*                 if (state.isAdding()) {
-                    membership.add(state.getReplica());
-                    triggerNotification(new MembershipChangedNotification(state.getReplica(), true));
-                } else if (state.isRemoving()) {
-                    membership.remove(state.getReplica());
-                    triggerNotification(new MembershipChangedNotification(state.getReplica(), false));
-                } else {  } */
     }
+
+    
     
     //Change Message instead, dunno if addReplica is added to Log  of State Machine
-    private void uponAddReplica(AddReplicaRequest request, short sourceProto) {
-        logger.debug("Received Add Replica Request: " + request);
-        instanceStateMap.putIfAbsent(request.getInstance(), new AgreementInstanceState());
-
-        AcceptMessage msg = new AcceptMessage(request.getInstance(), request.getReplica(), joinedInstance, true);
-        membership.forEach(h -> sendMessage(msg, h)); 
-
-        //The AddReplicaRequest contains an "instance" field, which we ignore in this incorrect protocol.
-        //You should probably take it into account while doing whatever you do here.
-    }
+    
     private void uponRemoveReplica(RemoveReplicaRequest request, short sourceProto) {
         logger.debug("Received " + request);
         //The RemoveReplicaRequest contains an "instance" field, which we ignore in this incorrect protocol.

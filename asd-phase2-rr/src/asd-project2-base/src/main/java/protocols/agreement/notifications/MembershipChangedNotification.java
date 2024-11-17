@@ -9,11 +9,13 @@ public class MembershipChangedNotification extends ProtoNotification {
 
     private final boolean adding;
     private final Host replica;
+    private int instance;
     
-    public MembershipChangedNotification(Host replica, boolean adding) {
+    public MembershipChangedNotification(Host replica, boolean adding, int instance) {
         super(NOTIFICATION_ID);
         this.adding = adding;
         this.replica = replica;
+        this.instance = instance;
     }
 
 
@@ -23,6 +25,10 @@ public class MembershipChangedNotification extends ProtoNotification {
 
     public boolean isAdding() {
         return adding;
+    }
+
+    public int getInstance() {
+        return instance;
     }
 
     @Override

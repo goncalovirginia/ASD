@@ -21,6 +21,7 @@ C:\ASD\asd-phase2-rr\src\asd-project2-base\src\main\java\protocols\statemachine\
 C:\ASD\asd-phase2-rr\src\asd-project2-base\src\main\java\protocols\agreement\requests\AddReplicaRequest.java
 C:\ASD\asd-phase2-rr\src\asd-project2-base\src\main\java\protocols\agreement\notifications\MembershipChangedNotification.java
 C:\ASD\asd-phase2-rr\src\asd-project2-base\src\main\java\protocols\agreement\requests\PrepareRequest.java
+C:\ASD\asd-phase2-rr\src\asd-project2-base\src\main\java\protocols\agreement\messages\ChangeMembershipMessage.java
 C:\ASD\asd-phase2-rr\src\asd-project2-base\src\main\java\protocols\abd\messages\ReadTagReplyMessage.java
 C:\ASD\asd-phase2-rr\src\asd-project2-base\src\main\java\protocols\agreement\requests\ProposeRequest.java
 C:\ASD\asd-phase2-rr\src\asd-project2-base\src\main\java\protocols\abd\messages\ReadTagMessage.java
@@ -36,6 +37,7 @@ C:\ASD\asd-phase2-rr\src\asd-project2-base\src\main\java\protocols\agreement\not
 C:\ASD\asd-phase2-rr\src\asd-project2-base\src\main\java\protocols\app\requests\CurrentStateReply.java
 C:\ASD\asd-phase2-rr\src\asd-project2-base\src\main\java\protocols\app\requests\CurrentStateRequest.java
 C:\ASD\asd-phase2-rr\src\asd-project2-base\src\main\java\protocols\agreement\PaxosAgreement.java
+C:\ASD\asd-phase2-rr\src\asd-project2-base\src\main\java\protocols\agreement\messages\ChangeMembershipOKMessage.java
 C:\ASD\asd-phase2-rr\src\asd-project2-base\src\main\java\protocols\app\messages\RequestMessage.java
 C:\ASD\asd-phase2-rr\src\asd-project2-base\src\main\java\protocols\abd\requests\ReadRequest.java
 C:\ASD\asd-phase2-rr\src\asd-project2-base\src\main\java\protocols\agreement\messages\PrepareMessage.java

@@ -37,7 +37,7 @@ while [ $i -lt $processes ]; do
     sleep 1
   elif [ $i -eq 3 ]; then
     sleep 3
-    read -p "------------- Press enter to kill servers. --------------------"
+    echo "-------------------- Initial Membership launched --------------------"
     sleep 6
   else
     sleep 5
@@ -49,6 +49,6 @@ while [ $i -lt $processes ]; do
   i=$(($i + 1))
 done
 
-kill $(ps aux | grep 'asdProj2.jar' | awk '{print $2}')
+#kill $(ps aux | grep 'asdProj2.jar' | awk '{print $2}')
 
-echo "All processes done!"
+#echo "All processes done!"

@@ -6,6 +6,7 @@ protocols\statemachine\messages\ReplicaAddedMessage$1.class
 protocols\statemachine\messages\AddReplicaMessage$1.class
 protocols\app\HashApp$ReplicationStrategy.class
 protocols\agreement\PaxosAgreement$AgreementInstanceState.class
+protocols\agreement\messages\ChangeMembershipMessage.class
 protocols\app\requests\InstallStateRequest.class
 protocols\agreement\messages\PrepareMessage.class
 protocols\statemachine\messages\AddReplicaMessage.class
@@ -15,6 +16,7 @@ protocols\abd\messages\ReadReplyMessage$1.class
 protocols\abd\messages\WriteMessage$1.class
 protocols\app\messages\RequestMessage$1.class
 protocols\app\messages\ResponseMessage$1.class
+protocols\agreement\messages\ChangeMembershipOKMessage.class
 protocols\statemachine\StateMachine.class
 protocols\agreement\messages\PrepareMessage$1.class
 protocols\statemachine\messages\LeaderElectionMessage$1.class
@@ -43,6 +45,7 @@ protocols\statemachine\messages\LeaderOrderMessage.class
 protocols\agreement\messages\PrepareOKMessage.class
 protocols\abd\messages\ReadTagReplyMessage.class
 protocols\agreement\messages\BroadcastMessage.class
+protocols\agreement\messages\ChangeMembershipOKMessage$1.class
 protocols\agreement\requests\PrepareRequest.class
 protocols\statemachine\messages\LeaderOrderMessage$1.class
 protocols\abd\messages\ReadTagMessage$1.class
@@ -52,6 +55,7 @@ protocols\abd\messages\ACKMessage.class
 protocols\abd\messages\ReadTagMessage.class
 protocols\abd\renotifications\ReadCompleteNotification.class
 protocols\abd\messages\ACKMessage$1.class
+protocols\agreement\messages\ChangeMembershipMessage$1.class
 protocols\agreement\notifications\JoinedNotification.class
 protocols\agreement\messages\AcceptOKMessage$1.class
 protocols\app\utils\Operation.class

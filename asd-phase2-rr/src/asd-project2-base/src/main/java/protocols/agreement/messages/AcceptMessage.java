@@ -38,8 +38,8 @@ public class AcceptMessage extends ProtoMessage {
     public AcceptMessage(int instance, Host host, int replicaInstance, boolean adding) {
         super(MSG_ID);
         this.instance = instance;
-        this.op = null;
-        this.opId = null;
+        this.op = new byte[0];
+        this.opId = UUID.randomUUID();
         this.changingMembership = true;
         this.replica = host;
         this.replicaInstance = replicaInstance;
