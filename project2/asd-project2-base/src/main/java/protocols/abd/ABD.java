@@ -31,27 +31,24 @@ public class ABD extends GenericProtocol {
 
 	private final Host thisHost;
 	private final int tcpChannelId;
-
+	private int thisProcessId;
 	private List<Host> membership;
 	private int opSeq;
-	private int thisProcessId;
-
 	private List<QuorumReply> quorumReplies;
-
 	private final Map<String, Tag> tags; //key - (opSeq, processId)
 	private final Map<String, byte[]> values; //key - value
 	private final Map<String, UUID> operations; //key - operation
-
 	private byte[] pending; //value pending to be written
 
 	public ABD(Properties props) throws IOException, HandlerRegistrationException {
 		super(PROTOCOL_NAME, PROTOCOL_ID);
+
 		opSeq = 0;
 		quorumReplies = new LinkedList<>();
-
 		tags = new HashMap<>();
 		values = new HashMap<>();
 		operations = new HashMap<>();
+		pending = null;
 
 		String address = props.getProperty("address");
 		String port = props.getProperty("p2p_port");
@@ -68,14 +65,14 @@ public class ABD extends GenericProtocol {
 		tcpChannelId = createChannel(TCPChannel.NAME, tcpChannelProps);
 
 		/*-------------------- Register Message Serializers ------------------------------- */
-		registerMessageSerializer(tcpChannelId, ReadTagMessage.MSG_ID, ReadTagMessage.serializer);
+		registerMessageSerializer(tcpChannelId, QuorumMessage.MSG_ID, QuorumMessage.serializer);
 		registerMessageSerializer(tcpChannelId, ReadTagReplyMessage.MSG_ID, ReadTagReplyMessage.serializer);
 		registerMessageSerializer(tcpChannelId, ReadReplyMessage.MSG_ID, ReadReplyMessage.serializer);
 		registerMessageSerializer(tcpChannelId, WriteMessage.MSG_ID, WriteMessage.serializer);
 		registerMessageSerializer(tcpChannelId, AckMessage.MSG_ID, AckMessage.serializer);
 
 		/*-------------------- Register Message Handlers ------------------------------- */
-		registerMessageHandler(tcpChannelId, ReadTagMessage.MSG_ID, this::uponReadTagMessage, this::uponMsgFail);
+		registerMessageHandler(tcpChannelId, QuorumMessage.MSG_ID, this::uponQuorumMessage, this::uponMsgFail);
 		registerMessageHandler(tcpChannelId, ReadTagReplyMessage.MSG_ID, this::uponReadTagReplyMessage, this::uponMsgFail);
 		registerMessageHandler(tcpChannelId, WriteMessage.MSG_ID, this::uponWriteMessage, this::uponMsgFail);
 		registerMessageHandler(tcpChannelId, AckMessage.MSG_ID, this::uponAckMessage, this::uponMsgFail);
@@ -97,8 +94,6 @@ public class ABD extends GenericProtocol {
 
 	@Override
 	public void init(Properties props) throws UnknownHostException {
-		pending = null;
-
 		//load initial membership
 		String host = props.getProperty("initial_membership");
 		String[] hosts = host.split(",");
@@ -124,44 +119,33 @@ public class ABD extends GenericProtocol {
 		logger.info("Received WRITE request: {}", request);
 
 		opSeq++;
-		pending = request.getData();
 		quorumReplies = new LinkedList<>();
+		pending = request.getData();
 
 		String key = new String(request.getKey());
 		operations.put(key, request.getOpId());
 		tags.put(key, new Tag(opSeq, thisProcessId));
 
-		membership.forEach(h -> sendMessage(new ReadTagMessage(opSeq, key, false), h));
+		membership.forEach(h -> sendMessage(new QuorumMessage(opSeq, key, false), h));
 	}
 
 	private void uponReadRequest(ReadRequest request, short sourceProto) {
 		logger.info("Received ReadRequest: {}", request);
 
 		opSeq++;
-		pending = null;
 		quorumReplies = new LinkedList<>();
+		pending = null;
 
 		String key = new String(request.getKey());
 		operations.put(key, request.getOpId());
 		tags.put(key, new Tag(opSeq, thisProcessId));
 
-		membership.forEach(h -> sendMessage(new ReadTagMessage(opSeq, key, true), h));
-	}
-
-	/*--------------------------------- Procedures ---------------------------------------- */
-
-	private QuorumReply maxTagQuorumReply(List<QuorumReply> quorumReplies) {
-		QuorumReply maxTagQuorumReply = new QuorumReply(new Tag(0, 0), null);
-		for (QuorumReply quorumReply : quorumReplies) {
-			if (quorumReply.getTag().greaterThan(maxTagQuorumReply.getTag()))
-				maxTagQuorumReply = quorumReply;
-		}
-		return maxTagQuorumReply;
+		membership.forEach(h -> sendMessage(new QuorumMessage(opSeq, key, true), h));
 	}
 
 	/*--------------------------------- Messages ---------------------------------------- */
 
-	private void uponReadTagMessage(ReadTagMessage msg, Host host, short sourceProto, int channelId) {
+	private void uponQuorumMessage(QuorumMessage msg, Host host, short sourceProto, int channelId) {
 		logger.debug("Received ReadTagMessage: {}", msg);
 
 		Tag tag = tags.computeIfAbsent(msg.getKey(), k -> new Tag(0, thisProcessId));
@@ -178,15 +162,16 @@ public class ABD extends GenericProtocol {
 
 		if (opSeq != msg.getOpId()) return;
 
-		if (pending == null) //After majority Decision, no more adds, or it can mess up ACKs
-			quorumReplies.add(new QuorumReply(msg.getTag(), null));
+		if (pending != null) //after majority decision, no more adds, or it can mess up ACKs
+			quorumReplies.add(new QuorumReply(msg.getTag(), msg.getValue()));
 
 		if (quorumReplies.size() == (membership.size() / 2) + 1) {
 			QuorumReply maxTagQuorumReply = maxTagQuorumReply(quorumReplies);
-			pending = maxTagQuorumReply.getValue() == null ? new byte[0] : maxTagQuorumReply.getValue();
-			quorumReplies = new LinkedList<>();
+			Tag maxTag = maxTagQuorumReply.getTag();
+			pending = maxTagQuorumReply.getValue();
 			opSeq++;
-			membership.forEach(h -> sendMessage(new WriteMessage(opSeq, msg.getKey(), maxTagQuorumReply.getTag(), pending), h));
+			quorumReplies = new LinkedList<>();
+			membership.forEach(h -> sendMessage(new WriteMessage(opSeq, msg.getKey(), maxTag, pending), h));
 		}
 	}
 
@@ -195,29 +180,29 @@ public class ABD extends GenericProtocol {
 
 		if (opSeq != msg.getOpId()) return;
 
-		if (pending != null) //after majority decision, no more adds, or it can mess up ACKs
+		if (pending == null) //after majority decision, no more adds, or it can mess up ACKs
 			quorumReplies.add(new QuorumReply(msg.getTag(), null));
 
 		if (quorumReplies.size() == (membership.size() / 2) + 1) {
 			int maxTagOpSeq = maxTagQuorumReply(quorumReplies).getTag().getOpSeq();
-			quorumReplies = new LinkedList<>();
-			opSeq++;
-			membership.forEach(h -> sendMessage(new WriteMessage(opSeq, msg.getKey(), new Tag(maxTagOpSeq + 1, thisProcessId), pending), h));
 			pending = null;
+			opSeq++;
+			quorumReplies = new LinkedList<>();
+			membership.forEach(h -> sendMessage(new WriteMessage(opSeq, msg.getKey(), new Tag(maxTagOpSeq + 1, thisProcessId), pending), h));
 		}
 	}
 
 	private void uponWriteMessage(WriteMessage msg, Host host, short sourceProto, int channelId) {
 		logger.debug("Received WriteMessage: INSTANCE {} - MSG: {} ", opSeq, msg);
 
-		Tag newTag = tags.get(msg.getKey());
+		Tag tag = tags.get(msg.getKey());
 
-		if (msg.getTag().greaterThan(newTag)) {
+		if (msg.getTag().greaterThan(tag)) {
 			tags.put(msg.getKey(), msg.getTag());
 			values.put(msg.getKey(), msg.getValue());
 
 			if (!host.equals(thisHost)) {
-				logger.info("Updated -> message: MSG: {} TAGMsg {} PrevTag {} ", msg, msg.getTag(), newTag);
+				logger.info("Updated -> message: MSG: {} TAGMsg {} PrevTag {} ", msg, msg.getTag(), tag);
 				triggerNotification(new UpdateValueNotification(msg.getOpId(), msg.getKey().getBytes(), msg.getValue()));
 			}
 		}
@@ -244,6 +229,17 @@ public class ABD extends GenericProtocol {
 
 	private void uponMsgFail(ProtoMessage msg, Host host, short destProto, Throwable throwable, int channelId) {
 		logger.error("Message {} to {} failed, reason: {}", msg, host, throwable);
+	}
+
+	/*--------------------------------- Procedures ---------------------------------------- */
+
+	private QuorumReply maxTagQuorumReply(List<QuorumReply> quorumReplies) {
+		QuorumReply maxTagQuorumReply = new QuorumReply(new Tag(0, 0), null);
+		for (QuorumReply quorumReply : quorumReplies) {
+			if (quorumReply.getTag().greaterThan(maxTagQuorumReply.getTag()))
+				maxTagQuorumReply = quorumReply;
+		}
+		return maxTagQuorumReply;
 	}
 
 	/* --------------------------------- TCPChannel Events ---------------------------- */

@@ -4,7 +4,7 @@ import io.netty.buffer.ByteBuf;
 import pt.unl.fct.di.novasys.babel.generic.ProtoMessage;
 import pt.unl.fct.di.novasys.network.ISerializer;
 
-public class ReadTagMessage extends ProtoMessage {
+public class QuorumMessage extends ProtoMessage {
 
 	public final static short MSG_ID = 501;
 
@@ -12,7 +12,7 @@ public class ReadTagMessage extends ProtoMessage {
 	private final String key;
 	private final boolean isRead;
 
-	public ReadTagMessage(int opSeq, String key, boolean r) {
+	public QuorumMessage(int opSeq, String key, boolean r) {
 		super(MSG_ID);
 		this.opSeq = opSeq;
 		this.key = key;
@@ -45,9 +45,9 @@ public class ReadTagMessage extends ProtoMessage {
 				'}';
 	}
 
-	public static ISerializer<ReadTagMessage> serializer = new ISerializer<ReadTagMessage>() {
+	public static ISerializer<QuorumMessage> serializer = new ISerializer<QuorumMessage>() {
 		@Override
-		public void serialize(ReadTagMessage msg, ByteBuf out) {
+		public void serialize(QuorumMessage msg, ByteBuf out) {
 			out.writeInt(msg.opSeq);
 			byte[] keyBytes = msg.key.getBytes();
 			out.writeInt(keyBytes.length);
@@ -56,7 +56,7 @@ public class ReadTagMessage extends ProtoMessage {
 		}
 
 		@Override
-		public ReadTagMessage deserialize(ByteBuf in) {
+		public QuorumMessage deserialize(ByteBuf in) {
 			int instance = in.readInt();
 			int keyLength = in.readInt();
 			byte[] keyBytes = new byte[keyLength];
@@ -65,7 +65,7 @@ public class ReadTagMessage extends ProtoMessage {
 			String key = new String(keyBytes);
 			boolean reading = in.readBoolean();
 
-			return new ReadTagMessage(instance, key, reading);
+			return new QuorumMessage(instance, key, reading);
 		}
 	};
 
