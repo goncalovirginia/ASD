@@ -278,7 +278,7 @@ public class PaxosAgreement extends GenericProtocol {
 
             //To be Tested -> I think this should be added, because:
             // 1 - Useless message send to leader to be discarded after choice
-            // 2 - toBeDecided will, eventually, be empty. Keeping a single list with executed/AcceptedMessages
+            // 2 - This way toBeDecided will, eventually, be empty. Keeping a single list with executed/AcceptedMessages
             if (executedMessages.containsKey(msg.getInstance())) return;
 
             Pair<UUID, byte[]> val = toBeDecidedMessages.putIfAbsent(msg.getInstance(), Pair.of(msg.getOpId(), msg.getOp()));
