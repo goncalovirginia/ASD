@@ -204,15 +204,11 @@ public class PaxosAgreement extends GenericProtocol {
         //so in the joining proccess, we should take that into account.
         joinedInstance = notification.getJoinInstance();
         membership = new LinkedList<>(notification.getMembership());
-        logger.info("Agreement starting at instance {},  membership: {}", joinedInstance, membership);
-
-        logger.info("TOBEDECIDED {}", lastToBeDecided);
-        
+        logger.info("Agreement starting at instance {},  processSequence: {}, membership: {}", lastToBeDecided, joinedInstance, membership); 
     }
 
     private void uponAddReplica(AddReplicaRequest request, short sourceProto) {
-        //membership.add(request.getReplica());
-        instanceStateMap.put(0, new AgreementInstanceState());
+        instanceStateMap.put(0, new AgreementInstanceState()); //an instance that bothers no one.
         logger.debug("Received Add Replica Request: " + request);
         
         sendMessage(new ChangeMembershipMessage(request.getReplica(), request.getInstance(), true), request.getReplica());
@@ -228,6 +224,7 @@ public class PaxosAgreement extends GenericProtocol {
     }
 
     //TODO - INCORPORATE THIS IN ACCEPT ? MAYBE NOT BECAUSE MESSAGES ARE TOO DIFFERENT? NO OPID/DATA?
+    //MAYBE NOT, BUT DO REUSE THIS FOR REMOVE
     private void uponChangeMembershipMessage(ChangeMembershipMessage msg, Host host, short sourceProto, int channelId) {        
         if (msg.isOK()) {
             if(msg.getNewReplica().equals(myself)) {
@@ -263,32 +260,28 @@ public class PaxosAgreement extends GenericProtocol {
         }
     }
 
-    //joinInstance -1 case: just pend the messages on toBeDecidedMessages, and on triggerJoin
-    //send them to the leader. Simple
     private void uponAcceptMessage(AcceptMessage msg, Host host, short sourceProto, int channelId) {   
         if (!host.equals(myself)) {
 
             boolean found = false;
-            for(; lastToBeDecided <= msg.getLastChosen(); lastToBeDecided++) {
-                Pair<UUID, byte[]> pair = toBeDecidedMessages.remove(lastToBeDecided);
-                if(pair != null) {
-                    if (lastToBeDecided == msg.getInstance())
-                        found = true;
-                    
-                    if (joinedInstance >= 0) {
-                        triggerNotification(new DecidedNotification(lastToBeDecided, pair.getLeft(), pair.getRight()));
-                        executedMessages.put(lastToBeDecided, pair);
-                    }
-                } else {
-                    if (joinedInstance >= 0) {
+            if (joinedInstance >= 0) {
+                for(; lastToBeDecided <= msg.getLastChosen(); lastToBeDecided++) {
+                    Pair<UUID, byte[]> pair = toBeDecidedMessages.remove(lastToBeDecided);
+                    if(pair != null) {
+                        if (lastToBeDecided == msg.getInstance())
+                            found = true;
+                        
+                        Pair<UUID, byte[]> val = executedMessages.putIfAbsent(lastToBeDecided, pair);
+                        if(val == null)
+                            triggerNotification(new DecidedNotification(lastToBeDecided, pair.getLeft(), pair.getRight()));
+                    } else {
+                        logger.info("I should be here requesting the difference.");
                         AcceptOKMessage m = new AcceptOKMessage(lastToBeDecided, msg.getOpId(), new byte[0], lastToBeDecided);
                         sendMessage(m, host);
                         return;
                     }
-                    break;
                 }
             }
-
             if (found) { //no point in bothering the leader anymore
                 return;  
             }
@@ -312,7 +305,7 @@ public class PaxosAgreement extends GenericProtocol {
             if (state.getAcceptokCount() >= (membership.size() / 2) + 1 && !state.decided()) {
                 state.decide();
                 triggerNotification(new DecidedNotification(msg.getInstance(), msg.getOpId(), msg.getOp()));
-                
+
                 lastChosen = msg.getInstance();
                 executedMessages.putIfAbsent(msg.getInstance(), Pair.of(msg.getOpId(), msg.getOp()));
                 membership.forEach(h -> 
@@ -335,7 +328,7 @@ public class PaxosAgreement extends GenericProtocol {
 
     private void uponMsgFail(ProtoMessage msg, Host host, short destProto, Throwable throwable, int channelId) {
         //If a message fails to be sent, for whatever reason, log the message and the reason
-        logger.error("Message {} to {} failed, reason: {}", msg, host, throwable);
+        //logger.error("Message {} to {} failed, reason: {}", msg, host, throwable);
     }
 
 }
