@@ -1,12 +1,11 @@
-import pt.unl.fct.di.novasys.babel.core.Babel;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-
 import protocols.abd.ABD;
 import protocols.agreement.PaxosAgreement;
 import protocols.app.HashApp;
 import protocols.app.HashApp.ReplicationStrategy;
 import protocols.statemachine.StateMachine;
+import pt.unl.fct.di.novasys.babel.core.Babel;
 
 import java.net.Inet4Address;
 import java.net.InetAddress;
@@ -23,7 +22,6 @@ public class Main {
 	static {
 		System.setProperty("log4j.configurationFile", "log4j2.xml");
 	}
-
 
 
 	//Creates the logger object
@@ -47,34 +45,31 @@ public class Main {
 
 		// Application
 		HashApp hashApp = new HashApp(props);
-		StateMachine sm  = null;
-		ABD abd = null;
-		PaxosAgreement agreement = null;
-		
-		//Register applications in babel
 		babel.registerProtocol(hashApp);
 
-		if(hashApp.getReplicationStrategy() == ReplicationStrategy.SMR) {
-			System.err.println("Loading SMR/Paxos protocol stack");
+		// Replication
+		StateMachine sm = null;
+		ABD abd = null;
+		PaxosAgreement agreement = null;
 
+		if (hashApp.getReplicationStrategy() == ReplicationStrategy.SMR) {
+			System.err.println("Loading SMR/Paxos protocol stack");
 			// StateMachine Protocol
 			sm = new StateMachine(props);
+			babel.registerProtocol(sm);
 			// Agreement Protocol
 			agreement = new PaxosAgreement(props);
-			babel.registerProtocol(sm);
 			babel.registerProtocol(agreement);
 		} else {
 			System.err.println("Loading ABD protocol stack");
-
 			abd = new ABD(props);
 			babel.registerProtocol(abd);
 		}
 
-
 		//Init the protocols. This should be done after creating all protocols,
 		// since there can be inter-protocol communications in this step.
 		hashApp.init(props);
-		if(hashApp.getReplicationStrategy() == ReplicationStrategy.SMR) {
+		if (hashApp.getReplicationStrategy() == ReplicationStrategy.SMR) {
 			sm.init(props);
 			agreement.init(props);
 		} else {
@@ -89,7 +84,7 @@ public class Main {
 	}
 
 	public static String getIpOfInterface(String interfaceName) throws SocketException {
-		if(interfaceName.equalsIgnoreCase("lo"))
+		if (interfaceName.equalsIgnoreCase("lo"))
 			return "127.0.0.1"; //This is an special exception to deal with the loopback.
 		NetworkInterface networkInterface = NetworkInterface.getByName(interfaceName);
 		System.out.println(networkInterface);

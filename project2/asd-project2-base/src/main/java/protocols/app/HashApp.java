@@ -1,28 +1,15 @@
 package protocols.app;
 
-import pt.unl.fct.di.novasys.babel.core.GenericProtocol;
-import pt.unl.fct.di.novasys.babel.exceptions.HandlerRegistrationException;
-import pt.unl.fct.di.novasys.babel.generic.ProtoMessage;
-import pt.unl.fct.di.novasys.channel.simpleclientserver.SimpleServerChannel;
-import pt.unl.fct.di.novasys.channel.simpleclientserver.events.ClientDownEvent;
-import pt.unl.fct.di.novasys.channel.simpleclientserver.events.ClientUpEvent;
-import pt.unl.fct.di.novasys.network.data.Host;
 import org.apache.commons.codec.binary.Hex;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-
 import protocols.abd.ABD;
 import protocols.abd.renotifications.ReadCompleteNotification;
 import protocols.abd.renotifications.UpdateValueNotification;
 import protocols.abd.renotifications.WriteCompleteNotification;
-/*
-import protocols.abd.renotifications.ReadCompleteNotification;
-import protocols.abd.renotifications.UpdateValueNotification;
-import protocols.abd.renotifications.WriteCompleteNotification;
-*/
 import protocols.abd.requests.ReadRequest;
-import protocols.abd.requests.WriteRequest; 
+import protocols.abd.requests.WriteRequest;
 import protocols.app.messages.RequestMessage;
 import protocols.app.messages.ResponseMessage;
 import protocols.app.requests.CurrentStateReply;
@@ -32,6 +19,13 @@ import protocols.app.utils.Operation;
 import protocols.statemachine.StateMachine;
 import protocols.statemachine.notifications.ExecuteNotification;
 import protocols.statemachine.requests.OrderRequest;
+import pt.unl.fct.di.novasys.babel.core.GenericProtocol;
+import pt.unl.fct.di.novasys.babel.exceptions.HandlerRegistrationException;
+import pt.unl.fct.di.novasys.babel.generic.ProtoMessage;
+import pt.unl.fct.di.novasys.channel.simpleclientserver.SimpleServerChannel;
+import pt.unl.fct.di.novasys.channel.simpleclientserver.events.ClientDownEvent;
+import pt.unl.fct.di.novasys.channel.simpleclientserver.events.ClientUpEvent;
+import pt.unl.fct.di.novasys.network.data.Host;
 
 import java.io.*;
 import java.security.MessageDigest;
@@ -53,7 +47,7 @@ public class HashApp extends GenericProtocol {
 	//Client callbacks
 	private final Map<UUID, Pair<Host, Long>> clientIdMapper;
 
-	public static  enum ReplicationStrategy {SMR, ABD};
+	public enum ReplicationStrategy {SMR, ABD}
 
 	public final ReplicationStrategy strategy;
 
@@ -69,13 +63,13 @@ public class HashApp extends GenericProtocol {
 		String port = properties.getProperty("server_port");
 		String s = properties.getProperty("replication_strategy", "SMR");
 
-		switch(s) {
-		case "ABD":
-			this.strategy = ReplicationStrategy.ABD;
-			break;
-		case "SMR":
-		default:
-			this.strategy = ReplicationStrategy.SMR;        
+		switch (s) {
+			case "ABD":
+				this.strategy = ReplicationStrategy.ABD;
+				break;
+			case "SMR":
+			default:
+				this.strategy = ReplicationStrategy.SMR;
 		}
 
 		logger.info("Listening on {}:{}", address, port);
@@ -106,7 +100,7 @@ public class HashApp extends GenericProtocol {
 		/*-------------------- Register Execute Notification Handler --------------- */
 		subscribeNotification(ExecuteNotification.NOTIFICATION_ID, this::uponExecuteNotification); //For Paxos interaction
 		subscribeNotification(WriteCompleteNotification.NOTIFICATION_ID, this::uponWriteCompleteNotification);
- 		subscribeNotification(ReadCompleteNotification.NOTIFICATION_ID, this::uponReadCompleteNotification); //For ABD interaction 
+		subscribeNotification(ReadCompleteNotification.NOTIFICATION_ID, this::uponReadCompleteNotification); //For ABD interaction
 		subscribeNotification(UpdateValueNotification.NOTIFICATION_ID, this::uponUpdateValueNotification); //For ABD interaction 
 
 		/*-------------------- Register Request Handler ---------------------------- */
@@ -145,10 +139,10 @@ public class HashApp extends GenericProtocol {
 	}
 
 	private void uponRequestMessage(RequestMessage msg, Host host, short sourceProto, int channelId) {
-		logger.debug("Request received: " + msg + " from " + host);
+		logger.debug("Request received: {} from {}", msg, host);
 		UUID opUUID = UUID.randomUUID();
 		clientIdMapper.put(opUUID, Pair.of(host, msg.getOpId()));
-		if(strategy == ReplicationStrategy.SMR) {
+		if (strategy == ReplicationStrategy.SMR) {
 			//State machine replication + Paxos
 			Operation op = new Operation(msg.getOpType(), msg.getKey(), msg.getData());
 			try {
@@ -159,14 +153,11 @@ public class HashApp extends GenericProtocol {
 			}
 		} else {
 			//ABD interaction
-			if(msg.getOpType() == RequestMessage.READ) {
-
+			if (msg.getOpType() == RequestMessage.READ) {
 				sendRequest(new ReadRequest(opUUID, msg.getKey().getBytes()), ABD.PROTOCOL_ID);
-
 			} else if (msg.getOpType() == RequestMessage.WRITE) {
 				logger.info("REQUESTING...");
 				sendRequest(new WriteRequest(opUUID, msg.getKey().getBytes(), msg.getData()), ABD.PROTOCOL_ID);
-
 			} else {
 				System.err.println("Invalid client operation");
 				System.exit(1);
@@ -188,12 +179,11 @@ public class HashApp extends GenericProtocol {
 				data.put(op.getKey(), op.getData());
 			executedOps++;
 			if (executedOps % 10000 == 0) {
-				logger.info("Current state N_OPS= {}, MAP_SIZE={}, HASH={}",
-						executedOps, data.size(), Hex.encodeHexString(cumulativeHash));
+				logger.info("Current state N_OPS= {}, MAP_SIZE={}, HASH={}", executedOps, data.size(), Hex.encodeHexString(cumulativeHash));
 			}
 
 			logger.info("Executed in app state: instance - {}, opId - {}", executedOps, not.getOpId());
-			
+
 			//Check if the operation was issued by me
 			Pair<Host, Long> pair = clientIdMapper.remove(not.getOpId());
 			if (pair != null) {
@@ -206,7 +196,7 @@ public class HashApp extends GenericProtocol {
 					resp = new ResponseMessage(pair.getRight(), data.getOrDefault(op.getKey(), new byte[0]));
 				//Respond
 				sendMessage(resp, pair.getLeft());
-			} 
+			}
 
 		} catch (IOException e) {
 			e.printStackTrace();
@@ -214,67 +204,66 @@ public class HashApp extends GenericProtocol {
 		}
 
 	}
-	/*** 
+
+	/***
 	 * To test Add Replica:
 	 * add a config property, on the state machine, based on that config property we either do a normal join
 	 * or a addReplica, where the process is similar to normal join but with a state transfer 
 	 * also, unlike normal join, addReplica is a Operation
-	 * 
+	 *
 	 * To test Remove Replica:
 	 * Simply manufacture a operation on a random host to do this
-	 * 
+	 *
 	 * In both these operations, since the client does not send them, we simply execute them at the 
 	 * App Layer without replying to any client
 	 * ----> Check if there is any issues in executedOps but it should be fine.
 	 * ***/
 
-	 private void uponWriteCompleteNotification(WriteCompleteNotification not, short sourceProto) {
-		logger.info("Writting in App and returning op to client...: " + not);
+	private void uponWriteCompleteNotification(WriteCompleteNotification not, short sourceProto) {
+		logger.info("Writing in App and returning op to client...: {}", not);
 
-		String key = new String(not.getKey(),0,not.getKey().length);
+		String key = new String(not.getKey());
 		this.data.put(key, not.getValue());
-		
+
 		Pair<Host, Long> pair = clientIdMapper.remove(not.getOpId());
-		
+
 		sendMessage(new ResponseMessage(pair.getRight(), new byte[0]), pair.getLeft());
-		
+
 		this.updateOperationCountAndPrintHash();
 	}
 
 	//The following 3 handlers are are executed only for the abd stack
 	private void uponReadCompleteNotification(ReadCompleteNotification not, short sourceProto) {
-		logger.info("Reading in App and returning op to client...: " + not);
+		logger.info("Reading in App and returning op to client...: {}", not);
 
-		String key = new String(not.getKey(),0,not.getKey().length);
+		String key = new String(not.getKey());
 		this.data.put(key, not.getValue());
-		
+
 		Pair<Host, Long> pair = clientIdMapper.remove(not.getOpId());
-		
+
 		sendMessage(new ResponseMessage(pair.getRight(), data.getOrDefault(key, new byte[0])), pair.getLeft());
 
 		this.updateOperationCountAndPrintHash();
-	}	
-	
+	}
+
 
 	private void uponUpdateValueNotification(UpdateValueNotification not, short sourceProto) {
-		logger.info("Updating key due to a remote update: " + not);
+		logger.info("Updating key due to a remote update: {}", not);
 		//logger.debug("Updating key due to a remote update.");
-		data.put(new String(not.getKey(),0,not.getKey().length), not.getValue());
+		data.put(new String(not.getKey()), not.getValue());
 
 		this.updateOperationCountAndPrintHash();
-	} 
+	}
 
 	private void updateOperationCountAndPrintHash() {
 		executedOps++;
 
 		if (executedOps % 10000 == 0) {
 			cumulativeHash = computeDataHash().getBytes();
-			logger.info("Current state N_OPS= {}, MAP_SIZE={}, HASH={}",
-					executedOps, data.size(), Hex.encodeHexString(cumulativeHash));
+			logger.info("Current state N_OPS= {}, MAP_SIZE={}, HASH={}", executedOps, data.size(), Hex.encodeHexString(cumulativeHash));
 		}
 	}
 
-	
 
 	private byte[] appendOpToHash(byte[] hash, byte[] op) {
 		MessageDigest mDigest;
@@ -309,7 +298,7 @@ public class HashApp extends GenericProtocol {
 		DataOutputStream dos = new DataOutputStream(baos);
 		try {
 			TreeSet<String> orderedKeys = new TreeSet<String>(data.keySet());
-			for (String key: orderedKeys) {
+			for (String key : orderedKeys) {
 				dos.writeUTF(key);
 				dos.write(data.get(key));
 			}

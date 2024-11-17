@@ -6,67 +6,67 @@ import pt.unl.fct.di.novasys.network.ISerializer;
 
 public class ReadTagMessage extends ProtoMessage {
 
-    public final static short MSG_ID = 501;
+	public final static short MSG_ID = 501;
 
-    private final int opSeq;
-    private final String key;
-    private final boolean reading;
+	private final int opSeq;
+	private final String key;
+	private final boolean isRead;
 
-    public ReadTagMessage(int opSeq, String key, boolean r) {
-        super(MSG_ID);
-        this.opSeq = opSeq;
-        this.key = key;
-        this.reading = r;
-    }
+	public ReadTagMessage(int opSeq, String key, boolean r) {
+		super(MSG_ID);
+		this.opSeq = opSeq;
+		this.key = key;
+		this.isRead = r;
+	}
 
-    public int getOpSeq() {
-        return opSeq;
-    }
+	public int getOpSeq() {
+		return opSeq;
+	}
 
-    public String getKey() {
-        return key;
-    }
+	public String getKey() {
+		return key;
+	}
 
-    public boolean isReading() {
-        return reading;
-    }
+	public boolean isRead() {
+		return isRead;
+	}
 
-    @Override
-    public String toString() {
-        String start = "";
-        if (reading)
-            start = "ReadMessage{";
-        else
-            start = "ReadTagMessage{";
+	@Override
+	public String toString() {
+		String start = "";
+		if (isRead)
+			start = "ReadMessage{";
+		else
+			start = "ReadTagMessage{";
 
-        return  start +
-                "opSeq=" + opSeq +
-                ", key=" + key +
-                '}';
-    }
+		return start +
+				"opSeq=" + opSeq +
+				", key=" + key +
+				'}';
+	}
 
-    public static ISerializer<ReadTagMessage> serializer = new ISerializer<ReadTagMessage>() {
-        @Override
-        public void serialize(ReadTagMessage msg, ByteBuf out) {
-            out.writeInt(msg.opSeq);
-            byte[] keyBytes = msg.key.getBytes();  
-            out.writeInt(keyBytes.length);
-            out.writeBytes(keyBytes); 
-            out.writeBoolean(msg.reading);
-        }
+	public static ISerializer<ReadTagMessage> serializer = new ISerializer<ReadTagMessage>() {
+		@Override
+		public void serialize(ReadTagMessage msg, ByteBuf out) {
+			out.writeInt(msg.opSeq);
+			byte[] keyBytes = msg.key.getBytes();
+			out.writeInt(keyBytes.length);
+			out.writeBytes(keyBytes);
+			out.writeBoolean(msg.isRead);
+		}
 
-        @Override
-        public ReadTagMessage deserialize(ByteBuf in) {
-            int instance = in.readInt();
-            int keyLength = in.readInt();
-            byte[] keyBytes = new byte[keyLength];
-            in.readBytes(keyBytes);
-            
-            String key = new String(keyBytes); 
-            boolean reading = in.readBoolean();
+		@Override
+		public ReadTagMessage deserialize(ByteBuf in) {
+			int instance = in.readInt();
+			int keyLength = in.readInt();
+			byte[] keyBytes = new byte[keyLength];
+			in.readBytes(keyBytes);
 
-            return new ReadTagMessage(instance, key, reading);
-        }
-    };
+			String key = new String(keyBytes);
+			boolean reading = in.readBoolean();
+
+			return new ReadTagMessage(instance, key, reading);
+		}
+	};
 
 }
