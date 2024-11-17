@@ -204,7 +204,7 @@ public class PaxosAgreement extends GenericProtocol {
         //so in the joining proccess, we should take that into account.
         joinedInstance = notification.getJoinInstance();
         membership = new LinkedList<>(notification.getMembership());
-        logger.info("Agreement starting at instance {},  process: {}, membership: {}", lastToBeDecided, joinedInstance, membership); 
+        logger.info("Agreement starting at instance {},  processSeq: {}, membership: {}", lastToBeDecided, joinedInstance, membership); 
     }
 
     private void uponAddReplica(AddReplicaRequest request, short sourceProto) {
@@ -263,14 +263,10 @@ public class PaxosAgreement extends GenericProtocol {
     private void uponAcceptMessage(AcceptMessage msg, Host host, short sourceProto, int channelId) {   
         if (!host.equals(myself)) {
 
-            boolean found = false;
             if (joinedInstance >= 0) {
                 for(; lastToBeDecided <= msg.getLastChosen(); lastToBeDecided++) {
                     Pair<UUID, byte[]> pair = toBeDecidedMessages.remove(lastToBeDecided);
                     if(pair != null) {
-                        if (lastToBeDecided == msg.getInstance())
-                            found = true;
-                        
                         executedMessages.putIfAbsent(lastToBeDecided, pair);
                         triggerNotification(new DecidedNotification(lastToBeDecided, pair.getLeft(), pair.getRight()));
                     } else {
@@ -282,7 +278,7 @@ public class PaxosAgreement extends GenericProtocol {
             }
 
             Pair<UUID, byte[]> val = toBeDecidedMessages.putIfAbsent(msg.getInstance(), Pair.of(msg.getOpId(), msg.getOp()));
-            if ( found || val != null) return;
+            if ( val != null) return; //twice already
         }
         
         AcceptOKMessage acceptOK = new AcceptOKMessage(msg);
