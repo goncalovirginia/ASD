@@ -204,7 +204,7 @@ public class PaxosAgreement extends GenericProtocol {
         //so in the joining proccess, we should take that into account.
         joinedInstance = notification.getJoinInstance();
         membership = new LinkedList<>(notification.getMembership());
-        logger.info("Agreement starting at instance {},  processSequence: {}, membership: {}", lastToBeDecided, joinedInstance, membership); 
+        logger.info("Agreement starting at instance {},  process: {}, membership: {}", lastToBeDecided, joinedInstance, membership); 
     }
 
     private void uponAddReplica(AddReplicaRequest request, short sourceProto) {
@@ -271,21 +271,18 @@ public class PaxosAgreement extends GenericProtocol {
                         if (lastToBeDecided == msg.getInstance())
                             found = true;
                         
-                        Pair<UUID, byte[]> val = executedMessages.putIfAbsent(lastToBeDecided, pair);
-                        if(val == null)
-                            triggerNotification(new DecidedNotification(lastToBeDecided, pair.getLeft(), pair.getRight()));
+                        executedMessages.putIfAbsent(lastToBeDecided, pair);
+                        triggerNotification(new DecidedNotification(lastToBeDecided, pair.getLeft(), pair.getRight()));
                     } else {
-                        logger.info("I should be here requesting the difference.");
                         AcceptOKMessage m = new AcceptOKMessage(lastToBeDecided, msg.getOpId(), new byte[0], lastToBeDecided);
                         sendMessage(m, host);
                         return;
                     }
                 }
             }
-            if (found) { //no point in bothering the leader anymore
-                return;  
-            }
-            toBeDecidedMessages.putIfAbsent(msg.getInstance(), Pair.of(msg.getOpId(), msg.getOp()));
+
+            Pair<UUID, byte[]> val = toBeDecidedMessages.putIfAbsent(msg.getInstance(), Pair.of(msg.getOpId(), msg.getOp()));
+            if ( found || val != null) return;
         }
         
         AcceptOKMessage acceptOK = new AcceptOKMessage(msg);
