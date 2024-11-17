@@ -262,7 +262,6 @@ public class PaxosAgreement extends GenericProtocol {
 
     private void uponAcceptMessage(AcceptMessage msg, Host host, short sourceProto, int channelId) {   
         if (!host.equals(myself)) {
-
             if (joinedInstance >= 0) {
                 for(; lastToBeDecided <= msg.getLastChosen(); lastToBeDecided++) {
                     Pair<UUID, byte[]> pair = toBeDecidedMessages.remove(lastToBeDecided);
@@ -277,8 +276,18 @@ public class PaxosAgreement extends GenericProtocol {
                 }
             }
 
+            //To be Tested -> I think this should be added, because:
+            // 1 - Useless message send to leader to be discarded after choice
+            // 2 - toBeDecided will, eventually, be empty. Keeping a single list with executed/AcceptedMessages
+            if (executedMessages.containsKey(msg.getInstance())) return;
+
             Pair<UUID, byte[]> val = toBeDecidedMessages.putIfAbsent(msg.getInstance(), Pair.of(msg.getOpId(), msg.getOp()));
-            if ( val != null) return; //twice already
+            if ( val != null) {
+                logger.info("Is it possible?");
+                return; //twice already
+            }
+                
+            
         }
         
         AcceptOKMessage acceptOK = new AcceptOKMessage(msg);
