@@ -262,7 +262,7 @@ public class PaxosAgreement extends GenericProtocol {
 
     private void uponAcceptMessage(AcceptMessage msg, Host host, short sourceProto, int channelId) {
         //Added && condition, needed for leader re-election
-        //The propose is, after the new leader gets relected and resends accepts messages
+        //The purpose is, after the new leader gets relected and resends accepts messages
         //Replicas that already executed the message will simply reply AcceptOK and NOT process it
         if (!host.equals(myself) && (msg.getInstance() >= lastToBeDecided)) {
             if (joinedInstance >= 0) {
