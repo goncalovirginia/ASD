@@ -68,8 +68,8 @@ public class PaxosAgreement extends GenericProtocol {
     private int proposer_seq_number;
     private List<Host> membership;
 
-    private int lastChosen;
-    private int lastToBeDecided;
+    //private int lastChosen;
+    private int toBeDecidedIndex;
 
     private Map<Integer, AgreementInstanceState> instanceStateMap; 
 
@@ -87,8 +87,8 @@ public class PaxosAgreement extends GenericProtocol {
         proposer_seq_number = -1;
         
         
-        lastChosen = 0; //
-        lastToBeDecided = 1; //
+        //lastChosen = 0; //
+        toBeDecidedIndex = 1; //
 
         toBeDecidedMessages = new TreeMap<>();
         acceptedMessages = new TreeMap<>();
@@ -188,7 +188,7 @@ public class PaxosAgreement extends GenericProtocol {
             prepare_ok_count ++;
             if (prepare_ok_count >= (membership.size() / 2) + 1) {
                 prepare_ok_count = -1;
-
+                
                 triggerNotification(new NewLeaderNotification(myself));
                 membership.forEach(h -> {
                     if (!h.equals(myself))
@@ -204,7 +204,7 @@ public class PaxosAgreement extends GenericProtocol {
         //so in the joining proccess, we should take that into account.
         joinedInstance = notification.getJoinInstance();
         membership = new LinkedList<>(notification.getMembership());
-        logger.info("Agreement starting at instance {},  processSeq: {}, membership: {}", lastToBeDecided, joinedInstance, membership); 
+        logger.info("Agreement starting at instance {},  process: {}, membership: {}", toBeDecidedIndex, joinedInstance, membership); 
     }
 
     private void uponAddReplica(AddReplicaRequest request, short sourceProto) {
@@ -219,7 +219,7 @@ public class PaxosAgreement extends GenericProtocol {
 
     private void uponProposeRequest(ProposeRequest request, short sourceProto) {
         instanceStateMap.put(request.getInstance(), new AgreementInstanceState());
-        AcceptMessage msg = new AcceptMessage(request.getInstance(), request.getOpId(), request.getOperation(), lastChosen);
+        AcceptMessage msg = new AcceptMessage(request.getInstance(), request.getOpId(), request.getOperation(), toBeDecidedIndex - 1);
         membership.forEach(h -> sendMessage(msg, h));          
     }
 
@@ -228,7 +228,7 @@ public class PaxosAgreement extends GenericProtocol {
     private void uponChangeMembershipMessage(ChangeMembershipMessage msg, Host host, short sourceProto, int channelId) {        
         if (msg.isOK()) {
             if(msg.getNewReplica().equals(myself)) {
-                lastToBeDecided = msg.getInstance();
+                toBeDecidedIndex = msg.getInstance();
                 return;
             }
 
@@ -264,13 +264,13 @@ public class PaxosAgreement extends GenericProtocol {
         //Added && condition, needed for leader re-election
         //The purpose is, after the new leader gets relected and resends accepts messages
         //Replicas that already executed the message will simply reply AcceptOK and NOT process it
-        if (!host.equals(myself) && (msg.getInstance() >= lastToBeDecided)) {
+        if (!host.equals(myself) && (msg.getInstance() >= toBeDecidedIndex)) {
             if (joinedInstance >= 0) {
-                for(; lastToBeDecided <= msg.getLastChosen(); lastToBeDecided++) {
-                    Pair<UUID, byte[]> pair = toBeDecidedMessages.remove(lastToBeDecided);
+                for(; toBeDecidedIndex <= msg.getLastChosen(); toBeDecidedIndex++) {
+                    Pair<UUID, byte[]> pair = toBeDecidedMessages.remove(toBeDecidedIndex);
                     if(pair != null) {
-                        acceptedMessages.put(lastToBeDecided, pair);
-                        triggerNotification(new DecidedNotification(lastToBeDecided, pair.getLeft(), pair.getRight()));
+                        acceptedMessages.put(toBeDecidedIndex, pair);
+                        triggerNotification(new DecidedNotification(toBeDecidedIndex, pair.getLeft(), pair.getRight()));
                     } 
                 }
                 //prevents already decided message to be send back to proposer
@@ -294,14 +294,13 @@ public class PaxosAgreement extends GenericProtocol {
             if (state.getAcceptokCount() >= (membership.size() / 2) + 1 && !state.decided()) {
                 state.decide();
                 triggerNotification(new DecidedNotification(msg.getInstance(), msg.getOpId(), msg.getOp()));
-
-                lastChosen = msg.getInstance();
+  
                 acceptedMessages.put(msg.getInstance(), Pair.of(msg.getOpId(), msg.getOp()));
                 membership.forEach(h -> { 
                         if (h != myself) 
-                            sendMessage(new AcceptMessage(msg.getInstance(), msg.getOpId(), msg.getOp(), lastChosen), h); 
+                            sendMessage(new AcceptMessage(msg.getInstance(), msg.getOpId(), msg.getOp(), toBeDecidedIndex), h); 
                 });
-                          
+                toBeDecidedIndex = msg.getInstance() + 1;          
             }
         }
     }
