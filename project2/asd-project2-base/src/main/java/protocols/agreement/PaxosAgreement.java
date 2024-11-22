@@ -74,7 +74,7 @@ public class PaxosAgreement extends GenericProtocol {
     private Map<Integer, AgreementInstanceState> instanceStateMap; 
 
     private Map<Integer, Pair<UUID, byte[]>> toBeDecidedMessages;
-    private Map<Integer, Pair<UUID, byte[]>> executedMessages;
+    private Map<Integer, Pair<UUID, byte[]>> acceptedMessages;
 
 
     public PaxosAgreement(Properties props) throws IOException, HandlerRegistrationException {
@@ -91,7 +91,7 @@ public class PaxosAgreement extends GenericProtocol {
         lastToBeDecided = 1; //
 
         toBeDecidedMessages = new TreeMap<>();
-        executedMessages = new TreeMap<>();
+        acceptedMessages = new TreeMap<>();
 
 
         instanceStateMap = new HashMap<>();
@@ -269,12 +269,12 @@ public class PaxosAgreement extends GenericProtocol {
                 for(; lastToBeDecided <= msg.getLastChosen(); lastToBeDecided++) {
                     Pair<UUID, byte[]> pair = toBeDecidedMessages.remove(lastToBeDecided);
                     if(pair != null) {
-                        executedMessages.put(lastToBeDecided, pair);
+                        acceptedMessages.put(lastToBeDecided, pair);
                         triggerNotification(new DecidedNotification(lastToBeDecided, pair.getLeft(), pair.getRight()));
                     } 
                 }
                 //prevents already decided message to be send back to proposer
-                if (executedMessages.containsKey(msg.getInstance())) return;
+                if (acceptedMessages.containsKey(msg.getInstance())) return;
             }
 
             Pair<UUID, byte[]> val = toBeDecidedMessages.putIfAbsent(msg.getInstance(), Pair.of(msg.getOpId(), msg.getOp()));
@@ -296,7 +296,7 @@ public class PaxosAgreement extends GenericProtocol {
                 triggerNotification(new DecidedNotification(msg.getInstance(), msg.getOpId(), msg.getOp()));
 
                 lastChosen = msg.getInstance();
-                executedMessages.put(msg.getInstance(), Pair.of(msg.getOpId(), msg.getOp()));
+                acceptedMessages.put(msg.getInstance(), Pair.of(msg.getOpId(), msg.getOp()));
                 membership.forEach(h -> { 
                         if (h != myself) 
                             sendMessage(new AcceptMessage(msg.getInstance(), msg.getOpId(), msg.getOp(), lastChosen), h); 
