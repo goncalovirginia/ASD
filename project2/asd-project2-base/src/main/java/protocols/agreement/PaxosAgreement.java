@@ -218,7 +218,7 @@ public class PaxosAgreement extends GenericProtocol {
     }
 
     private void uponProposeRequest(ProposeRequest request, short sourceProto) {
-        instanceStateMap.putIfAbsent(request.getInstance(), new AgreementInstanceState());
+        instanceStateMap.put(request.getInstance(), new AgreementInstanceState());
         AcceptMessage msg = new AcceptMessage(request.getInstance(), request.getOpId(), request.getOperation(), lastChosen);
         membership.forEach(h -> sendMessage(msg, h));          
     }
@@ -260,29 +260,27 @@ public class PaxosAgreement extends GenericProtocol {
         }
     }
 
-    private void uponAcceptMessage(AcceptMessage msg, Host host, short sourceProto, int channelId) {   
-        if (!host.equals(myself)) {
+    private void uponAcceptMessage(AcceptMessage msg, Host host, short sourceProto, int channelId) {
+        //Added && condition, needed for leader re-election
+        //The propose is, after the new leader gets relected and resends accepts messages
+        //Replicas that already executed the message will simply reply AcceptOK and NOT process it
+        if (!host.equals(myself) && (msg.getInstance() >= lastToBeDecided)) {
             if (joinedInstance >= 0) {
                 for(; lastToBeDecided <= msg.getLastChosen(); lastToBeDecided++) {
                     Pair<UUID, byte[]> pair = toBeDecidedMessages.remove(lastToBeDecided);
                     if(pair != null) {
-                        executedMessages.putIfAbsent(lastToBeDecided, pair);
+                        executedMessages.put(lastToBeDecided, pair);
                         triggerNotification(new DecidedNotification(lastToBeDecided, pair.getLeft(), pair.getRight()));
-                    } else {
-                        AcceptOKMessage m = new AcceptOKMessage(lastToBeDecided, msg.getOpId(), new byte[0], lastToBeDecided);
-                        sendMessage(m, host);
-                        return;
-                    }
+                    } 
                 }
+                //prevents already decided message to be send back to proposer
+                if (executedMessages.containsKey(msg.getInstance())) return;
             }
-
-            if (executedMessages.containsKey(msg.getInstance())) return;
 
             Pair<UUID, byte[]> val = toBeDecidedMessages.putIfAbsent(msg.getInstance(), Pair.of(msg.getOpId(), msg.getOp()));
             if ( val != null) {
-                return; //twice already
-            }
-                
+                return; //twice already - happens when adding replica for instance
+            }      
         }
         
         AcceptOKMessage acceptOK = new AcceptOKMessage(msg);
@@ -292,21 +290,17 @@ public class PaxosAgreement extends GenericProtocol {
     private void uponAcceptOKMessage(AcceptOKMessage msg, Host host, short sourceProto, int channelId) {
         AgreementInstanceState state = instanceStateMap.get(msg.getInstance());
         if (state != null) {
-            if(msg.getMissingIndex() != -1) {
-                Pair<UUID, byte[]> pair = executedMessages.get(lastToBeDecided);
-                sendMessage(new AcceptMessage(lastToBeDecided, pair.getLeft(), pair.getRight(), lastChosen), host);
-                return;
-            }
-
             state.incrementAcceptCount();
             if (state.getAcceptokCount() >= (membership.size() / 2) + 1 && !state.decided()) {
                 state.decide();
                 triggerNotification(new DecidedNotification(msg.getInstance(), msg.getOpId(), msg.getOp()));
 
                 lastChosen = msg.getInstance();
-                executedMessages.putIfAbsent(msg.getInstance(), Pair.of(msg.getOpId(), msg.getOp()));
-                membership.forEach(h -> 
-                    sendMessage(new AcceptMessage(msg.getInstance(), msg.getOpId(), msg.getOp(), lastChosen), h));
+                executedMessages.put(msg.getInstance(), Pair.of(msg.getOpId(), msg.getOp()));
+                membership.forEach(h -> { 
+                        if (h != myself) 
+                            sendMessage(new AcceptMessage(msg.getInstance(), msg.getOpId(), msg.getOp(), lastChosen), h); 
+                });
                           
             }
         }
