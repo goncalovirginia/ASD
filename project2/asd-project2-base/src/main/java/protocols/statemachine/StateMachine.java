@@ -30,10 +30,11 @@ import protocols.statemachine.requests.OrderRequest;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
+import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 import java.util.Properties;
-import java.util.UUID;
 
 /**
  * This is NOT fully functional StateMachine implementation.
@@ -64,11 +65,15 @@ public class StateMachine extends GenericProtocol {
     private int nextInstance;
     private Host leader;
     private List<ProposeRequest> pendingOrders;
+    private Map<Host, Integer> retryHosts;
+
+    private int nRetries;
 
     public StateMachine(Properties props) throws IOException, HandlerRegistrationException {
         super(PROTOCOL_NAME, PROTOCOL_ID);
         nextInstance = 0;
         leader = null;
+        nRetries = 0;
 
         String address = props.getProperty("address");
         String port = props.getProperty("p2p_port");
@@ -118,6 +123,8 @@ public class StateMachine extends GenericProtocol {
         triggerNotification(new ChannelReadyNotification(channelId, self));
 
         pendingOrders = new LinkedList<>();
+        retryHosts = new HashMap<>();
+        nRetries = Integer.parseInt(props.getProperty("connection_retries"));
 
         String host = props.getProperty("initial_membership");
         String[] hosts = host.split(",");
@@ -150,17 +157,15 @@ public class StateMachine extends GenericProtocol {
 
             Host target = initialMembership.get(0);
             openConnection(target);
-            sendMessage(new AddReplicaMessage(self, 0), target);
+            sendMessage(new AddReplicaMessage(self, 0, target), target);
         }
     }
 
     /*--------------------------------- Requests ---------------------------------------- */
-    //Wrong, when leader is null, try to become leader with prepare, processor with the highest seq+joinInstance wins
-    //Prepare should have a state, that 
     private void uponOrderRequest(OrderRequest request, short sourceProto) {
         logger.debug("Received request: " + request);
         if (state == State.JOINING) {
-            //Do something smart (like buffering the requests)
+            pendingOrders.add(new ProposeRequest(nextInstance++, request.getOpId(), request.getOperation()));
         } else if (state == State.ACTIVE) {            
             if (leader == null) {
                 sendRequest(new PrepareRequest(nextInstance), PaxosAgreement.PROTOCOL_ID);
@@ -185,8 +190,6 @@ public class StateMachine extends GenericProtocol {
 
 
     private void uponDecidedNotification(DecidedNotification notification, short sourceProto) {
-        //logger.info("{} On Instance {} Received notification: {}", leader.equals(self) ? "LEADERRR" : self, notification.getInstance(), notification.getOpId());
-
         if(!self.equals(leader)) nextInstance = notification.getInstance();
         triggerNotification(new ExecuteNotification(notification.getOpId(), notification.getOperation()));        
     }
@@ -245,11 +248,19 @@ public class StateMachine extends GenericProtocol {
 
     private void uponAddReplicaMessage(AddReplicaMessage msg, Host host, short sourceProto, int channelId) {
         logger.info("Received Add Replica Message: " + msg);
+
+        //just have a new list pendingAdd/Removes or something
+/*         if (leader == null) {
+            sendRequest(new PrepareRequest(nextInstance), PaxosAgreement.PROTOCOL_ID);
+        } */
         
-        if(!self.equals(leader)) {
+        if (self.equals(msg.getContact())) {
             openConnection(msg.getNewReplica());
             membership.add(msg.getNewReplica());
-            sendMessage(new AddReplicaMessage(msg.getNewReplica(), nextInstance), leader);
+        }
+
+        if(!self.equals(leader)) {
+            sendMessage(new AddReplicaMessage(msg.getNewReplica(), nextInstance, msg.getContact()), leader);
             return;
         }
 
@@ -267,6 +278,10 @@ public class StateMachine extends GenericProtocol {
         
         triggerNotification(new JoinedNotification(membership, membership.indexOf(self), false));
         state = State.ACTIVE;
+
+        pendingOrders.forEach(m -> 
+                sendMessage(new LeaderOrderMessage(m.getInstance(), m.getOpId(), m.getOperation()), leader));
+        pendingOrders = new LinkedList<>();
     }
 
     private void uponMsgFail(ProtoMessage msg, Host host, short destProto, Throwable throwable, int channelId) {
@@ -285,10 +300,29 @@ public class StateMachine extends GenericProtocol {
 
     private void uponOutConnectionFailed(OutConnectionFailed<ProtoMessage> event, int channelId) {
         logger.debug("Connection to {} failed, cause: {}", event.getNode(), event.getCause());
+        if (membership.contains(event.getNode()))
+            openConnection(event.getNode());
+
         //Maybe we don't want to do this forever. At some point we assume he is no longer there.
         //Also, maybe wait a little bit before retrying, or else you'll be trying 1000s of times per second
-        if(membership.contains(event.getNode()))
-            openConnection(event.getNode());
+/*         Host node = event.getNode();
+        if (!membership.contains(node)) return;
+
+        Integer retries = retryHosts.putIfAbsent(node, nRetries);
+        retries = (retries == null) ? nRetries : retries -1;
+
+        if (retries > 0) {
+            //Add Timer for retry
+            //remove Replica after X
+            retryHosts.put(node, retries);
+            logger.info("Retrying connection to {}, retries left: {}", node, retries);
+            openConnection(node);
+        } else {
+            logger.info("Removing {} from membership after {} failed retries", node, nRetries);
+            retryHosts.remove(node);
+            membership.remove(node);
+            closeConnection(node); 
+        } */
     }
 
     private void uponInConnectionUp(InConnectionUp event, int channelId) {

@@ -160,7 +160,7 @@ public class PaxosAgreement extends GenericProtocol {
     //highest joinedInstance wins
     private void uponPrepareRequest(PrepareRequest request, short sourceProto) {
         prepare_ok_count = 0; //this probably needs to be an actual set, for the edge case mentioned in the slides, we'll see
-        proposer_seq_number = request.getInstance() + joinedInstance;
+        proposer_seq_number = joinedInstance;
         PrepareMessage msg = new PrepareMessage(proposer_seq_number);
         membership.forEach(h -> sendMessage(msg, h));  
     }
@@ -262,7 +262,6 @@ public class PaxosAgreement extends GenericProtocol {
 
     private void uponAcceptMessage(AcceptMessage msg, Host host, short sourceProto, int channelId) {   
         if (!host.equals(myself)) {
-
             if (joinedInstance >= 0) {
                 for(; lastToBeDecided <= msg.getLastChosen(); lastToBeDecided++) {
                     Pair<UUID, byte[]> pair = toBeDecidedMessages.remove(lastToBeDecided);
@@ -277,8 +276,13 @@ public class PaxosAgreement extends GenericProtocol {
                 }
             }
 
+            if (executedMessages.containsKey(msg.getInstance())) return;
+
             Pair<UUID, byte[]> val = toBeDecidedMessages.putIfAbsent(msg.getInstance(), Pair.of(msg.getOpId(), msg.getOp()));
-            if ( val != null) return; //twice already
+            if ( val != null) {
+                return; //twice already
+            }
+                
         }
         
         AcceptOKMessage acceptOK = new AcceptOKMessage(msg);
