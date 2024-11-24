@@ -183,6 +183,9 @@ public class PaxosAgreement extends GenericProtocol {
         }
     }
 
+    //Prepare_OK messages have to reported values accepted for any instance >= n.
+    // If replica becomes leader at instance n
+    // Prepare_OK messages need to report values accepted 
     private void uponPrepareOKMessage(PrepareOKMessage msg, Host host, short sourceProto, int channelId) {
         if (proposer_seq_number == msg.getInstance() && proposer_seq_number >= highest_prepare) {
             prepare_ok_count ++;
@@ -208,13 +211,21 @@ public class PaxosAgreement extends GenericProtocol {
     }
 
     private void uponAddReplica(AddReplicaRequest request, short sourceProto) {
-        instanceStateMap.put(0, new AgreementInstanceState()); //an instance that bothers no one.
         logger.debug("Received Add Replica Request: " + request);
+        instanceStateMap.put(0, new AgreementInstanceState());
         
-        sendMessage(new ChangeMembershipMessage(request.getReplica(), request.getInstance(), true), request.getReplica());
+        sendMessage(new ChangeMembershipMessage(request.getReplica(), request.getInstance(), true, true), request.getReplica());
 
         membership.forEach(h -> 
-            sendMessage(new ChangeMembershipMessage(request.getReplica(), request.getInstance(), false), h));
+            sendMessage(new ChangeMembershipMessage(request.getReplica(), request.getInstance(), false, true), h));
+    }
+
+    private void uponRemoveReplica(RemoveReplicaRequest request, short sourceProto) {
+        logger.debug("Received Remove Replica Request: " + request);
+
+        instanceStateMap.put(0, new AgreementInstanceState());
+        membership.forEach(h -> 
+            sendMessage(new ChangeMembershipMessage(request.getReplica(), request.getInstance(), false, false), h));
     }
 
     private void uponProposeRequest(ProposeRequest request, short sourceProto) {
@@ -223,21 +234,27 @@ public class PaxosAgreement extends GenericProtocol {
         membership.forEach(h -> sendMessage(msg, h));          
     }
 
-    //TODO - INCORPORATE THIS IN ACCEPT ? MAYBE NOT BECAUSE MESSAGES ARE TOO DIFFERENT? NO OPID/DATA?
-    //MAYBE NOT, BUT DO REUSE THIS FOR REMOVE
     private void uponChangeMembershipMessage(ChangeMembershipMessage msg, Host host, short sourceProto, int channelId) {        
         if (msg.isOK()) {
-            if(msg.getNewReplica().equals(myself)) {
+            if(msg.getReplica().equals(myself)) {
                 toBeDecidedIndex = msg.getInstance();
                 return;
             }
 
-            membership.add(msg.getNewReplica());
-            triggerNotification(new MembershipChangedNotification(msg.getNewReplica(), true, channelId));
+            if(msg.isAdding()) {
+                membership.add(msg.getReplica());
+                triggerNotification(new MembershipChangedNotification(msg.getReplica(), true, channelId));
+            } else {
+                membership.remove(msg.getReplica());
+                if(joinedInstance > msg.getInstance())
+                    joinedInstance --;
+
+                triggerNotification(new MembershipChangedNotification(msg.getReplica(), false, channelId));
+            }
             return;
         }
         
-        ChangeMembershipOKMessage acceptOK = new ChangeMembershipOKMessage(msg.getNewReplica(), msg.getInstance());
+        ChangeMembershipOKMessage acceptOK = new ChangeMembershipOKMessage(msg.getReplica(), msg.getInstance(), msg.isAdding());
         sendMessage(acceptOK, host);
     }
 
@@ -250,12 +267,20 @@ public class PaxosAgreement extends GenericProtocol {
 
                 membership.forEach(h ->  { 
                     if (!h.equals(myself)) {
-                            sendMessage(new ChangeMembershipMessage(msg.getNewReplica(), msg.getInstance(), true), h);
+                            sendMessage(new ChangeMembershipMessage(msg.getReplica(), msg.getInstance(), true, msg.isAdding()), h);
                         }
                     });
 
-                membership.add(msg.getNewReplica());
-                triggerNotification(new MembershipChangedNotification(msg.getNewReplica(), true, channelId));              
+                if(msg.isAdding()) {
+                    membership.add(msg.getReplica());
+                    triggerNotification(new MembershipChangedNotification(msg.getReplica(), true, channelId));              
+                } else {
+                    membership.remove(msg.getReplica());
+                    if(joinedInstance > msg.getInstance())
+                        joinedInstance--;
+
+                    triggerNotification(new MembershipChangedNotification(msg.getReplica(), false, channelId));  
+                }
             }
         }
     }
@@ -304,17 +329,8 @@ public class PaxosAgreement extends GenericProtocol {
             }
         }
     }
-
     
     
-    //Change Message instead, dunno if addReplica is added to Log  of State Machine
-    
-    private void uponRemoveReplica(RemoveReplicaRequest request, short sourceProto) {
-        logger.debug("Received " + request);
-        //The RemoveReplicaRequest contains an "instance" field, which we ignore in this incorrect protocol.
-        //You should probably take it into account while doing whatever you do here.
-        membership.remove(request.getReplica());
-    }
 
     private void uponMsgFail(ProtoMessage msg, Host host, short destProto, Throwable throwable, int channelId) {
         //If a message fails to be sent, for whatever reason, log the message and the reason

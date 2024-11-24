@@ -9,7 +9,6 @@ C:\ASD-main\ASD\project2\asd-project2-base\src\main\java\protocols\agreement\not
 C:\ASD-main\ASD\project2\asd-project2-base\src\main\java\protocols\app\messages\RequestMessage.java
 C:\ASD-main\ASD\project2\asd-project2-base\src\main\java\protocols\abd\utils\Tag.java
 C:\ASD-main\ASD\project2\asd-project2-base\src\main\java\protocols\abd\messages\AckMessage.java
-C:\ASD-main\ASD\project2\asd-project2-base\src\main\java\protocols\statemachine\messages\LeaderElectionMessage.java
 C:\ASD-main\ASD\project2\asd-project2-base\src\main\java\protocols\agreement\notifications\MembershipChangedNotification.java
 C:\ASD-main\ASD\project2\asd-project2-base\src\main\java\protocols\abd\renotifications\WriteCompleteNotification.java
 C:\ASD-main\ASD\project2\asd-project2-base\src\main\java\protocols\agreement\messages\ChangeMembershipMessage.java

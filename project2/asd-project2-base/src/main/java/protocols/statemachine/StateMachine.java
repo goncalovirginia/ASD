@@ -20,6 +20,7 @@ import protocols.agreement.notifications.DecidedNotification;
 import protocols.agreement.requests.AddReplicaRequest;
 import protocols.agreement.requests.PrepareRequest;
 import protocols.agreement.requests.ProposeRequest;
+import protocols.agreement.requests.RemoveReplicaRequest;
 import protocols.app.HashApp;
 import protocols.app.requests.CurrentStateReply;
 import protocols.app.requests.CurrentStateRequest;
@@ -65,6 +66,7 @@ public class StateMachine extends GenericProtocol {
     private int nextInstance;
     private Host leader;
     private List<ProposeRequest> pendingOrders;
+
     private Map<Host, Integer> retryHosts;
 
     private int nRetries;
@@ -219,9 +221,7 @@ public class StateMachine extends GenericProtocol {
             else { 
                 openConnection(notification.getReplica());
                 membership.add(notification.getReplica());
-            }
-            //triggerNotification(new ExecuteNotification(UUID.randomUUID(), "AddReplica".getBytes()));   
-            
+            }            
         } else {
             closeConnection(notification.getReplica());
             membership.remove(notification.getReplica());
@@ -286,7 +286,7 @@ public class StateMachine extends GenericProtocol {
 
     private void uponMsgFail(ProtoMessage msg, Host host, short destProto, Throwable throwable, int channelId) {
         //If a message fails to be sent, for whatever reason, log the message and the reason
-        logger.error("Message {} to {} failed, reason: {}", msg, host, throwable);
+        logger.debug("Message {} to {} failed, reason: {}", msg, host, throwable);
     }
 
     /* --------------------------------- TCPChannel Events ---------------------------- */
@@ -295,7 +295,15 @@ public class StateMachine extends GenericProtocol {
     }
 
     private void uponOutConnectionDown(OutConnectionDown event, int channelId) {
-        logger.debug("Connection to {} is down, cause {}", event.getNode(), event.getCause());
+        /* logger.info("Connection to {} is down, cause {}", event.getNode(), event.getCause()); */
+        
+        //pend message -> prepare round
+        //if (leader == null)  
+        Host node = event.getNode();
+        if(self.equals(leader)) {
+            sendRequest(new RemoveReplicaRequest(membership.indexOf(node), node), PaxosAgreement.PROTOCOL_ID);
+        }
+            
     }
 
     private void uponOutConnectionFailed(OutConnectionFailed<ProtoMessage> event, int channelId) {

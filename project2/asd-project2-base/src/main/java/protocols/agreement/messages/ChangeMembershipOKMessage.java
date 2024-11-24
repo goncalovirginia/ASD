@@ -12,28 +12,34 @@ public class ChangeMembershipOKMessage extends ProtoMessage {
 
     public final static short MSG_ID = 196;
 
-    private final Host newReplica;
+    private final Host replica;
     private final int instance;
+    private final boolean adding;
 
-    public ChangeMembershipOKMessage(Host newReplica, int instance) {
+    public ChangeMembershipOKMessage(Host replica, int instance, boolean adding) {
         super(MSG_ID);
-        this.newReplica = newReplica;
+        this.replica = replica;
         this.instance = instance;
+        this.adding = adding;
     }
 
-    public Host getNewReplica() {
-        return newReplica;
+    public Host getReplica() {
+        return replica;
     }
 
     public int getInstance() {
         return instance;
     }
 
+    public boolean isAdding() {
+        return adding;
+    }
+
 
     @Override
     public String toString() {
         return "ChangeMembershipOKMessage{" +
-                "newReplica=" + newReplica +
+                "Replica=" + replica +
                 ", instance=" + instance +
                 '}';
     }
@@ -41,15 +47,17 @@ public class ChangeMembershipOKMessage extends ProtoMessage {
     public static ISerializer<ChangeMembershipOKMessage> serializer = new ISerializer<ChangeMembershipOKMessage>() {
         @Override
         public void serialize(ChangeMembershipOKMessage msg, ByteBuf out) throws IOException {
-            Host.serializer.serialize(msg.newReplica, out);
+            Host.serializer.serialize(msg.replica, out);
             out.writeInt(msg.instance);
+            out.writeBoolean(msg.adding);
         }
 
         @Override
         public ChangeMembershipOKMessage deserialize(ByteBuf in) throws IOException {
             Host nReplica = Host.serializer.deserialize(in);
             int instance = in.readInt();
-            return new ChangeMembershipOKMessage(nReplica, instance);
+            boolean add = in.readBoolean();
+            return new ChangeMembershipOKMessage(nReplica, instance, add);
         }
     };
 

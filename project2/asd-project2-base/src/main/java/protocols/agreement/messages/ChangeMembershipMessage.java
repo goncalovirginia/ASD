@@ -7,28 +7,26 @@ import pt.unl.fct.di.novasys.babel.generic.ProtoMessage;
 import pt.unl.fct.di.novasys.network.ISerializer;
 
 import java.io.IOException;
-import java.util.Map;
-import java.util.UUID;
-
-import org.apache.commons.lang3.tuple.Pair;
 
 public class ChangeMembershipMessage extends ProtoMessage {
 
     public final static short MSG_ID = 192;
 
-    private final Host newReplica;
+    private final Host replica;
     private final int instance;
+    private final boolean adding;
     private final boolean ok;
 
-    public ChangeMembershipMessage(Host newReplica, int instance, boolean ok) {
+    public ChangeMembershipMessage(Host newReplica, int instance, boolean ok, boolean adding) {
         super(MSG_ID);
-        this.newReplica = newReplica;
+        this.replica = newReplica;
         this.instance = instance;
         this.ok = ok;
+        this.adding = adding;
     }
 
-    public Host getNewReplica() {
-        return newReplica;
+    public Host getReplica() {
+        return replica;
     }
 
     public int getInstance() {
@@ -39,10 +37,14 @@ public class ChangeMembershipMessage extends ProtoMessage {
         return ok;
     }
 
+    public boolean isAdding() {
+        return adding;
+    }
+
     @Override
     public String toString() {
         return "ChangeMembershipMessage{" +
-                "newReplica=" + newReplica +
+                "replica=" + replica +
                 ", instance=" + instance +
                 '}';
     }
@@ -50,9 +52,10 @@ public class ChangeMembershipMessage extends ProtoMessage {
     public static ISerializer<ChangeMembershipMessage> serializer = new ISerializer<ChangeMembershipMessage>() {
         @Override
         public void serialize(ChangeMembershipMessage msg, ByteBuf out) throws IOException {
-            Host.serializer.serialize(msg.newReplica, out);
+            Host.serializer.serialize(msg.replica, out);
             out.writeInt(msg.instance);
             out.writeBoolean(msg.ok);
+            out.writeBoolean(msg.adding);
         }
 
         @Override
@@ -60,7 +63,8 @@ public class ChangeMembershipMessage extends ProtoMessage {
             Host nReplica = Host.serializer.deserialize(in);
             int instance = in.readInt();
             boolean ok = in.readBoolean();
-            return new ChangeMembershipMessage(nReplica, instance, ok);
+            boolean add = in.readBoolean();
+            return new ChangeMembershipMessage(nReplica, instance, ok, add);
         }
     };
 

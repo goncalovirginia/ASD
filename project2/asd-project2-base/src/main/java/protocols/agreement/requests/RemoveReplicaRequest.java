@@ -27,7 +27,7 @@ public class RemoveReplicaRequest extends ProtoRequest {
 
     @Override
     public String toString() {
-        return "ProposeRequest{" +
+        return "RemoveReplica{" +
                 "instance=" + instance +
                 ", replica=" + replica +
                 '}';

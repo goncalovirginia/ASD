@@ -1,5 +1,4 @@
 protocols\agreement\requests\ProposeRequest.class
-protocols\statemachine\messages\LeaderElectionMessage.class
 protocols\abd\requests\ReadRequest.class
 protocols\abd\messages\WriteMessage.class
 protocols\statemachine\messages\ReplicaAddedMessage$1.class
@@ -21,7 +20,6 @@ protocols\abd\messages\QuorumMessage$1.class
 protocols\agreement\messages\ChangeMembershipOKMessage.class
 protocols\statemachine\StateMachine.class
 protocols\agreement\messages\PrepareMessage$1.class
-protocols\statemachine\messages\LeaderElectionMessage$1.class
 protocols\abd\messages\ReadTagReplyMessage$1.class
 protocols\agreement\messages\AcceptOKMessage.class
 protocols\statemachine\notifications\ExecuteNotification.class
