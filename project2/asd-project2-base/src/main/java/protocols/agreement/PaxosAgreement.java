@@ -235,6 +235,10 @@ public class PaxosAgreement extends GenericProtocol {
 
     private void uponRemoveReplica(RemoveReplicaRequest request, short sourceProto) {
         logger.debug("Received Remove Replica Request: " + request);
+        //makes no sense to include the replica that is dead in the broadcast
+        membership.remove(request.getReplica()); 
+        if(joinedInstance > request.getInstance())
+            joinedInstance--;
 
         instanceStateMap.put(0, new AgreementInstanceState());
         membership.forEach(h -> 
@@ -249,7 +253,7 @@ public class PaxosAgreement extends GenericProtocol {
 
     private void uponChangeMembershipMessage(ChangeMembershipMessage msg, Host host, short sourceProto, int channelId) {        
         if (msg.isOK()) {
-            if(msg.getReplica().equals(myself)) {
+            if(msg.getReplica().equals(myself)) { //obviously, when removing this is impossible to trigger
                 toBeDecidedIndex = msg.getInstance();
                 return;
             }
@@ -287,11 +291,7 @@ public class PaxosAgreement extends GenericProtocol {
                 if(msg.isAdding()) {
                     membership.add(msg.getReplica());
                     triggerNotification(new MembershipChangedNotification(msg.getReplica(), true, channelId));              
-                } else {
-                    membership.remove(msg.getReplica());
-                    if(joinedInstance > msg.getInstance())
-                        joinedInstance--;
-
+                } else {//the leader removed the replica before broadcasting
                     triggerNotification(new MembershipChangedNotification(msg.getReplica(), false, channelId));  
                 }
             }
