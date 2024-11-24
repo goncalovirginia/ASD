@@ -170,7 +170,7 @@ public class StateMachine extends GenericProtocol {
             pendingOrders.add(new ProposeRequest(nextInstance++, request.getOpId(), request.getOperation()));
         } else if (state == State.ACTIVE) {            
             if (leader == null) {
-                sendRequest(new PrepareRequest(nextInstance), PaxosAgreement.PROTOCOL_ID);
+                sendRequest(new PrepareRequest(nextInstance + 1), PaxosAgreement.PROTOCOL_ID);
                 pendingOrders.add(new ProposeRequest(nextInstance++, request.getOpId(), request.getOperation()));
                 //sendMessage(new LeaderElectionMessage(), membership.get(0));
             } else if(self.equals(leader)) {
@@ -202,8 +202,14 @@ public class StateMachine extends GenericProtocol {
         leader = notification.getLeader();
         if (leader.equals(self)) {
             logger.info("Leader flushing");
+
+            notification.getMessages().forEach(m -> 
+                sendRequest(new ProposeRequest(nextInstance++, m.getLeft(), m.getRight()), PaxosAgreement.PROTOCOL_ID));
+            
+            //ADD/REMOVE MESSAGES
+
             pendingOrders.forEach(m -> 
-            sendRequest(new ProposeRequest(nextInstance++, m.getOpId(), m.getOperation()), PaxosAgreement.PROTOCOL_ID));
+                sendRequest(new ProposeRequest(nextInstance++, m.getOpId(), m.getOperation()), PaxosAgreement.PROTOCOL_ID));
         } else {
             logger.info("non leader yet");
             pendingOrders.forEach(m -> 

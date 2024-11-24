@@ -8,11 +8,17 @@ public class PrepareMessage extends ProtoMessage {
 
     public final static short MSG_ID = 106;
 
+    private final int seqNumber;
     private final int instance;
 
-    public PrepareMessage(int instance) {
+    public PrepareMessage(int seqNumber, int instance) {
         super(MSG_ID);
+        this.seqNumber = seqNumber;
         this.instance = instance;
+    }
+
+    public int getSeqNumber() {
+        return seqNumber;
     }
 
     public int getInstance() {
@@ -22,20 +28,23 @@ public class PrepareMessage extends ProtoMessage {
     @Override
     public String toString() {
         return "PrepareMessage{" +
-                "instance=" + instance +
+                "seqNumber=" + seqNumber +
+                ", instance=" + instance +
                 '}';
     }
 
     public static ISerializer<PrepareMessage> serializer = new ISerializer<PrepareMessage>() {
         @Override
         public void serialize(PrepareMessage msg, ByteBuf out) {
+            out.writeInt(msg.seqNumber);
             out.writeInt(msg.instance);
         }
 
         @Override
         public PrepareMessage deserialize(ByteBuf in) {
+            int sn = in.readInt();
             int instance = in.readInt();
-            return new PrepareMessage(instance);
+            return new PrepareMessage(sn, instance);
         }
     };
 

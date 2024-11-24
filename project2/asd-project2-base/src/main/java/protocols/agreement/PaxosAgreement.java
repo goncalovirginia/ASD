@@ -64,6 +64,7 @@ public class PaxosAgreement extends GenericProtocol {
     private Host newLeader;
     private int joinedInstance;
     private int prepare_ok_count;
+    private List<Pair<UUID, byte[]>> prepareOkMessages;
     private int highest_prepare;
     private int proposer_seq_number;
     private List<Host> membership;
@@ -93,7 +94,7 @@ public class PaxosAgreement extends GenericProtocol {
         toBeDecidedMessages = new TreeMap<>();
         acceptedMessages = new TreeMap<>();
 
-
+        prepareOkMessages = new LinkedList<>();
         instanceStateMap = new HashMap<>();
         /*--------------------- Register Timer Handlers ----------------------------- */
 
@@ -159,24 +160,31 @@ public class PaxosAgreement extends GenericProtocol {
 
     //highest joinedInstance wins
     private void uponPrepareRequest(PrepareRequest request, short sourceProto) {
-        prepare_ok_count = 0; //this probably needs to be an actual set, for the edge case mentioned in the slides, we'll see
+        prepare_ok_count = 0; 
         proposer_seq_number = joinedInstance;
-        PrepareMessage msg = new PrepareMessage(proposer_seq_number);
+        PrepareMessage msg = new PrepareMessage(proposer_seq_number, request.getInstance());
         membership.forEach(h -> sendMessage(msg, h));  
     }
 
     private void uponPrepareMessage(PrepareMessage msg, Host host, short sourceProto, int channelId) {
         if(joinedInstance >= 0 ){
-            if(msg.getInstance() > highest_prepare) {
-                highest_prepare = msg.getInstance();
-                PrepareOKMessage prepareOK = new PrepareOKMessage(msg.getInstance());
-                sendMessage(prepareOK, host);
-
+            if(msg.getSeqNumber() > highest_prepare) {
                 if(host.equals(newLeader)) {
                     triggerNotification(new NewLeaderNotification(host));
-                    highest_prepare--;
+                    return;
                 }
                 newLeader = host;
+
+                highest_prepare = msg.getSeqNumber();
+                List<Pair<UUID, byte[]>> relevantMessages = new LinkedList<>();
+                if(toBeDecidedIndex > msg.getInstance()) {//toBeDecided - 1 == last executed/accepted msg
+                    relevantMessages.addAll((((TreeMap<Integer, Pair<UUID, byte[]>>) toBeDecidedMessages)
+                                        .tailMap(msg.getInstance(), true)
+                                        .values()));
+                }
+
+                PrepareOKMessage prepareOK = new PrepareOKMessage(msg.getSeqNumber(), msg.getInstance(), relevantMessages);
+                sendMessage(prepareOK, host);
             }
         } else {
             //TODO: uponBroadcast above comments
@@ -187,15 +195,20 @@ public class PaxosAgreement extends GenericProtocol {
     // If replica becomes leader at instance n
     // Prepare_OK messages need to report values accepted 
     private void uponPrepareOKMessage(PrepareOKMessage msg, Host host, short sourceProto, int channelId) {
-        if (proposer_seq_number == msg.getInstance() && proposer_seq_number >= highest_prepare) {
+        if (proposer_seq_number == msg.getSeqNumber() && proposer_seq_number >= highest_prepare) {
             prepare_ok_count ++;
+            if (msg.getPrepareOKMsgs().size() > prepareOkMessages.size())
+                prepareOkMessages = msg.getPrepareOKMsgs();
+                
+            logger.info("PREPAREOK!!! propSeq {} - messages {}", proposer_seq_number, prepareOkMessages);
+
             if (prepare_ok_count >= (membership.size() / 2) + 1) {
                 prepare_ok_count = -1;
                 
-                triggerNotification(new NewLeaderNotification(myself));
+                triggerNotification(new NewLeaderNotification(myself, prepareOkMessages));
                 membership.forEach(h -> {
                     if (!h.equals(myself))
-                        sendMessage(new PrepareMessage(proposer_seq_number+1), h);
+                        sendMessage(new PrepareMessage(proposer_seq_number+1, msg.getInstance()), h);
                 });
             }
         }
