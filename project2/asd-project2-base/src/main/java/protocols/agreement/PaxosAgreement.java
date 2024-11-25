@@ -24,29 +24,31 @@ import java.util.*;
 public class PaxosAgreement extends GenericProtocol {
 
 	private static class AgreementInstanceState {
+
 		private int acceptOkCount;
-		private boolean decided;
+		private boolean isDecided;
 
 		public AgreementInstanceState() {
 			this.acceptOkCount = 0;
-			this.decided = false;
+			this.isDecided = false;
 		}
 
-		public int getAcceptokCount() {
+		public int getAcceptOkCount() {
 			return acceptOkCount;
 		}
 
-		public void incrementAcceptCount() {
+		public void incrementAcceptOkCount() {
 			acceptOkCount++;
 		}
 
-		public boolean decided() {
-			return decided;
+		public boolean isDecided() {
+			return isDecided;
 		}
 
 		public void decide() {
-			decided = true;
+			isDecided = true;
 		}
+
 	}
 
 	private static final Logger logger = LogManager.getLogger(PaxosAgreement.class);
@@ -271,25 +273,20 @@ public class PaxosAgreement extends GenericProtocol {
 
 	private void uponChangeMembershipOKMessage(ChangeMembershipOKMessage msg, Host host, short sourceProto, int channelId) {
 		AgreementInstanceState state = instanceStateMap.get(0);
-		if (state != null) {
-			state.incrementAcceptCount();
-			if (state.getAcceptokCount() >= (membership.size() / 2) + 1 && !state.decided()) {
-				state.decide();
 
-				membership.forEach(h -> {
-					if (!h.equals(myself)) {
-						sendMessage(new ChangeMembershipMessage(msg.getReplica(), msg.getInstance(), true, msg.isAdding()), h);
-					}
-				});
+		if (state == null) return;
+		state.incrementAcceptOkCount();
+		if (state.getAcceptOkCount() < (membership.size() / 2) + 1 || state.isDecided()) return;
+		state.decide();
 
-				if (msg.isAdding()) {
-					membership.add(msg.getReplica());
-					triggerNotification(new MembershipChangedNotification(msg.getReplica(), true, channelId));
-				} else {//the leader removed the replica before broadcasting
-					triggerNotification(new MembershipChangedNotification(msg.getReplica(), false, channelId));
-				}
-			}
-		}
+		membership.forEach(h -> {
+			if (!h.equals(myself)) sendMessage(new ChangeMembershipMessage(msg.getReplica(), msg.getInstance(), true, msg.isAdding()), h);
+		});
+
+		if (msg.isAdding())
+			membership.add(msg.getReplica());
+
+		triggerNotification(new MembershipChangedNotification(msg.getReplica(), msg.isAdding(), channelId));
 	}
 
 	private void uponAcceptMessage(AcceptMessage msg, Host host, short sourceProto, int channelId) {
@@ -322,8 +319,8 @@ public class PaxosAgreement extends GenericProtocol {
 	private void uponAcceptOKMessage(AcceptOKMessage msg, Host host, short sourceProto, int channelId) {
 		AgreementInstanceState state = instanceStateMap.get(msg.getInstance());
 		if (state != null) {
-			state.incrementAcceptCount();
-			if (state.getAcceptokCount() >= (membership.size() / 2) + 1 && !state.decided()) {
+			state.incrementAcceptOkCount();
+			if (state.getAcceptOkCount() >= (membership.size() / 2) + 1 && !state.isDecided()) {
 				state.decide();
 				triggerNotification(new DecidedNotification(msg.getInstance(), msg.getOpId(), msg.getOp()));
 
