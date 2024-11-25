@@ -248,27 +248,26 @@ public class PaxosAgreement extends GenericProtocol {
 	}
 
 	private void uponChangeMembershipMessage(ChangeMembershipMessage msg, Host host, short sourceProto, int channelId) {
-		if (msg.isOK()) {
-			if (msg.getReplica().equals(myself)) { //obviously, when removing this is impossible to trigger
-				toBeDecidedIndex = msg.getInstance();
-				return;
-			}
-
-			if (msg.isAdding()) {
-				membership.add(msg.getReplica());
-				triggerNotification(new MembershipChangedNotification(msg.getReplica(), true, channelId));
-			} else {
-				membership.remove(msg.getReplica());
-				if (joinedInstance > msg.getInstance())
-					joinedInstance--;
-
-				triggerNotification(new MembershipChangedNotification(msg.getReplica(), false, channelId));
-			}
+		if (!msg.isOK()) {
+			ChangeMembershipOKMessage acceptOK = new ChangeMembershipOKMessage(msg.getReplica(), msg.getInstance(), msg.isAdding());
+			sendMessage(acceptOK, host);
 			return;
 		}
 
-		ChangeMembershipOKMessage acceptOK = new ChangeMembershipOKMessage(msg.getReplica(), msg.getInstance(), msg.isAdding());
-		sendMessage(acceptOK, host);
+		if (msg.getReplica().equals(myself)) { //obviously, when removing this is impossible to trigger
+			toBeDecidedIndex = msg.getInstance();
+			return;
+		}
+
+		if (msg.isAdding()) {
+			membership.add(msg.getReplica());
+		} else {
+			membership.remove(msg.getReplica());
+			if (joinedInstance > msg.getInstance())
+				joinedInstance--;
+		}
+
+		triggerNotification(new MembershipChangedNotification(msg.getReplica(), msg.isAdding(), channelId));
 	}
 
 	private void uponChangeMembershipOKMessage(ChangeMembershipOKMessage msg, Host host, short sourceProto, int channelId) {
