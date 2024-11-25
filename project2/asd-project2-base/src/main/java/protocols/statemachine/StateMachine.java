@@ -9,6 +9,8 @@ import pt.unl.fct.di.novasys.babel.generic.ProtoMessage;
 import pt.unl.fct.di.novasys.channel.tcp.TCPChannel;
 import pt.unl.fct.di.novasys.channel.tcp.events.*;
 import pt.unl.fct.di.novasys.network.data.Host;
+
+import org.apache.commons.lang3.tuple.Pair;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import protocols.agreement.PaxosAgreement;
@@ -25,6 +27,7 @@ import protocols.app.HashApp;
 import protocols.app.requests.CurrentStateReply;
 import protocols.app.requests.CurrentStateRequest;
 import protocols.app.requests.InstallStateRequest;
+import protocols.statemachine.timers.SendMessageTimer;
 import protocols.statemachine.notifications.ExecuteNotification;
 import protocols.statemachine.requests.OrderRequest;
 
@@ -36,6 +39,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
+import java.util.UUID;
 
 /**
  * This is NOT fully functional StateMachine implementation.
@@ -68,18 +72,21 @@ public class StateMachine extends GenericProtocol {
     private List<ProposeRequest> pendingOrders;
     private List<Host> pendingRemoves;
 
-    private Map<Host, Integer> retryHosts;
+    //INITIAL TO DELETE IS BEING USED TO TEST FAILURES, leader failures
+    //Because the leader can't have a client, otherwise when we kill it 
+    //since this was not made for failures, the client wont get a reply and will time out.
+    //private boolean initialTODELETE;
 
-    private boolean initialTODELETE;
-    private int nRetries;
+    private Map<UUID, Pair<Long, byte[]>> pendingClientOrder;
 
     public StateMachine(Properties props) throws IOException, HandlerRegistrationException {
         super(PROTOCOL_NAME, PROTOCOL_ID);
         nextInstance = 1;
         leader = null;
-        nRetries = 0;
 
-        initialTODELETE = false;
+        pendingClientOrder = new HashMap<>();
+        
+        //initialTODELETE = false;
 
         String address = props.getProperty("address");
         String port = props.getProperty("p2p_port");
@@ -121,6 +128,8 @@ public class StateMachine extends GenericProtocol {
         subscribeNotification(DecidedNotification.NOTIFICATION_ID, this::uponDecidedNotification);
         subscribeNotification(NewLeaderNotification.NOTIFICATION_ID, this::uponNewLeaderNotification);
         subscribeNotification(MembershipChangedNotification.NOTIFICATION_ID, this::uponMembershipChangeNotification);
+    
+        registerTimerHandler(SendMessageTimer.TIMER_ID, this::uponSendMessageTimer);
     }
 
     @Override
@@ -130,8 +139,6 @@ public class StateMachine extends GenericProtocol {
 
         pendingOrders = new LinkedList<>();
         pendingRemoves = new LinkedList<>();
-        retryHosts = new HashMap<>();
-        nRetries = Integer.parseInt(props.getProperty("connection_retries"));
 
         String host = props.getProperty("initial_membership");
         String[] hosts = host.split(",");
@@ -172,25 +179,27 @@ public class StateMachine extends GenericProtocol {
     private void uponOrderRequest(OrderRequest request, short sourceProto) {
         logger.debug("Received request: " + request);
 
-        logger.info("Received order request: " + request);
+        /* logger.info("Received order request: " + request); */
         if (state == State.JOINING) {
             pendingOrders.add(new ProposeRequest(0, request.getOpId(), request.getOperation()));
         } else if (state == State.ACTIVE) {            
             if (leader == null) {
                 //TODELETE
-                if(nextInstance == 1) {
+                /* if(nextInstance == 1) {
                     sendMessage(new AddReplicaMessage(membership.get(2), 0, membership.get(2)), membership.get(2));
                     pendingOrders.add(new ProposeRequest(0, request.getOpId(), request.getOperation()));
                     return;
-                }
+                } */
 
                 //CORRECT --- Bellow
                 sendRequest(new PrepareRequest(nextInstance), PaxosAgreement.PROTOCOL_ID);
                 pendingOrders.add(new ProposeRequest(0, request.getOpId(), request.getOperation()));
-            } else if(self.equals(leader)) {
+            } else if(self.equals(leader)) {                
                 sendRequest(new ProposeRequest(nextInstance++, request.getOpId(), request.getOperation()),
                     PaxosAgreement.PROTOCOL_ID); 
             } else {
+                long tid = setupTimer(new SendMessageTimer(), 1000);
+                pendingClientOrder.put(request.getOpId(), Pair.of(tid, request.getOperation()));
                 sendMessage(new LeaderOrderMessage(nextInstance, request.getOpId(), request.getOperation()), leader);
             }
         }
@@ -206,7 +215,12 @@ public class StateMachine extends GenericProtocol {
 
 
     private void uponDecidedNotification(DecidedNotification notification, short sourceProto) {
-        if(!self.equals(leader)) nextInstance = notification.getInstance();
+        Pair<Long, byte[]> val = pendingClientOrder.remove(notification.getOpId());
+        if(val != null)
+            this.cancelTimer(val.getLeft());
+
+        //if(!self.equals(leader)) nextInstance = notification.getInstance();
+        if(!self.equals(leader)) nextInstance ++;
         triggerNotification(new ExecuteNotification(notification.getOpId(), notification.getOperation()));        
     }
 
@@ -220,22 +234,21 @@ public class StateMachine extends GenericProtocol {
             pendingRemoves.forEach(m -> 
                 sendRequest(new RemoveReplicaRequest(membership.indexOf(m), m), PaxosAgreement.PROTOCOL_ID));
 
-            logger.info("Leader flushing1" + notification.getMessages());    
+            logger.info("Leader flushing prepare_ok messages: " + notification.getMessages());    
             
             notification.getMessages().forEach(m -> 
                 sendRequest(new ProposeRequest(nextInstance++, m.getLeft(), m.getRight()), PaxosAgreement.PROTOCOL_ID));
             
-            //ADD/REMOVE MESSAGES
-
-            logger.info("Leader flushing2" + pendingOrders);
+            logger.info("Leader flushing pending orders:" + pendingOrders);
             pendingRemoves = new LinkedList<>();
 
             pendingOrders.forEach(m -> 
                 sendRequest(new ProposeRequest(nextInstance++, m.getOpId(), m.getOperation()), PaxosAgreement.PROTOCOL_ID));
 
-            logger.info("Leader flushing3");
+            //flush the adds last, since they dont have time out and the new replica can wait for the system to be stable.
         } else {
             logger.info("non leader yet -> sending to {}", leader);
+
             pendingOrders.forEach(m -> 
                 sendMessage(new LeaderOrderMessage(m.getInstance(), m.getOpId(), m.getOperation()), leader));
         }
@@ -259,20 +272,15 @@ public class StateMachine extends GenericProtocol {
     }
 
     /*--------------------------------- Messages ---------------------------------------- */
-/*     private void uponLeaderElection(LeaderElectionMessage msg, Host host, short sourceProto, int channelId) {
-        sendRequest(new PrepareRequest(nextInstance), PaxosAgreement.PROTOCOL_ID);
-    } */
 
     private void uponLeaderOrderMessage(LeaderOrderMessage msg, Host host, short sourceProto, int channelId) {
         logger.debug("Received Leader Order Message: " + msg);
-        //the leader is not initialized(has not received majority yet)
         if (leader == null) {
             logger.info("Leader still waiting majority, pending...");
             pendingOrders.add(new ProposeRequest(msg));
             return;
         }
 
-        //logger.info("Received Leader Order Message: {} - {}", nextInstance, msg.getOpId());
         sendRequest(new ProposeRequest(nextInstance++, msg.getOpId(), msg.getOp()),
                     PaxosAgreement.PROTOCOL_ID); 
     }
@@ -280,16 +288,15 @@ public class StateMachine extends GenericProtocol {
     private void uponAddReplicaMessage(AddReplicaMessage msg, Host host, short sourceProto, int channelId) {
         logger.info("Received Add Replica Message: " + msg);
 
-        //just have a new list pendingAdd/Removes or something
         if (leader == null) {
-            //sendRequest(new PrepareRequest(nextInstance), PaxosAgreement.PROTOCOL_ID);
+            sendRequest(new PrepareRequest(nextInstance), PaxosAgreement.PROTOCOL_ID);
         
-            //DELETE BELLOW, TEST CASE:
-            if(initialTODELETE == false) {
+            //TODELETE BELLOW, TEST CASE:
+            /* if(initialTODELETE == false) {
                 sendRequest(new PrepareRequest(nextInstance), PaxosAgreement.PROTOCOL_ID);
                 initialTODELETE = true;
             }
-            return;
+            return; */
         }
         
         if (self.equals(msg.getContact())) {
@@ -323,14 +330,11 @@ public class StateMachine extends GenericProtocol {
     }
 
     private void uponLeaderMsgFail(LeaderOrderMessage msg, Host host, short destProto, Throwable throwable, int channelId) {
-        //If a message fails to be sent, for whatever reason, log the message and the reason
-
         logger.info("Message {} to {} failed, reason: {}", msg, host, throwable);
         pendingOrders.add(new ProposeRequest(msg.getInstance(), msg.getOpId(), msg.getOp()));
     }
 
     private void uponMsgFail(ProtoMessage msg, Host host, short destProto, Throwable throwable, int channelId) {
-        //If a message fails to be sent, for whatever reason, log the message and the reason
         logger.debug("Message {} to {} failed, reason: {}", msg, host, throwable);
 
     }
@@ -342,9 +346,7 @@ public class StateMachine extends GenericProtocol {
 
     private void uponOutConnectionDown(OutConnectionDown event, int channelId) {
         logger.info("Connection to {} is down, cause {}", event.getNode(), event.getCause());
-        
-        //pend message -> prepare round
-        //if (leader == null)  
+ 
         Host node = event.getNode();
         if(node.equals(leader)) {
             leader = null;
@@ -396,5 +398,20 @@ public class StateMachine extends GenericProtocol {
     private void uponInConnectionDown(InConnectionDown event, int channelId) {
         logger.trace("Connection from {} is down, cause: {}", event.getNode(), event.getCause());
     }
+
+    private void uponSendMessageTimer(SendMessageTimer timer, long timerId) {
+		logger.info("helperTimer: {}", timerId);
+
+        for (Map.Entry<UUID, Pair<Long, byte[]>> entry : pendingClientOrder.entrySet()) {
+            if (entry.getValue().getLeft() == timerId) {
+                logger.info("THE TIMER IS WORKING?! Sending to {} the msg {}", leader, entry.getKey());
+                
+                long tid = setupTimer(new SendMessageTimer(), 1000);
+                pendingClientOrder.put(entry.getKey(), Pair.of(tid, entry.getValue().getRight()));
+                sendMessage(new LeaderOrderMessage(nextInstance, entry.getKey(), entry.getValue().getRight()), leader);
+            }
+        }
+		
+	}
 
 }
