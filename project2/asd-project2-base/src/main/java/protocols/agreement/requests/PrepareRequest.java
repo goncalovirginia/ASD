@@ -1,9 +1,6 @@
 package protocols.agreement.requests;
 
 import pt.unl.fct.di.novasys.babel.generic.ProtoRequest;
-import org.apache.commons.codec.binary.Hex;
-
-import java.util.UUID;
 
 public class PrepareRequest extends ProtoRequest {
 

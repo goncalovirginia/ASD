@@ -21,6 +21,8 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.apache.commons.lang3.tuple.Pair;
 
+import protocols.abd.utils.Tag;
+
 import protocols.statemachine.notifications.ChannelReadyNotification;
 import protocols.agreement.notifications.DecidedNotification;
 import protocols.agreement.requests.ProposeRequest;
@@ -65,7 +67,7 @@ public class PaxosAgreement extends GenericProtocol {
     private int joinedInstance;
     private int prepare_ok_count;
     private List<Pair<UUID, byte[]>> prepareOkMessages;
-    private int highest_prepare;
+    private Tag highest_prepare;
     private int proposer_seq_number;
     private List<Host> membership;
 
@@ -77,6 +79,7 @@ public class PaxosAgreement extends GenericProtocol {
     private Map<Integer, Pair<UUID, byte[]>> toBeDecidedMessages;
     private Map<Integer, Pair<UUID, byte[]>> acceptedMessages;
 
+    //private int lastPrepareInstance;
 
     public PaxosAgreement(Properties props) throws IOException, HandlerRegistrationException {
         super(PROTOCOL_NAME, PROTOCOL_ID);
@@ -84,7 +87,10 @@ public class PaxosAgreement extends GenericProtocol {
         membership = null;
         prepare_ok_count = 0;
         
-        highest_prepare = -1;
+        //highest_prepare = -1;
+        highest_prepare = new Tag(-1, -1);
+        
+        //lastPrepareInstance = -1;
         proposer_seq_number = -1;
         
         
@@ -133,7 +139,6 @@ public class PaxosAgreement extends GenericProtocol {
 
         /*---------------------- Register Message Handlers -------------------------- */
         try {
-              registerMessageHandler(cId, BroadcastMessage.MSG_ID, this::uponBroadcastMessage, this::uponMsgFail);
               registerMessageHandler(cId, PrepareMessage.MSG_ID, this::uponPrepareMessage, this::uponMsgFail);
               registerMessageHandler(cId, PrepareOKMessage.MSG_ID, this::uponPrepareOKMessage, this::uponMsgFail);
               registerMessageHandler(cId, AcceptMessage.MSG_ID, this::uponAcceptMessage, this::uponMsgFail);
@@ -147,37 +152,32 @@ public class PaxosAgreement extends GenericProtocol {
 
     }
 
-    //TO DELETE AFTER DEALING WITH COMMENTS
-    private void uponBroadcastMessage(BroadcastMessage msg, Host host, short sourceProto, int channelId) {
-        if(joinedInstance >= 0 ){
-            //Obviously your agreement protocols will not decide things as soon as you receive the first message
-            triggerNotification(new DecidedNotification(msg.getInstance(), msg.getOpId(), msg.getOp()));
-        } else {
-            //We have not yet received a JoinedNotification, but we are already receiving messages from the other
-            //agreement instances, maybe we should do something with them...?
-        }
-    }
-
     //highest joinedInstance wins
     private void uponPrepareRequest(PrepareRequest request, short sourceProto) {
-        prepare_ok_count = 0; 
-        proposer_seq_number = joinedInstance;
-        PrepareMessage msg = new PrepareMessage(proposer_seq_number, request.getInstance());
-        membership.forEach(h -> sendMessage(msg, h));  
+        Tag newTag = new Tag(request.getInstance(), proposer_seq_number);
+        if(newTag.greaterOrEqualThan(highest_prepare)) {
+            prepare_ok_count = 0; 
+            proposer_seq_number = joinedInstance;
+            PrepareMessage msg = new PrepareMessage(proposer_seq_number, request.getInstance(), false);
+
+            logger.info("WHAT IS THE PROBLEM HERE?! {} - {}", highest_prepare.getOpSeq(), highest_prepare.getProcessId());
+            membership.forEach(h -> sendMessage(msg, h));  
+        }    
     }
 
     private void uponPrepareMessage(PrepareMessage msg, Host host, short sourceProto, int channelId) {
         if(joinedInstance >= 0 ){
-            if(msg.getSeqNumber() > highest_prepare) {
-                if(host.equals(newLeader)) {
+            Tag newTag = new Tag(msg.getInstance(), msg.getSeqNumber());
+            if(newTag.greaterOrEqualThan(highest_prepare)) {
+                if(msg.isOK()) {
+                    logger.info("host {} --> NEW LEADER {} ", myself, host);
                     triggerNotification(new NewLeaderNotification(host));
                     return;
                 }
-                newLeader = host;
-
-                highest_prepare = msg.getSeqNumber();
+                highest_prepare = newTag;
+                
                 List<Pair<UUID, byte[]>> relevantMessages = new LinkedList<>();
-                if(toBeDecidedIndex > msg.getInstance()) {//toBeDecided - 1 == last executed/accepted msg
+                if(toBeDecidedIndex > msg.getInstance()) {
                     relevantMessages.addAll((((TreeMap<Integer, Pair<UUID, byte[]>>) toBeDecidedMessages)
                                         .tailMap(msg.getInstance(), true)
                                         .values()));
@@ -186,8 +186,6 @@ public class PaxosAgreement extends GenericProtocol {
                 PrepareOKMessage prepareOK = new PrepareOKMessage(msg.getSeqNumber(), msg.getInstance(), relevantMessages);
                 sendMessage(prepareOK, host);
             }
-        } else {
-            //TODO: uponBroadcast above comments
         }
     }
 
@@ -195,7 +193,8 @@ public class PaxosAgreement extends GenericProtocol {
     // If replica becomes leader at instance n
     // Prepare_OK messages need to report values accepted 
     private void uponPrepareOKMessage(PrepareOKMessage msg, Host host, short sourceProto, int channelId) {
-        if (proposer_seq_number == msg.getSeqNumber() && proposer_seq_number >= highest_prepare) {
+        Tag newTag = new Tag(msg.getInstance(), msg.getSeqNumber());
+        if (newTag.greaterOrEqualThan(highest_prepare)) {
             prepare_ok_count ++;
             if (msg.getPrepareOKMsgs().size() > prepareOkMessages.size())
                 prepareOkMessages = msg.getPrepareOKMsgs();
@@ -208,7 +207,7 @@ public class PaxosAgreement extends GenericProtocol {
                 triggerNotification(new NewLeaderNotification(myself, prepareOkMessages));
                 membership.forEach(h -> {
                     if (!h.equals(myself))
-                        sendMessage(new PrepareMessage(proposer_seq_number+1, msg.getInstance()), h);
+                        sendMessage(new PrepareMessage(proposer_seq_number, msg.getInstance(), true), h);
                 });
             }
         }
@@ -246,13 +245,15 @@ public class PaxosAgreement extends GenericProtocol {
     }
 
     private void uponProposeRequest(ProposeRequest request, short sourceProto) {
+        logger.info("MEMBERSHIP: " + membership);
         instanceStateMap.put(request.getInstance(), new AgreementInstanceState());
-        AcceptMessage msg = new AcceptMessage(request.getInstance(), request.getOpId(), request.getOperation(), toBeDecidedIndex - 1);
+        AcceptMessage msg = new AcceptMessage(request.getInstance(), proposer_seq_number, request.getOpId(), request.getOperation(), toBeDecidedIndex - 1);
         membership.forEach(h -> sendMessage(msg, h));          
     }
 
     private void uponChangeMembershipMessage(ChangeMembershipMessage msg, Host host, short sourceProto, int channelId) {        
         if (msg.isOK()) {
+
             if(msg.getReplica().equals(myself)) { //obviously, when removing this is impossible to trigger
                 toBeDecidedIndex = msg.getInstance();
                 return;
@@ -262,6 +263,8 @@ public class PaxosAgreement extends GenericProtocol {
                 membership.add(msg.getReplica());
                 triggerNotification(new MembershipChangedNotification(msg.getReplica(), true, channelId));
             } else {
+                logger.info("removing: " + msg.getReplica());
+
                 membership.remove(msg.getReplica());
                 if(joinedInstance > msg.getInstance())
                     joinedInstance --;
@@ -282,6 +285,7 @@ public class PaxosAgreement extends GenericProtocol {
             if (state.getAcceptokCount() >= (membership.size() / 2) + 1 && !state.decided()) {
                 state.decide();
 
+                logger.info("removing: " + msg.getReplica());
                 membership.forEach(h ->  { 
                     if (!h.equals(myself)) {
                             sendMessage(new ChangeMembershipMessage(msg.getReplica(), msg.getInstance(), true, msg.isAdding()), h);
@@ -302,8 +306,16 @@ public class PaxosAgreement extends GenericProtocol {
         //Added && condition, needed for leader re-election
         //The purpose is, after the new leader gets relected and resends accepts messages
         //Replicas that already executed the message will simply reply AcceptOK and NOT process it
+        //logger.info("INSTANCE {} - TOBEDECIDED {}", msg.getInstance(),toBeDecidedIndex);
+        logger.info("highest prepare {} - {} ; current Tag {} - {}", highest_prepare.getOpSeq(), highest_prepare.getProcessId(), msg.getInstance(), msg.getSeqNumber());
+        if( !(new Tag(msg.getInstance(), msg.getSeqNumber())).greaterOrEqualThan(highest_prepare))
+            return;
+
+        //logger.info("Hello?");    
         if (!host.equals(myself) && (msg.getInstance() >= toBeDecidedIndex)) {
             if (joinedInstance >= 0) {
+                logger.info(msg.getLastChosen()); 
+                logger.info(toBeDecidedIndex);  
                 for(; toBeDecidedIndex <= msg.getLastChosen(); toBeDecidedIndex++) {
                     Pair<UUID, byte[]> pair = toBeDecidedMessages.remove(toBeDecidedIndex);
                     if(pair != null) {
@@ -336,7 +348,7 @@ public class PaxosAgreement extends GenericProtocol {
                 acceptedMessages.put(msg.getInstance(), Pair.of(msg.getOpId(), msg.getOp()));
                 membership.forEach(h -> { 
                         if (h != myself) 
-                            sendMessage(new AcceptMessage(msg.getInstance(), msg.getOpId(), msg.getOp(), toBeDecidedIndex), h); 
+                            sendMessage(new AcceptMessage(msg.getInstance(), proposer_seq_number, msg.getOpId(), msg.getOp(), toBeDecidedIndex), h); 
                 });
                 toBeDecidedIndex = msg.getInstance() + 1;          
             }

@@ -10,11 +10,13 @@ public class PrepareMessage extends ProtoMessage {
 
     private final int seqNumber;
     private final int instance;
+    private final boolean ok;
 
-    public PrepareMessage(int seqNumber, int instance) {
+    public PrepareMessage(int seqNumber, int instance, boolean ok) {
         super(MSG_ID);
         this.seqNumber = seqNumber;
         this.instance = instance;
+        this.ok = ok;
     }
 
     public int getSeqNumber() {
@@ -23,6 +25,10 @@ public class PrepareMessage extends ProtoMessage {
 
     public int getInstance() {
         return instance;
+    }
+
+    public boolean isOK() {
+        return ok;
     }
 
     @Override
@@ -38,13 +44,15 @@ public class PrepareMessage extends ProtoMessage {
         public void serialize(PrepareMessage msg, ByteBuf out) {
             out.writeInt(msg.seqNumber);
             out.writeInt(msg.instance);
+            out.writeBoolean(msg.ok);
         }
 
         @Override
         public PrepareMessage deserialize(ByteBuf in) {
             int sn = in.readInt();
             int instance = in.readInt();
-            return new PrepareMessage(sn, instance);
+            boolean ok = in.readBoolean();
+            return new PrepareMessage(sn, instance, ok);
         }
     };
 

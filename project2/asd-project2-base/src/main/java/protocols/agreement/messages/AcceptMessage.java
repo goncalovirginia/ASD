@@ -16,39 +16,25 @@ public class AcceptMessage extends ProtoMessage {
     private final UUID opId;
     private final int instance;
     private final byte[] op;
-    private final Host replica;
-    private final int replicaInstance;
+    private final int sequenceNumber;
 
-    private final boolean changingMembership;
-    private final boolean adding;
     private final int lastChosen;
 
-    public AcceptMessage(int instance, UUID opId, byte[] op, int last) {
+    public AcceptMessage(int instance, int sn, UUID opId, byte[] op, int last) {
         super(MSG_ID);
         this.instance = instance;
         this.op = op;
         this.opId = opId;
-        this.changingMembership = false;
-        this.replica = null;
-        replicaInstance = -1;
-        this.adding = false;
+        this.sequenceNumber = sn;
         this.lastChosen = last;
-    }
-
-    public AcceptMessage(int instance, Host host, int replicaInstance, boolean adding) {
-        super(MSG_ID);
-        this.instance = instance;
-        this.op = new byte[0];
-        this.opId = UUID.randomUUID();
-        this.changingMembership = true;
-        this.replica = host;
-        this.replicaInstance = replicaInstance;
-        this.adding = adding;
-        this.lastChosen = 0;
     }
     
     public int getInstance() {
         return instance;
+    }
+
+    public int getSeqNumber() {
+        return sequenceNumber;
     }
 
     public int getLastChosen() {
@@ -63,80 +49,44 @@ public class AcceptMessage extends ProtoMessage {
         return op;
     }
 
-    public Host getReplica() {
-        return replica;
-    }
 
-    public int getReplicaInstance() {
-        return replicaInstance;
-    }
-
-    public boolean isAddOrRemoving() {
-        return changingMembership;
-    }
-
-    public boolean isAdding() {
-        return adding;
-    }
-
-    public boolean isRemoving() {
-        return (!adding && changingMembership);
-    }
 
     @Override
     public String toString() {
-        if (!changingMembership) {
-            return "AcceptMessage{" +
-                    "opId=" + opId +
-                    ", instance=" + instance +
-                    ", op=" + Hex.encodeHexString(op) +
-                    '}';
-        } else {
-            return "AcceptAddRemoveMessage{" +
-                    ", instance=" + instance +
-                    ", newReplica=" + replica +
-                    '}';
-        }
+        return "AcceptAddRemoveMessage{" +
+                ", instance=" + instance +
+                ", sequenceNumber=" + sequenceNumber +
+                '}';
+        
     }
 
     public static ISerializer<AcceptMessage> serializer = new ISerializer<AcceptMessage>() {
         @Override
         public void serialize(AcceptMessage msg, ByteBuf out) throws IOException {
             out.writeInt(msg.instance);
-            out.writeBoolean(msg.changingMembership);
+            out.writeInt(msg.sequenceNumber);
 
-            if (msg.changingMembership) {
-                Host.serializer.serialize(msg.replica, out);
-                out.writeInt(msg.replicaInstance);
-                out.writeBoolean(msg.adding);
-            } else {
-                out.writeLong(msg.opId.getMostSignificantBits());
-                out.writeLong(msg.opId.getLeastSignificantBits());
-                out.writeInt(msg.op.length);
-                out.writeBytes(msg.op);
-                out.writeInt(msg.lastChosen);
-            }   
+            out.writeLong(msg.opId.getMostSignificantBits());
+            out.writeLong(msg.opId.getLeastSignificantBits());
+            out.writeInt(msg.op.length);
+            out.writeBytes(msg.op);
+            out.writeInt(msg.lastChosen);
+            
         }
 
         @Override
         public AcceptMessage deserialize(ByteBuf in) throws IOException {
             int instance = in.readInt();
-            boolean isReplicaOp = in.readBoolean();
+            int sn = in.readInt();
 
-            if (isReplicaOp) {
-                Host nReplica = Host.serializer.deserialize(in);
-                int nReplicaInstance = in.readInt();
-                boolean add = in.readBoolean();
-                return new AcceptMessage(instance, nReplica, nReplicaInstance, add);    
-            } else {
-                long highBytes = in.readLong();
-                long lowBytes = in.readLong();
-                UUID opId = new UUID(highBytes, lowBytes);
-                byte[] op = new byte[in.readInt()];
-                in.readBytes(op);
-                int last = in.readInt();
-                return new AcceptMessage(instance, opId, op, last);
-            } 
+            long highBytes = in.readLong();
+            long lowBytes = in.readLong();
+            UUID opId = new UUID(highBytes, lowBytes);
+            byte[] op = new byte[in.readInt()];
+            in.readBytes(op);
+            int last = in.readInt();
+            return new AcceptMessage(instance, sn, opId, op, last);
+             
         }
     };
 
