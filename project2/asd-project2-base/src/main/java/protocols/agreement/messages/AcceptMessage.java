@@ -1,13 +1,14 @@
 package protocols.agreement.messages;
 
 import io.netty.buffer.ByteBuf;
-import org.apache.commons.codec.binary.Hex;
+import protocols.abd.utils.Tag;
 import pt.unl.fct.di.novasys.babel.generic.ProtoMessage;
 import pt.unl.fct.di.novasys.network.ISerializer;
-import pt.unl.fct.di.novasys.network.data.Host;
 
 import java.io.IOException;
 import java.util.UUID;
+
+import org.apache.commons.lang3.tuple.Pair;
 
 public class AcceptMessage extends ProtoMessage {
 
@@ -16,16 +17,15 @@ public class AcceptMessage extends ProtoMessage {
     private final UUID opId;
     private final int instance;
     private final byte[] op;
-    private final int sequenceNumber;
-
+    private final Tag sequenceNumber;
     private final int lastChosen;
 
-    public AcceptMessage(int instance, int sn, UUID opId, byte[] op, int last) {
+    public AcceptMessage(int instance, Tag highest_prepare, UUID opId, byte[] op, int last) {
         super(MSG_ID);
         this.instance = instance;
         this.op = op;
         this.opId = opId;
-        this.sequenceNumber = sn;
+        this.sequenceNumber = highest_prepare;
         this.lastChosen = last;
     }
     
@@ -33,7 +33,7 @@ public class AcceptMessage extends ProtoMessage {
         return instance;
     }
 
-    public int getSeqNumber() {
+    public Tag getSeqNumber() {
         return sequenceNumber;
     }
 
@@ -64,7 +64,8 @@ public class AcceptMessage extends ProtoMessage {
         @Override
         public void serialize(AcceptMessage msg, ByteBuf out) throws IOException {
             out.writeInt(msg.instance);
-            out.writeInt(msg.sequenceNumber);
+            out.writeInt(msg.sequenceNumber.getOpSeq());
+            out.writeInt(msg.sequenceNumber.getProcessId());
 
             out.writeLong(msg.opId.getMostSignificantBits());
             out.writeLong(msg.opId.getLeastSignificantBits());
@@ -77,7 +78,10 @@ public class AcceptMessage extends ProtoMessage {
         @Override
         public AcceptMessage deserialize(ByteBuf in) throws IOException {
             int instance = in.readInt();
-            int sn = in.readInt();
+            int opSeq = in.readInt();
+            int processId = in.readInt();
+            Tag sequenceNumber = new Tag(opSeq, processId);
+
 
             long highBytes = in.readLong();
             long lowBytes = in.readLong();
@@ -85,7 +89,7 @@ public class AcceptMessage extends ProtoMessage {
             byte[] op = new byte[in.readInt()];
             in.readBytes(op);
             int last = in.readInt();
-            return new AcceptMessage(instance, sn, opId, op, last);
+            return new AcceptMessage(instance, sequenceNumber, opId, op, last);
              
         }
     };

@@ -1,6 +1,7 @@
 package protocols.agreement.messages;
 
 import io.netty.buffer.ByteBuf;
+import protocols.abd.utils.Tag;
 import pt.unl.fct.di.novasys.babel.generic.ProtoMessage;
 import pt.unl.fct.di.novasys.network.ISerializer;
 
@@ -8,23 +9,17 @@ public class PrepareMessage extends ProtoMessage {
 
     public final static short MSG_ID = 106;
 
-    private final int seqNumber;
-    private final int instance;
+    private final Tag sequenceNumber;
     private final boolean ok;
 
-    public PrepareMessage(int seqNumber, int instance, boolean ok) {
+    public PrepareMessage(Tag highest_prepare, boolean ok) {
         super(MSG_ID);
-        this.seqNumber = seqNumber;
-        this.instance = instance;
+        this.sequenceNumber = highest_prepare;
         this.ok = ok;
     }
 
-    public int getSeqNumber() {
-        return seqNumber;
-    }
-
-    public int getInstance() {
-        return instance;
+    public Tag getSeqNumber() {
+        return sequenceNumber;
     }
 
     public boolean isOK() {
@@ -34,25 +29,25 @@ public class PrepareMessage extends ProtoMessage {
     @Override
     public String toString() {
         return "PrepareMessage{" +
-                "seqNumber=" + seqNumber +
-                ", instance=" + instance +
+                "seqNumber=" + sequenceNumber +
                 '}';
     }
 
     public static ISerializer<PrepareMessage> serializer = new ISerializer<PrepareMessage>() {
         @Override
         public void serialize(PrepareMessage msg, ByteBuf out) {
-            out.writeInt(msg.seqNumber);
-            out.writeInt(msg.instance);
+            out.writeInt(msg.sequenceNumber.getOpSeq());
+            out.writeInt(msg.sequenceNumber.getProcessId());
             out.writeBoolean(msg.ok);
         }
 
         @Override
         public PrepareMessage deserialize(ByteBuf in) {
-            int sn = in.readInt();
-            int instance = in.readInt();
+            int opSeq = in.readInt();
+            int processId = in.readInt();
+            Tag sequenceNumber = new Tag(opSeq, processId);
             boolean ok = in.readBoolean();
-            return new PrepareMessage(sn, instance, ok);
+            return new PrepareMessage(sequenceNumber, ok);
         }
     };
 

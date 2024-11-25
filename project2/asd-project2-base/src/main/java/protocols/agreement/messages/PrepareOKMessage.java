@@ -7,6 +7,7 @@ import java.util.UUID;
 import org.apache.commons.lang3.tuple.Pair;
 
 import io.netty.buffer.ByteBuf;
+import protocols.abd.utils.Tag;
 import pt.unl.fct.di.novasys.babel.generic.ProtoMessage;
 import pt.unl.fct.di.novasys.network.ISerializer;
 
@@ -15,24 +16,18 @@ public class PrepareOKMessage extends ProtoMessage {
 
     public final static short MSG_ID = 107;
 
-    private final int seqNumber;
-    private final int instance;
+    private final Tag sequenceNumber;
     private final List<Pair<UUID, byte[]>> prepareOKMessages;
 
     
-    public PrepareOKMessage(int sn, int instance, List<Pair<UUID, byte[]>> msgs) {
+    public PrepareOKMessage(Tag highest_prepare, List<Pair<UUID, byte[]>> msgs) {
         super(MSG_ID);
-        this.seqNumber = sn;
-        this.instance = instance;
+        this.sequenceNumber = highest_prepare;
         prepareOKMessages = msgs;
     }
 
-    public int getSeqNumber() {
-        return seqNumber;
-    }
-
-    public int getInstance() {
-        return instance;
+    public Tag getSeqNumber() {
+        return sequenceNumber;
     }
     
     public List<Pair<UUID, byte[]>> getPrepareOKMsgs() {
@@ -42,15 +37,15 @@ public class PrepareOKMessage extends ProtoMessage {
     @Override
     public String toString() {
         return "PrepareOKMessage{" +
-                "seqNumber=" + seqNumber +
+                "seqNumber=" + sequenceNumber +
                 '}';
     }
 
     public static ISerializer<PrepareOKMessage> serializer = new ISerializer<PrepareOKMessage>() {
         @Override
         public void serialize(PrepareOKMessage msg, ByteBuf out) {
-            out.writeInt(msg.seqNumber);
-            out.writeInt(msg.instance);
+            out.writeInt(msg.sequenceNumber.getOpSeq());
+            out.writeInt(msg.sequenceNumber.getProcessId());
 
             List<Pair<UUID, byte[]>> messages = msg.getPrepareOKMsgs();
             out.writeInt(messages.size());
@@ -67,8 +62,9 @@ public class PrepareOKMessage extends ProtoMessage {
 
         @Override
         public PrepareOKMessage deserialize(ByteBuf in) {
-            int sn = in.readInt();
-            int inst = in.readInt();
+            int opSeq = in.readInt();
+            int processId = in.readInt();
+            Tag sequenceNumber = new Tag(opSeq, processId);
 
             int size = in.readInt();
             List<Pair<UUID, byte[]>> messages = new LinkedList<>();
@@ -84,7 +80,7 @@ public class PrepareOKMessage extends ProtoMessage {
                 messages.add(Pair.of(uuid, data));
             }
 
-            return new PrepareOKMessage(sn, inst, messages);
+            return new PrepareOKMessage(sequenceNumber, messages);
         }
     };
 
