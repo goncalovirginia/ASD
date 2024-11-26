@@ -234,6 +234,8 @@ public class PaxosAgreement extends GenericProtocol {
 	}
 
 	private void uponProposeRequest(ProposeRequest request, short sourceProto) {
+		logger.info("Received Propose Request: {} - {}", request.getInstance(), request.getOpId() );
+
 		instanceStateMap.put(request.getInstance(), new AgreementInstanceState());
 		AcceptMessage msg = new AcceptMessage(request.getInstance(), highest_prepare, request.getOpId(), request.getOperation(), toBeDecidedIndex - 1);
 		membership.forEach(h -> sendMessage(msg, h));
@@ -288,6 +290,8 @@ public class PaxosAgreement extends GenericProtocol {
 		logger.info("ON ACCEPT: sn ({}, {}) - hp ({}, {})" + msg.getSeqNumber().getOpSeq(), msg.getSeqNumber().getProcessId(), highest_prepare.getOpSeq(), highest_prepare.getProcessId());
 
 		if (!msg.getSeqNumber().greaterOrEqualThan(highest_prepare)) return;
+		if (!(msg.getSeqNumber()).greaterOrEqualThan(highest_prepare))
+			return;
 		highest_prepare = msg.getSeqNumber(); //update info for replicas that missed prepare (added for instance)
 
 		if (!host.equals(myself) && (msg.getInstance() >= toBeDecidedIndex)) {
