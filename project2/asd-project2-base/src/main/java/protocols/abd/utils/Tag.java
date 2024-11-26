@@ -21,4 +21,8 @@ public class Tag {
 		return opSeq > other.opSeq || (opSeq == other.opSeq && processId > other.processId);
 	}
 
+	public boolean greaterOrEqualThan(Tag other) {
+		return (opSeq == other.opSeq && processId == other.processId) || (opSeq > other.opSeq || (opSeq == other.opSeq && processId > other.processId));
+	}
+
 }

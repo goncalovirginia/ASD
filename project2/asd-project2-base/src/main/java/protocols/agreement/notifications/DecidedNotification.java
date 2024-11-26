@@ -1,43 +1,44 @@
 package protocols.agreement.notifications;
 
-import org.apache.commons.codec.binary.Hex;
-import pt.unl.fct.di.novasys.babel.generic.ProtoNotification;
-
 import java.util.UUID;
+
+import org.apache.commons.codec.binary.Hex;
+
+import pt.unl.fct.di.novasys.babel.generic.ProtoNotification;
 
 public class DecidedNotification extends ProtoNotification {
 
-	public static final short NOTIFICATION_ID = 401;
+    public static final short NOTIFICATION_ID = 401;
 
-	private final int instance;
-	private final UUID opId;
-	private final byte[] operation;
+    private final int instance;
+    private final UUID opId;
+    private final byte[] operation;
 
-	public DecidedNotification(int instance, UUID opId, byte[] operation) {
-		super(NOTIFICATION_ID);
-		this.instance = instance;
-		this.opId = opId;
-		this.operation = operation;
-	}
+    public DecidedNotification(int instance, UUID opId, byte[] operation) {
+        super(NOTIFICATION_ID);
+        this.instance = instance;
+        this.opId = opId;
+        this.operation = operation;
+    }
 
-	public int getInstance() {
-		return instance;
-	}
+    public int getInstance() {
+        return instance;
+    }
 
-	public byte[] getOperation() {
-		return operation;
-	}
+    public byte[] getOperation() {
+        return operation;
+    }
 
-	public UUID getOpId() {
-		return opId;
-	}
+    public UUID getOpId() {
+        return opId;
+    }
 
-	@Override
-	public String toString() {
-		return "DecidedNotification{" +
-				"instance=" + instance +
-				", opId=" + opId +
-				", operation=" + Hex.encodeHexString(operation) +
-				'}';
-	}
+    @Override
+    public String toString() {
+        return "DecidedNotification{" +
+                "instance=" + instance +
+                ", opId=" + opId +
+                ", operation=" + Hex.encodeHexString(operation) +
+                '}';
+    }
 }

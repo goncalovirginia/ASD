@@ -29,6 +29,8 @@ while [ $i -lt $processes ]; do
   i=$(($i + 1))
 done
 
+ps aux
+
 sleep 2
 read -p "------------- Press enter to kill servers. --------------------"
 
