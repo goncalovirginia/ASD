@@ -123,7 +123,6 @@ public class PaxosAgreement extends GenericProtocol {
 
         /*---------------------- Register Message Handlers -------------------------- */
         try {
-              registerMessageHandler(cId, BroadcastMessage.MSG_ID, this::uponBroadcastMessage, this::uponMsgFail);
               registerMessageHandler(cId, PrepareMessage.MSG_ID, this::uponPrepareMessage, this::uponMsgFail);
               registerMessageHandler(cId, PrepareOKMessage.MSG_ID, this::uponPrepareOKMessage, this::uponMsgFail);
               registerMessageHandler(cId, AcceptMessage.MSG_ID, this::uponAcceptMessage, this::uponMsgFail);
@@ -135,17 +134,6 @@ public class PaxosAgreement extends GenericProtocol {
             throw new AssertionError("Error registering message handler.", e);
         }
 
-    }
-
-    //TO DELETE AFTER DEALING WITH COMMENTS
-    private void uponBroadcastMessage(BroadcastMessage msg, Host host, short sourceProto, int channelId) {
-        if(joinedInstance >= 0 ){
-            //Obviously your agreement protocols will not decide things as soon as you receive the first message
-            triggerNotification(new DecidedNotification(msg.getInstance(), msg.getOpId(), msg.getOp()));
-        } else {
-            //We have not yet received a JoinedNotification, but we are already receiving messages from the other
-            //agreement instances, maybe we should do something with them...?
-        }
     }
 
     //highest joinedInstance wins
@@ -218,7 +206,6 @@ public class PaxosAgreement extends GenericProtocol {
 
     private void uponRemoveReplica(RemoveReplicaRequest request, short sourceProto) {
         logger.debug("Received Remove Replica Request: " + request);
-        //makes no sense to include the replica that is dead in the broadcast
         membership.remove(request.getReplica()); 
         if(joinedInstance > request.getInstance())
             joinedInstance--;
