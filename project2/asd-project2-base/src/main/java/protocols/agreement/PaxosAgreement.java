@@ -163,28 +163,26 @@ public class PaxosAgreement extends GenericProtocol {
 	}
 
 	private void uponPrepareMessage(PrepareMessage msg, Host host, short sourceProto, int channelId) {
-		if (joinedInstance >= 0) {
-			if (msg.getSeqNumber() > highest_prepare) {
-				if (host.equals(newLeader)) {
-					triggerNotification(new NewLeaderNotification(host));
-					return;
-				}
-				newLeader = host;
+		if (joinedInstance < 0) return; //TODO: uponBroadcast above comments
+		if (msg.getSeqNumber() <= highest_prepare) return;
 
-				highest_prepare = msg.getSeqNumber();
-				List<Pair<UUID, byte[]>> relevantMessages = new LinkedList<>();
-				if (toBeDecidedIndex > msg.getInstance()) {//toBeDecided - 1 == last executed/accepted msg
-					relevantMessages.addAll((((TreeMap<Integer, Pair<UUID, byte[]>>) toBeDecidedMessages)
-							.tailMap(msg.getInstance(), true)
-							.values()));
-				}
-
-				PrepareOKMessage prepareOK = new PrepareOKMessage(msg.getSeqNumber(), msg.getInstance(), relevantMessages);
-				sendMessage(prepareOK, host);
-			}
-		} else {
-			//TODO: uponBroadcast above comments
+		if (host.equals(newLeader)) {
+			triggerNotification(new NewLeaderNotification(host));
+			return;
 		}
+		newLeader = host;
+
+		highest_prepare = msg.getSeqNumber();
+		List<Pair<UUID, byte[]>> relevantMessages = new LinkedList<>();
+
+		if (toBeDecidedIndex > msg.getInstance()) {//toBeDecided - 1 == last executed/accepted msg
+			relevantMessages.addAll((((TreeMap<Integer, Pair<UUID, byte[]>>) toBeDecidedMessages)
+					.tailMap(msg.getInstance(), true)
+					.values()));
+		}
+
+		PrepareOKMessage prepareOK = new PrepareOKMessage(msg.getSeqNumber(), msg.getInstance(), relevantMessages);
+		sendMessage(prepareOK, host);
 	}
 
 	//Prepare_OK messages have to reported values accepted for any instance >= n.
@@ -301,7 +299,7 @@ public class PaxosAgreement extends GenericProtocol {
 						triggerNotification(new DecidedNotification(toBeDecidedIndex, pair.getLeft(), pair.getRight()));
 					}
 				}
-				//prevents already decided message to be send back to proposer
+				//prevents already decided message to be sent back to proposer
 				if (acceptedMessages.containsKey(msg.getInstance())) return;
 			}
 
