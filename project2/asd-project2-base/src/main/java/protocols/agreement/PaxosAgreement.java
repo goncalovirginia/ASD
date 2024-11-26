@@ -147,61 +147,57 @@ public class PaxosAgreement extends GenericProtocol {
 	//highest joinedInstance wins
 	private void uponPrepareRequest(PrepareRequest request, short sourceProto) {
 		prepare_ok_count = 0;
-		/*         proposer_seq_number = joinedInstance; */
 		Tag newTag = new Tag(highest_prepare.getOpSeq() + 1, joinedInstance);
 		PrepareMessage msg = new PrepareMessage(newTag, request.getInstance(), false);
 
-		membership.forEach(h -> sendMessage(msg, h));
+		membership.forEach(h -> {
+			if (h != myself)
+				sendMessage(msg, h);
+			}) ;
 	}
 
 	private void uponPrepareMessage(PrepareMessage msg, Host host, short sourceProto, int channelId) {
-		if (joinedInstance < 0 || !msg.getSeqNumber().greaterOrEqualThan(highest_prepare)) return;
-
-		if (msg.isOK()) {
+		/* if (joinedInstance < 0 || !msg.getSeqNumber().greaterOrEqualThan(highest_prepare)) return; */
+		if(msg.getSeqNumber().greaterThan(highest_prepare)) {
 			highest_prepare = msg.getSeqNumber();
+
 			logger.info("host {} --> NEW LEADER {} ", myself, host);
 			triggerNotification(new NewLeaderNotification(host));
-			return;
-		}
-		highest_prepare = msg.getSeqNumber();
 
-		logger.info("ON PREPARE TBI {} - instance {} ", toBeDecidedIndex, msg.getInstance());
-		List<Pair<UUID, byte[]>> relevantMessages = new LinkedList<>();
-		if (toBeDecidedIndex >= (msg.getInstance())) {//toBeDecided - 1 == last executed/accepted msg
-			logger.info("SHOULD BE TRUE");
-			relevantMessages.addAll((((TreeMap<Integer, Pair<UUID, byte[]>>) acceptedMessages)
+			logger.info("ON PREPARE TBI {} - instance {} ", toBeDecidedIndex, msg.getInstance());
+			List<Pair<UUID, byte[]>> relevantMessages = new LinkedList<>();
+			if (toBeDecidedIndex >= (msg.getInstance())) {//toBeDecided - 1 == last executed/accepted msg
+				logger.info("INSTANCE" + msg.getInstance() + "SHOULD BE TRUE: " + toBeDecidedMessages + acceptedMessages);
+				relevantMessages.addAll((((TreeMap<Integer, Pair<UUID, byte[]>>) toBeDecidedMessages)
+					.tailMap((msg.getInstance()), true)
+					.values()));
+				
+				relevantMessages.addAll((((TreeMap<Integer, Pair<UUID, byte[]>>) acceptedMessages)
 					.tailMap((msg.getInstance()), true)
 					.values()));
 
-			relevantMessages.addAll((((TreeMap<Integer, Pair<UUID, byte[]>>) toBeDecidedMessages)
-					.tailMap((msg.getInstance()), true)
-					.values()));
-		}
+			}
 
-		PrepareOKMessage prepareOK = new PrepareOKMessage(highest_prepare, relevantMessages);
-		sendMessage(prepareOK, host);
+			PrepareOKMessage prepareOK = new PrepareOKMessage(highest_prepare, relevantMessages);
+			sendMessage(prepareOK, host);
+		}
 	}
 
 	//Prepare_OK messages with accepted values for any instance >= n.
 	private void uponPrepareOKMessage(PrepareOKMessage msg, Host host, short sourceProto, int channelId) {
-		if (!msg.getSeqNumber().greaterOrEqualThan(highest_prepare)) return;
-
 		prepare_ok_count++;
-
 		if (msg.getPrepareOKMsgs().size() > prepareOkMessages.size())
 			prepareOkMessages = msg.getPrepareOKMsgs();
 
 		if (prepare_ok_count >= (membership.size() / 2) + 1) {
 			prepare_ok_count = -1;
 
+			logger.info("Leader Decided  --> {} ", myself);
+
 			logger.info(prepareOkMessages);
 			highest_prepare = msg.getSeqNumber();
 
-			triggerNotification(new NewLeaderNotification(myself, prepareOkMessages));
-			membership.forEach(h -> {
-				if (!h.equals(myself))
-					sendMessage(new PrepareMessage(msg.getSeqNumber(), -1, true), h);
-			});
+			triggerNotification(new NewLeaderNotification(myself, toBeDecidedIndex, prepareOkMessages));
 		}
 	}
 
@@ -290,8 +286,6 @@ public class PaxosAgreement extends GenericProtocol {
 		logger.info("ON ACCEPT: sn ({}, {}) - hp ({}, {})" + msg.getSeqNumber().getOpSeq(), msg.getSeqNumber().getProcessId(), highest_prepare.getOpSeq(), highest_prepare.getProcessId());
 
 		if (!msg.getSeqNumber().greaterOrEqualThan(highest_prepare)) return;
-		if (!(msg.getSeqNumber()).greaterOrEqualThan(highest_prepare))
-			return;
 		highest_prepare = msg.getSeqNumber(); //update info for replicas that missed prepare (added for instance)
 
 		if (!host.equals(myself) && (msg.getInstance() >= toBeDecidedIndex)) {

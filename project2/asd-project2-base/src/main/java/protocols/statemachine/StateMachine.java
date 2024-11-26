@@ -230,8 +230,9 @@ public class StateMachine extends GenericProtocol {
 
 		leader = notification.getLeader();
 		if (leader.equals(self)) {
+			logger.info("CURRENTINDEX {} - TOBEDECIDEDINDEX {}", nextInstance, notification.getInstance());
 			logger.info("Leader flushing pendingRemoves: " + pendingRemoves);
-
+			
 			pendingRemoves.forEach(m ->
 					sendRequest(new RemoveReplicaRequest(membership.indexOf(m), m), PaxosAgreement.PROTOCOL_ID));
 
