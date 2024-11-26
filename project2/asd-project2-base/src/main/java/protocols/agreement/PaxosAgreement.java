@@ -119,7 +119,6 @@ public class PaxosAgreement extends GenericProtocol {
 
 		/*---------------------- Register Message Handlers -------------------------- */
 		try {
-			registerMessageHandler(cId, BroadcastMessage.MSG_ID, this::uponBroadcastMessage, this::uponMsgFail);
 			registerMessageHandler(cId, PrepareMessage.MSG_ID, this::uponPrepareMessage, this::uponMsgFail);
 			registerMessageHandler(cId, PrepareOKMessage.MSG_ID, this::uponPrepareOKMessage, this::uponMsgFail);
 			registerMessageHandler(cId, AcceptMessage.MSG_ID, this::uponAcceptMessage, this::uponMsgFail);
@@ -131,17 +130,6 @@ public class PaxosAgreement extends GenericProtocol {
 			throw new AssertionError("Error registering message handler.", e);
 		}
 
-	}
-
-	//TO DELETE AFTER DEALING WITH COMMENTS
-	private void uponBroadcastMessage(BroadcastMessage msg, Host host, short sourceProto, int channelId) {
-		if (joinedInstance >= 0) {
-			//Obviously your agreement protocols will not decide things as soon as you receive the first message
-			triggerNotification(new DecidedNotification(msg.getInstance(), msg.getOpId(), msg.getOp()));
-		} else {
-			//We have not yet received a JoinedNotification, but we are already receiving messages from the other
-			//agreement instances, maybe we should do something with them...?
-		}
 	}
 
 	//highest joinedInstance wins
@@ -158,13 +146,16 @@ public class PaxosAgreement extends GenericProtocol {
 
 	private void uponPrepareMessage(PrepareMessage msg, Host host, short sourceProto, int channelId) {
 		/* if (joinedInstance < 0 || !msg.getSeqNumber().greaterOrEqualThan(highest_prepare)) return; */
-		if(msg.getSeqNumber().greaterThan(highest_prepare)) {
+		if(msg.getSeqNumber().greaterOrEqualThan(highest_prepare)) {
+
+			if(msg.isOK()) {
+				highest_prepare = msg.getSeqNumber();
+				triggerNotification(new NewLeaderNotification(host));
+				return;
+			}
+
 			highest_prepare = msg.getSeqNumber();
-
-			logger.info("host {} --> NEW LEADER {} ", myself, host);
-			triggerNotification(new NewLeaderNotification(host));
-
-			logger.info("ON PREPARE TBI {} - instance {} ", toBeDecidedIndex, msg.getInstance());
+			
 			List<Pair<UUID, byte[]>> relevantMessages = new LinkedList<>();
 			if (toBeDecidedIndex >= (msg.getInstance())) {//toBeDecided - 1 == last executed/accepted msg
 				logger.info("INSTANCE" + msg.getInstance() + "SHOULD BE TRUE: " + toBeDecidedMessages + acceptedMessages);
@@ -185,6 +176,8 @@ public class PaxosAgreement extends GenericProtocol {
 
 	//Prepare_OK messages with accepted values for any instance >= n.
 	private void uponPrepareOKMessage(PrepareOKMessage msg, Host host, short sourceProto, int channelId) {
+		if (!msg.getSeqNumber().greaterOrEqualThan(highest_prepare)) return;
+
 		prepare_ok_count++;
 		if (msg.getPrepareOKMsgs().size() > prepareOkMessages.size())
 			prepareOkMessages = msg.getPrepareOKMsgs();
@@ -193,7 +186,6 @@ public class PaxosAgreement extends GenericProtocol {
 			prepare_ok_count = -1;
 
 			logger.info("Leader Decided  --> {} ", myself);
-
 			logger.info(prepareOkMessages);
 			highest_prepare = msg.getSeqNumber();
 
@@ -230,7 +222,7 @@ public class PaxosAgreement extends GenericProtocol {
 	}
 
 	private void uponProposeRequest(ProposeRequest request, short sourceProto) {
-		logger.info("Received Propose Request: {} - {}", request.getInstance(), request.getOpId() );
+		logger.debug("Received Propose Request: {} - {}", request.getInstance(), request.getOpId() );
 
 		instanceStateMap.put(request.getInstance(), new AgreementInstanceState());
 		AcceptMessage msg = new AcceptMessage(request.getInstance(), highest_prepare, request.getOpId(), request.getOperation(), toBeDecidedIndex - 1);
