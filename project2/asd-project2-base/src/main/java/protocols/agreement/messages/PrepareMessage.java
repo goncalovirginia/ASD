@@ -7,56 +7,56 @@ import pt.unl.fct.di.novasys.network.ISerializer;
 
 public class PrepareMessage extends ProtoMessage {
 
-    public final static short MSG_ID = 106;
+	public final static short MSG_ID = 106;
 
-    private final Tag sequenceNumber;
-    private final int instance;
-    private final boolean ok;
+	private final Tag sequenceNumber;
+	private final int instance;
+	private final boolean ok;
 
-    public PrepareMessage(Tag highest_prepare, int instance, boolean ok) {
-        super(MSG_ID);
-        this.sequenceNumber = highest_prepare;
-        this.instance = instance;
-        this.ok = ok;
-    }
+	public PrepareMessage(Tag highest_prepare, int instance, boolean ok) {
+		super(MSG_ID);
+		this.sequenceNumber = highest_prepare;
+		this.instance = instance;
+		this.ok = ok;
+	}
 
-    public Tag getSeqNumber() {
-        return sequenceNumber;
-    }
+	public Tag getSeqNumber() {
+		return sequenceNumber;
+	}
 
-    public int getInstance() {
-        return instance;
-    }
+	public int getInstance() {
+		return instance;
+	}
 
-    public boolean isOK() {
-        return ok;
-    }
+	public boolean isOK() {
+		return ok;
+	}
 
-    @Override
-    public String toString() {
-        return "PrepareMessage{" +
-                "seqNumber=" + sequenceNumber +
-                '}';
-    }
+	@Override
+	public String toString() {
+		return "PrepareMessage{" +
+				"seqNumber=" + sequenceNumber +
+				'}';
+	}
 
-    public static ISerializer<PrepareMessage> serializer = new ISerializer<PrepareMessage>() {
-        @Override
-        public void serialize(PrepareMessage msg, ByteBuf out) {
-            out.writeInt(msg.sequenceNumber.getOpSeq());
-            out.writeInt(msg.sequenceNumber.getProcessId());
-            out.writeInt(msg.instance);
-            out.writeBoolean(msg.ok);
-        }
+	public static ISerializer<PrepareMessage> serializer = new ISerializer<PrepareMessage>() {
+		@Override
+		public void serialize(PrepareMessage msg, ByteBuf out) {
+			out.writeInt(msg.sequenceNumber.getOpSeq());
+			out.writeInt(msg.sequenceNumber.getProcessId());
+			out.writeInt(msg.instance);
+			out.writeBoolean(msg.ok);
+		}
 
-        @Override
-        public PrepareMessage deserialize(ByteBuf in) {
-            int opSeq = in.readInt();
-            int processId = in.readInt();
-            Tag sequenceNumber = new Tag(opSeq, processId);
-            int inst = in.readInt();
-            boolean ok = in.readBoolean();
-            return new PrepareMessage(sequenceNumber, inst, ok);
-        }
-    };
+		@Override
+		public PrepareMessage deserialize(ByteBuf in) {
+			int opSeq = in.readInt();
+			int processId = in.readInt();
+			Tag sequenceNumber = new Tag(opSeq, processId);
+			int inst = in.readInt();
+			boolean ok = in.readBoolean();
+			return new PrepareMessage(sequenceNumber, inst, ok);
+		}
+	};
 
 }
