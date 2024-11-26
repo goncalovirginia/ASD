@@ -1,6 +1,7 @@
 package protocols.agreement.messages;
 
 import io.netty.buffer.ByteBuf;
+import protocols.abd.utils.Tag;
 import pt.unl.fct.di.novasys.network.data.Host;
 
 import pt.unl.fct.di.novasys.babel.generic.ProtoMessage;
@@ -14,15 +15,17 @@ public class ChangeMembershipMessage extends ProtoMessage {
 
     private final Host replica;
     private final int instance;
+    private final Tag sequenceNumber;
     private final boolean adding;
     private final boolean ok;
 
-    public ChangeMembershipMessage(Host newReplica, int instance, boolean ok, boolean adding) {
+    public ChangeMembershipMessage(Host newReplica, int instance, Tag sn, boolean ok, boolean adding) {
         super(MSG_ID);
         this.replica = newReplica;
         this.instance = instance;
         this.ok = ok;
         this.adding = adding;
+        this.sequenceNumber = sn;
     }
 
     public Host getReplica() {
@@ -41,6 +44,10 @@ public class ChangeMembershipMessage extends ProtoMessage {
         return adding;
     }
 
+    public Tag getSeqNumber() {
+        return sequenceNumber;
+    }
+
     @Override
     public String toString() {
         return "ChangeMembershipMessage{" +
@@ -54,6 +61,9 @@ public class ChangeMembershipMessage extends ProtoMessage {
         public void serialize(ChangeMembershipMessage msg, ByteBuf out) throws IOException {
             Host.serializer.serialize(msg.replica, out);
             out.writeInt(msg.instance);
+            out.writeInt(msg.sequenceNumber.getOpSeq());
+            out.writeInt(msg.sequenceNumber.getProcessId());
+
             out.writeBoolean(msg.ok);
             out.writeBoolean(msg.adding);
         }
@@ -62,9 +72,14 @@ public class ChangeMembershipMessage extends ProtoMessage {
         public ChangeMembershipMessage deserialize(ByteBuf in) throws IOException {
             Host nReplica = Host.serializer.deserialize(in);
             int instance = in.readInt();
+            
+            int opSeq = in.readInt();
+            int processId = in.readInt();
+            Tag sequenceNumber = new Tag(opSeq, processId);
+
             boolean ok = in.readBoolean();
             boolean add = in.readBoolean();
-            return new ChangeMembershipMessage(nReplica, instance, ok, add);
+            return new ChangeMembershipMessage(nReplica, instance, sequenceNumber,  ok, add);
         }
     };
 

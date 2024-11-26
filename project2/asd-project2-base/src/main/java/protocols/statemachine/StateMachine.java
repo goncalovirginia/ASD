@@ -72,6 +72,10 @@ public class StateMachine extends GenericProtocol {
     private List<ProposeRequest> pendingOrders;
     private List<Host> pendingRemoves;
 
+    private List<UUID> wtvr;
+
+    private Host timerLeader; 
+
     //INITIAL TO DELETE IS BEING USED TO TEST FAILURES, leader failures
     //Because the leader can't have a client, otherwise when we kill it 
     //since this was not made for failures, the client wont get a reply and will time out.
@@ -85,6 +89,7 @@ public class StateMachine extends GenericProtocol {
         leader = null;
 
         pendingClientOrder = new HashMap<>();
+        wtvr = new LinkedList<>();
         
         //initialTODELETE = false;
 
@@ -198,6 +203,7 @@ public class StateMachine extends GenericProtocol {
                 sendRequest(new ProposeRequest(nextInstance++, request.getOpId(), request.getOperation()),
                     PaxosAgreement.PROTOCOL_ID); 
             } else {
+                timerLeader = leader;
                 long tid = setupTimer(new SendMessageTimer(), 1000);
                 pendingClientOrder.put(request.getOpId(), Pair.of(tid, request.getOperation()));
                 sendMessage(new LeaderOrderMessage(nextInstance, request.getOpId(), request.getOperation()), leader);
@@ -219,6 +225,7 @@ public class StateMachine extends GenericProtocol {
         if(val != null)
             this.cancelTimer(val.getLeft());
 
+        wtvr.add(notification.getOpId());
         //if(!self.equals(leader)) nextInstance = notification.getInstance();
         if(!self.equals(leader)) nextInstance ++;
         triggerNotification(new ExecuteNotification(notification.getOpId(), notification.getOperation()));        
@@ -268,19 +275,26 @@ public class StateMachine extends GenericProtocol {
         } else {
             closeConnection(notification.getReplica());
             membership.remove(notification.getReplica());
+            pendingRemoves.remove(notification.getReplica());
         }
     }
 
     /*--------------------------------- Messages ---------------------------------------- */
 
     private void uponLeaderOrderMessage(LeaderOrderMessage msg, Host host, short sourceProto, int channelId) {
-        logger.debug("Received Leader Order Message: " + msg);
+        logger.info("Received Leader Order Message: " + msg.getOpId() + nextInstance);
+        
         if (leader == null) {
             logger.info("Leader still waiting majority, pending...");
             pendingOrders.add(new ProposeRequest(msg));
             return;
         }
 
+        if(wtvr.contains(msg.getOpId())) {
+            logger.info("FOR SOME REASON...");
+            return;
+        }
+        wtvr.add(msg.getOpId());
         sendRequest(new ProposeRequest(nextInstance++, msg.getOpId(), msg.getOp()),
                     PaxosAgreement.PROTOCOL_ID); 
     }
@@ -400,15 +414,29 @@ public class StateMachine extends GenericProtocol {
     }
 
     private void uponSendMessageTimer(SendMessageTimer timer, long timerId) {
+        if (leader == null || !leader.equals(timerLeader)) {
+            pendingClientOrder.values().stream()
+                .filter(entry -> entry.getLeft() != null)
+                .forEach(entry -> cancelTimer(entry.getLeft()));
+        
+            timerLeader = leader;
+        }
+        
 		logger.info("helperTimer: {}", timerId);
 
         for (Map.Entry<UUID, Pair<Long, byte[]>> entry : pendingClientOrder.entrySet()) {
-            if (entry.getValue().getLeft() == timerId) {
-                logger.info("THE TIMER IS WORKING?! Sending to {} the msg {}", leader, entry.getKey());
-                
-                long tid = setupTimer(new SendMessageTimer(), 1000);
-                pendingClientOrder.put(entry.getKey(), Pair.of(tid, entry.getValue().getRight()));
-                sendMessage(new LeaderOrderMessage(nextInstance, entry.getKey(), entry.getValue().getRight()), leader);
+            if(!wtvr.contains(entry.getKey())) {
+                if (entry.getValue().getLeft() == timerId) {
+                    logger.info("THE TIMER IS WORKING?! Sending to {} the msg {}", leader, entry.getKey());
+                    if(leader == null) {
+                        pendingOrders.add(new ProposeRequest(0, entry.getKey(), entry.getValue().getRight()));
+                    } else {
+                        //long tid = setupTimer(new SendMessageTimer(), 3000);
+                        //pendingClientOrder.put(entry.getKey(), Pair.of(tid, entry.getValue().getRight()));
+                        sendMessage(new LeaderOrderMessage(nextInstance, entry.getKey(), entry.getValue().getRight()), leader);
+                    }
+                    
+                }
             }
         }
 		
