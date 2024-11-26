@@ -139,27 +139,28 @@ public class PaxosAgreement extends GenericProtocol {
     //highest joinedInstance wins
     private void uponPrepareRequest(PrepareRequest request, short sourceProto) {
         prepare_ok_count = 0; 
-/*         proposer_seq_number = joinedInstance; */
         Tag newTag = new Tag(request.getInstance() + 1, joinedInstance);
         PrepareMessage msg = new PrepareMessage(newTag, false);
-
         membership.forEach(h -> sendMessage(msg, h));  
     }
 
     private void uponPrepareMessage(PrepareMessage msg, Host host, short sourceProto, int channelId) {
         if(joinedInstance >= 0 ){
             if(msg.getSeqNumber().greaterOrEqualThan(highest_prepare)) {
+                highest_prepare = msg.getSeqNumber();
                 if(msg.isOK()) {
-                    logger.info("host {} --> NEW LEADER {} ", myself, host);
                     triggerNotification(new NewLeaderNotification(host));
                     return;
                 }
-                highest_prepare = msg.getSeqNumber();
                 
                 List<Pair<UUID, byte[]>> relevantMessages = new LinkedList<>();
-                if(toBeDecidedIndex > (highest_prepare.getOpSeq())) {//toBeDecided - 1 == last executed/accepted msg
+                if(toBeDecidedIndex >= (highest_prepare.getOpSeq() -1)) {//toBeDecided - 1 == last executed/accepted msg
                     relevantMessages.addAll((((TreeMap<Integer, Pair<UUID, byte[]>>) toBeDecidedMessages)
-                                        .tailMap((highest_prepare.getOpSeq()), true)
+                                        .tailMap((highest_prepare.getOpSeq() -1), true)
+                                        .values()));
+
+                    relevantMessages.addAll((((TreeMap<Integer, Pair<UUID, byte[]>>) acceptedMessages)
+                                        .tailMap((highest_prepare.getOpSeq() -1), true)
                                         .values()));
                 }
 
@@ -216,6 +217,8 @@ public class PaxosAgreement extends GenericProtocol {
     }
 
     private void uponProposeRequest(ProposeRequest request, short sourceProto) {
+        logger.debug("Received Propose Request: " + request.getOpId());
+
         instanceStateMap.put(request.getInstance(), new AgreementInstanceState());
         AcceptMessage msg = new AcceptMessage(request.getInstance(), highest_prepare, request.getOpId(), request.getOperation(), toBeDecidedIndex - 1);
         membership.forEach(h -> sendMessage(msg, h));          
@@ -320,7 +323,7 @@ public class PaxosAgreement extends GenericProtocol {
 
     private void uponMsgFail(ProtoMessage msg, Host host, short destProto, Throwable throwable, int channelId) {
         //If a message fails to be sent, for whatever reason, log the message and the reason
-        //logger.error("Message {} to {} failed, reason: {}", msg, host, throwable);
+        logger.debug("Message {} to {} failed, reason: {}", msg, host, throwable);
     }
 
 }
