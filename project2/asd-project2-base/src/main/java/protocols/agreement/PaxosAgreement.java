@@ -297,7 +297,7 @@ public class PaxosAgreement extends GenericProtocol {
     }
 
     private void uponAcceptMessage(AcceptMessage msg, Host host, short sourceProto, int channelId) {
-        logger.info("ON ACCEPT: sn ({}, {}) - hp ({}, {})" + msg.getSeqNumber().getOpSeq(), msg.getSeqNumber().getProcessId(), highest_prepare.getOpSeq(), highest_prepare.getProcessId());
+        //logger.info("ON ACCEPT: sn ({}, {}) - hp ({}, {})" + msg.getSeqNumber().getOpSeq(), msg.getSeqNumber().getProcessId(), highest_prepare.getOpSeq(), highest_prepare.getProcessId());
         if( !(msg.getSeqNumber()).greaterOrEqualThan(highest_prepare))
             return;
         highest_prepare = msg.getSeqNumber(); //update info for replicas that missed prepare (added for instance)
