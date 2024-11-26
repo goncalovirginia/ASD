@@ -198,7 +198,7 @@ public class StateMachine extends GenericProtocol {
                 sendRequest(new ProposeRequest(nextInstance++, request.getOpId(), request.getOperation()),
                     PaxosAgreement.PROTOCOL_ID); 
             } else {
-                long tid = setupTimer(new SendMessageTimer(), 1000);
+                long tid = setupTimer(new SendMessageTimer(), 3000);
                 pendingClientOrder.put(request.getOpId(), Pair.of(tid, request.getOperation()));
                 sendMessage(new LeaderOrderMessage(nextInstance, request.getOpId(), request.getOperation()), leader);
             }
@@ -348,14 +348,20 @@ public class StateMachine extends GenericProtocol {
         logger.info("Connection to {} is down, cause {}", event.getNode(), event.getCause());
  
         Host node = event.getNode();
+        int leaderIdx = -1;
         if(node.equals(leader)) {
             leader = null;
+            leaderIdx = membership.indexOf(leader);
             closeConnection(node);
         }
         
-        if (leader == null) { 
-            pendingRemoves.add(node);
-            sendRequest(new PrepareRequest(nextInstance), PaxosAgreement.PROTOCOL_ID);
+        if (leader == null) {
+            int idx = (leaderIdx == membership.size()-1) ? membership.size()-2 : membership.size()-1; 
+            if(membership.indexOf(self) == idx) {
+                logger.info("ONLY I TRY TO BECOME THE LEADAH {}", self);
+                pendingRemoves.add(node);
+                sendRequest(new PrepareRequest(nextInstance), PaxosAgreement.PROTOCOL_ID);
+            }    
         }
 
         if(self.equals(leader)) {
@@ -406,8 +412,8 @@ public class StateMachine extends GenericProtocol {
             if (entry.getValue().getLeft() == timerId) {
                 logger.info("THE TIMER IS WORKING?! Sending to {} the msg {}", leader, entry.getKey());
                 
-                long tid = setupTimer(new SendMessageTimer(), 1000);
-                pendingClientOrder.put(entry.getKey(), Pair.of(tid, entry.getValue().getRight()));
+                //long tid = setupTimer(new SendMessageTimer(), 3000);
+                //pendingClientOrder.put(entry.getKey(), Pair.of(tid, entry.getValue().getRight()));
                 sendMessage(new LeaderOrderMessage(nextInstance, entry.getKey(), entry.getValue().getRight()), leader);
             }
         }
