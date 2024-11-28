@@ -8,8 +8,6 @@ import pt.unl.fct.di.novasys.network.ISerializer;
 import java.io.IOException;
 import java.util.UUID;
 
-import org.apache.commons.lang3.tuple.Pair;
-
 public class AcceptMessage extends ProtoMessage {
 
     public final static short MSG_ID = 198;

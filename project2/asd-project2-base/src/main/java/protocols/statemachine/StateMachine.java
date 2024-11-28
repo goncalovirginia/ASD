@@ -151,6 +151,12 @@ public class StateMachine extends GenericProtocol {
             membership = new LinkedList<>(initialMembership);
             membership.forEach(this::openConnection);
             triggerNotification(new JoinedNotification(membership, initialMembership.indexOf(self), true));
+
+            Host firstLeader = initialMembership.get(initialMembership.size() - 1);
+            if (firstLeader.equals(self)) {
+                logger.info("I am appointed as the Leadah because I am the last member of the initial membership.");
+                sendRequest(new PrepareRequest(nextInstance), PaxosAgreement.PROTOCOL_ID);
+            }
         } else {
             state = State.JOINING;
             logger.info("Starting in JOINING as I am not part of initial membership");
@@ -173,15 +179,8 @@ public class StateMachine extends GenericProtocol {
             pendingOrders.put(request.getOpId(), request.getOperation());
         } else if (state == State.ACTIVE) {            
             if (leader == null) {
-                //TODELETE
-/*                 if(nextInstance == 1) {
-                    sendMessage(new AddReplicaMessage(membership.get(2), 0, membership.get(2)), membership.get(2));
-                    pendingOrders.put(request.getOpId(), request.getOperation());
-                    return;
-                } */
-
-                //CORRECT --- Bellow
-                sendRequest(new PrepareRequest(nextInstance), PaxosAgreement.PROTOCOL_ID);
+                logger.info("DO WE END UP HERE, EVER?");
+                //sendRequest(new PrepareRequest(nextInstance), PaxosAgreement.PROTOCOL_ID);
                 pendingOrders.put(request.getOpId(), request.getOperation());
             } else if(self.equals(leader)) {                
                 sendRequest(new ProposeRequest(nextInstance++, request.getOpId(), request.getOperation()),
@@ -213,21 +212,24 @@ public class StateMachine extends GenericProtocol {
         
         leader = notification.getLeader();
         if (leader.equals(self)) {
-            logger.debug("Leader flushing pendingRemoves... " + pendingRemoves);
+            logger.info("Leader flushing pendingRemoves... " + pendingRemoves);
             pendingRemoves.forEach(m -> 
                 sendRequest(new RemoveReplicaRequest(membership.indexOf(m), m), PaxosAgreement.PROTOCOL_ID));
 
             List<Pair<UUID, byte[]>> prepareOKMsgs = notification.getMessages();  
             pendingToLeader.forEach((key, value) -> {
-                prepareOKMsgs.remove(Pair.of(key, value));
                 pendingOrders.put(key, value);
             });
 
-            logger.debug("Leader flushing prepare_ok messages..." + notification.getMessages());    
-            prepareOKMsgs.forEach(m -> 
-                sendRequest(new ProposeRequest(nextInstance++, m.getLeft(), m.getRight()), PaxosAgreement.PROTOCOL_ID));
             
-            logger.debug("Leader flushing pending orders:" + pendingOrders);
+            logger.info("Leader flushing prepare_ok messages..." + notification.getMessages());
+            //if (prepareOKMsgs.size() > 0) nextInstance --;    
+            prepareOKMsgs.forEach(m -> {
+                pendingOrders.remove(m.getLeft());
+                sendRequest(new ProposeRequest(nextInstance++, m.getLeft(), m.getRight()), PaxosAgreement.PROTOCOL_ID); 
+            });
+            
+            logger.info("Leader flushing pending orders:" + pendingOrders);
             pendingOrders.forEach((key, value) -> 
                 sendRequest(new ProposeRequest(nextInstance++, key, value), PaxosAgreement.PROTOCOL_ID));
 

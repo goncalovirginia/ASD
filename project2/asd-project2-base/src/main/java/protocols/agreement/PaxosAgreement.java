@@ -29,6 +29,7 @@ import protocols.agreement.requests.ProposeRequest;
 
 import java.io.IOException;
 import java.util.*;
+import java.util.stream.Collectors;
 
 public class PaxosAgreement extends GenericProtocol {
 
@@ -153,19 +154,27 @@ public class PaxosAgreement extends GenericProtocol {
                     return;
                 }
                 
+
                 List<Pair<UUID, byte[]>> relevantMessages = new LinkedList<>();
-                if(toBeDecidedIndex >= (highest_prepare.getOpSeq() -1)) {//toBeDecided - 1 == last executed/accepted msg
-                    relevantMessages.addAll((((TreeMap<Integer, Pair<UUID, byte[]>>) toBeDecidedMessages)
-                                        .tailMap((highest_prepare.getOpSeq() -1), true)
-                                        .values()));
+                List<Pair<UUID, byte[]>> TEST = new LinkedList<>();
+                if(!myself.equals(host)) {
 
+                    int n = highest_prepare.getOpSeq() -1;
                     relevantMessages.addAll((((TreeMap<Integer, Pair<UUID, byte[]>>) acceptedMessages)
-                                        .tailMap((highest_prepare.getOpSeq() -1), true)
-                                        .values()));
-                }
+                                            .tailMap((n), true)
+                                            .values()));
 
+                    logger.info("WHAT I GET ON ACCEPT: " + relevantMessages);
+                    relevantMessages.addAll((((TreeMap<Integer, Pair<UUID, byte[]>>) toBeDecidedMessages)
+                            .tailMap((n + relevantMessages.size()), true)
+                            .values()));
+                    toBeDecidedMessages = new TreeMap<>();
+
+                    logger.info("WHAT I GET ON TO BE DECIDED: " + relevantMessages);
+                 }   
                 PrepareOKMessage prepareOK = new PrepareOKMessage(highest_prepare, relevantMessages);
                 sendMessage(prepareOK, host);
+                
             }
         }
     }
@@ -180,7 +189,14 @@ public class PaxosAgreement extends GenericProtocol {
             if (prepare_ok_count >= (membership.size() / 2) + 1) {
                 prepare_ok_count = -1;
                 
-                triggerNotification(new NewLeaderNotification(myself, prepareOkMessages));
+                
+                List<Pair<UUID, byte[]>> filteredPrepareOkMessages = prepareOkMessages.stream()
+                .filter(pair -> !acceptedMessages.containsKey(pair.getLeft().hashCode()))
+                .collect(Collectors.toList());
+                
+                prepareOkMessages = new LinkedList<>();
+
+                triggerNotification(new NewLeaderNotification(myself, filteredPrepareOkMessages));
                 membership.forEach(h -> {
                     if (!h.equals(myself))
                         sendMessage(new PrepareMessage(msg.getSeqNumber(), true), h);
@@ -217,7 +233,7 @@ public class PaxosAgreement extends GenericProtocol {
     }
 
     private void uponProposeRequest(ProposeRequest request, short sourceProto) {
-        logger.debug("Received Propose Request: " + request.getOpId());
+        logger.info("Received Propose Request: instance {} opId {}", request.getInstance(), request.getOpId());
 
         instanceStateMap.put(request.getInstance(), new AgreementInstanceState());
         AcceptMessage msg = new AcceptMessage(request.getInstance(), highest_prepare, request.getOpId(), request.getOperation(), toBeDecidedIndex - 1);
@@ -307,6 +323,8 @@ public class PaxosAgreement extends GenericProtocol {
             state.incrementAcceptCount();
             if (state.getAcceptokCount() >= (membership.size() / 2) + 1 && !state.decided()) {
                 state.decide();
+                logger.info("LEADER DECIDING" + msg.getOpId());
+
                 triggerNotification(new DecidedNotification(msg.getInstance(), msg.getOpId(), msg.getOp()));
   
                 acceptedMessages.put(msg.getInstance(), Pair.of(msg.getOpId(), msg.getOp()));
