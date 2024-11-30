@@ -69,6 +69,10 @@ public class ChangeMembershipMessage extends ProtoMessage {
         return addReplicaInstances;
     }
 
+    public int AddReplicaInstancesSize() {
+        return addReplicaInstances.size();
+    }
+
     @Override
     public String toString() {
         return "ChangeMembershipMessage{" +
