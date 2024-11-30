@@ -191,25 +191,12 @@ public class ClassicPaxos extends GenericProtocol {
         logger.info("Agreement starting at instance {},  process {}, membership {}", toBeDecidedIndex, joinedInstance, membership); 
 
         toBeDecidedMessages.forEach((k, v) -> {
-            if(k <= joinedInstance) {
-                toBeDecidedIndex ++;
-                acceptedMessages.put(k, v);
-                if (!addReplicaInstances.containsKey(k)) 
-                    triggerNotification(new DecidedNotification(k, v.getLeft(), v.getRight()));
-                else {
-                    Pair<Host, Boolean> h = addReplicaInstances.get(k);
-                    if (!h.getLeft().equals(myself))
-                        triggerNotification(new MembershipChangedNotification(h.getLeft(), h.getRight(), k));
-                }   
-            } else 
-                membership.forEach(h -> sendMessage(new AcceptOKMessage(k, v.getLeft(), v.getRight(),k-1), h)); 
+            membership.forEach(h -> sendMessage(new AcceptOKMessage(k, v.getLeft(), v.getRight(),k-1), h)); 
         });
-
     }
 
     private void uponAddReplica(AddReplicaRequest request, short sourceProto) {
         logger.debug("Received Add Replica Request: " + request);
-        
         membership.forEach(h -> sendMessage(
             new ChangeMembershipMessage(request.getReplica(), request.getInstance(), false, true), h));
     }
@@ -217,18 +204,12 @@ public class ClassicPaxos extends GenericProtocol {
     //TODO
     private void uponRemoveReplica(RemoveReplicaRequest request, short sourceProto) {
         logger.debug("Received Remove Replica Request: " + request);
-        membership.remove(request.getReplica()); 
-        if(joinedInstance > request.getInstance())
-            joinedInstance--;
-
-        instanceStateMap.put(0, new AgreementInstanceState());
         membership.forEach(h -> 
             sendMessage(new ChangeMembershipMessage(request.getReplica(), request.getInstance(), false, false), h));
     }
 
     private void uponProposeRequest(ProposeRequest request, short sourceProto) {
         logger.info("Received Propose Request: instance {} opId {}", request.getInstance(), request.getOpId());
-
         AcceptMessage msg = new AcceptMessage(request.getInstance(), highest_prepare, request.getOpId(), request.getOperation(), request.getInstance() - 1);
         membership.forEach(h -> sendMessage(msg, h));          
     }
@@ -243,13 +224,11 @@ public class ClassicPaxos extends GenericProtocol {
             return;
         }
         
-        membership.add(msg.getReplica());
-        triggerNotification(new MembershipChangedNotification(msg.getReplica(), true, msg.getInstance())); 
-
+        
         instanceStateMap.put(msg.getInstance(), new AgreementInstanceState());
         AcceptOKMessage m = new AcceptOKMessage(msg.getInstance(), UUID.randomUUID(), new byte[0], msg.getInstance() -1);
         toBeDecidedMessages.put(msg.getInstance(), Pair.of(m.getOpId(), m.getOp()));
-        addReplicaInstances.put(msg.getInstance(), Pair.of(msg.getReplica(), true));
+        addReplicaInstances.put(msg.getInstance(), Pair.of(msg.getReplica(), msg.isAdding()));
         membership.forEach(h -> sendMessage(m, h));
     }
 
@@ -270,6 +249,7 @@ public class ClassicPaxos extends GenericProtocol {
         AgreementInstanceState state = instanceStateMap.get(msg.getInstance());
         if (state == null) return;
         
+        //TODO
         /* if(msg.getSeqNumber().greaterThan(highest_prepare)
             state.resetAcceptOk(); */
             
@@ -286,14 +266,20 @@ public class ClassicPaxos extends GenericProtocol {
                         triggerNotification(
                             new DecidedNotification(toBeDecidedIndex, pair.getLeft(), pair.getRight()));
                     } else {
-                        int n = toBeDecidedIndex -1;
-                        Map<Integer, Pair<UUID, byte[]>> relevantMessages = new TreeMap<>();
-                        relevantMessages.putAll(((TreeMap<Integer, Pair<UUID, byte[]>>) acceptedMessages).tailMap(n, true));
-                        relevantMessages.putAll(((TreeMap<Integer, Pair<UUID, byte[]>>) toBeDecidedMessages).tailMap(n, true));
-                        Pair<Host, Boolean> newReplica = addReplicaInstances.get(toBeDecidedIndex);                     
-                        sendMessage(new ChangeMembershipMessage(
-                            newReplica.getLeft(), n, true, true, relevantMessages, addReplicaInstances), newReplica.getLeft());
-
+                        Pair<Host, Boolean> replica = addReplicaInstances.get(toBeDecidedIndex);
+                        if(replica.getRight() == true) {
+                            Map<Integer, Pair<UUID, byte[]>> relevantMessages = new TreeMap<>();
+                            relevantMessages.putAll(((TreeMap<Integer, Pair<UUID, byte[]>>) toBeDecidedMessages).tailMap(toBeDecidedIndex+1, true));
+                            
+                            sendMessage(new ChangeMembershipMessage(
+                                replica.getLeft(), toBeDecidedIndex, true, true, relevantMessages, addReplicaInstances), replica.getLeft());
+                        
+                            membership.add(replica.getLeft());
+                            triggerNotification(new MembershipChangedNotification(replica.getLeft(), true, toBeDecidedIndex));
+                        } else {
+                            membership.remove(replica.getLeft());
+                            triggerNotification(new MembershipChangedNotification(replica.getLeft(), false, toBeDecidedIndex));
+                        }   
                     }
                 } 
             }   

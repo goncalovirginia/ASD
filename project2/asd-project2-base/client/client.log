@@ -1,3 +1,5 @@
-2024-11-30 21:47:09:860 0 sec: 0 operations; est completion in 0 second 
-2024-11-30 21:47:14:856 5 sec: 3745 operations; 746.76 current ops/sec; est completion in 6 minutes [READ AverageLatency(us)=3383.47] [UPDATE AverageLatency(us)=3594.52] 
-2024-11-30 21:47:19:847 10 sec: 10157 operations; 1284.71 current ops/sec; est completion in 4 minutes [READ AverageLatency(us)=2235.35] [UPDATE AverageLatency(us)=2402.16] 
+2024-11-30 22:22:44:538 0 sec: 0 operations; est completion in 0 second 
+2024-11-30 22:22:49:517 5 sec: 3772 operations; 754.1 current ops/sec; est completion in 6 minutes [READ AverageLatency(us)=3296.79] [UPDATE AverageLatency(us)=3577.29] 
+2024-11-30 22:22:54:524 10 sec: 13417 operations; 1926.3 current ops/sec; est completion in 3 minutes [READ AverageLatency(us)=1500.99] [UPDATE AverageLatency(us)=1600.37] 
+2024-11-30 22:22:59:524 15 sec: 19745 operations; 1265.85 current ops/sec; est completion in 3 minutes [READ AverageLatency(us)=2295.05] [UPDATE AverageLatency(us)=2427.9] 
+2024-11-30 22:23:04:524 20 sec: 27695 operations; 1590 current ops/sec; est completion in 3 minutes [READ AverageLatency(us)=1823.71] [UPDATE AverageLatency(us)=1936.13] 
