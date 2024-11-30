@@ -250,8 +250,11 @@ public class StateMachine extends GenericProtocol {
         logger.info("Membership changed notification: " + notification);
         
         if (notification.isAdding()) {
-            if(membership.contains(notification.getReplica()))
+            if(membership.contains(notification.getReplica())) {
+                logger.info("SHOULD ONLY COME HERE ONCE" + self);
                 sendRequest(new CurrentStateRequest(0), HashApp.PROTO_ID);
+            }
+                
             else { 
                 openConnection(notification.getReplica());
                 membership.add(notification.getReplica());
@@ -260,6 +263,9 @@ public class StateMachine extends GenericProtocol {
             closeConnection(notification.getReplica());
             membership.remove(notification.getReplica());
         }
+
+        if(!self.equals(leader))
+            nextInstance ++;
     }
 
     /*--------------------------------- Messages ---------------------------------------- */
@@ -281,12 +287,6 @@ public class StateMachine extends GenericProtocol {
 
         if (leader == null) {
             sendRequest(new PrepareRequest(nextInstance), PaxosAgreement.PROTOCOL_ID);
-        
-            //TODELETE BELLOW, TEST CASE:
-/*             if(initialTODELETE == false) {
-                sendRequest(new PrepareRequest(nextInstance), PaxosAgreement.PROTOCOL_ID);
-                initialTODELETE = true;
-            } */
             return;
         }
         
@@ -301,7 +301,7 @@ public class StateMachine extends GenericProtocol {
         }
 
         openConnection(msg.getNewReplica());        
-        sendRequest(new AddReplicaRequest(nextInstance, msg.getNewReplica()), PaxosAgreement.PROTOCOL_ID);
+        sendRequest(new AddReplicaRequest(nextInstance++, msg.getNewReplica()), PaxosAgreement.PROTOCOL_ID);
     }
 
     private void uponReplicaAddedMessage(ReplicaAddedMessage msg, Host host, short sourceProto, int channelId) {

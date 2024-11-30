@@ -1,5 +1,6 @@
 package protocols.agreement.notifications;
 
+import java.util.LinkedList;
 import java.util.List;
 import java.util.UUID;
 
@@ -18,6 +19,7 @@ public class NewLeaderNotification extends ProtoNotification {
     public NewLeaderNotification(Host membership) {
         super(NOTIFICATION_ID);
         this.leader = membership;
+        prepareOKMessages = new LinkedList<>();
     }
 
     public NewLeaderNotification(Host membership, List<Pair<UUID, byte[]>> prepareOKMessages) {

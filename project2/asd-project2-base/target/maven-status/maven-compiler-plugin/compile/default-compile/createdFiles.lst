@@ -43,6 +43,7 @@ protocols\agreement\messages\AcceptMessage.class
 protocols\agreement\notifications\DecidedNotification.class
 protocols\agreement\PaxosAgreement.class
 protocols\statemachine\requests\OrderRequest.class
+protocols\agreement\PaxosAgreementD.class
 protocols\agreement\requests\AddReplicaRequest.class
 protocols\statemachine\messages\LeaderOrderMessage.class
 protocols\agreement\messages\PrepareOKMessage.class
@@ -55,6 +56,7 @@ protocols\statemachine\messages\LeaderOrderMessage$1.class
 protocols\agreement\messages\PrepareOKMessage$1.class
 protocols\agreement\notifications\NewLeaderNotification.class
 protocols\abd\renotifications\ReadCompleteNotification.class
+protocols\agreement\PaxosAgreementD$AgreementInstanceState.class
 protocols\agreement\messages\ChangeMembershipMessage$1.class
 protocols\agreement\notifications\JoinedNotification.class
 protocols\agreement\messages\AcceptOKMessage$1.class
