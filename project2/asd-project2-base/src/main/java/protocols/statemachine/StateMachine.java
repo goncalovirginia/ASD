@@ -121,7 +121,7 @@ public class StateMachine extends GenericProtocol {
     public void init(Properties props) {
         //Inform the state machine protocol about the channel we created in the constructor
         triggerNotification(new ChannelReadyNotification(channelId, self));
-        
+
         nextInstance = 1;
         leader = null;
 
@@ -248,7 +248,7 @@ public class StateMachine extends GenericProtocol {
         
         if (notification.isAdding()) {
             if(membership.contains(notification.getReplica())) 
-                sendRequest(new CurrentStateRequest(0), HashApp.PROTO_ID);
+                sendRequest(new CurrentStateRequest(notification.getInstance()), HashApp.PROTO_ID);
             else { 
                 openConnection(notification.getReplica());
                 membership.add(notification.getReplica());
@@ -310,9 +310,8 @@ public class StateMachine extends GenericProtocol {
         nextInstance = msg.getInstance();
         membership = new LinkedList<>(msg.getMembership());
         membership.forEach(this::openConnection);
-        sendRequest(new InstallStateRequest(msg.getState()), HashApp.PROTO_ID);
-        
-        triggerNotification(new JoinedNotification(membership, membership.indexOf(self), false));
+        sendRequest(new InstallStateRequest(msg.getState()), HashApp.PROTO_ID);        
+        triggerNotification(new JoinedNotification(membership, nextInstance, false));
         state = State.ACTIVE;
 
         pendingOrders.forEach((key, value) -> 

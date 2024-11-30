@@ -190,27 +190,28 @@ public class ClassicPaxos extends GenericProtocol {
         membership = new LinkedList<>(notification.getMembership());
         logger.info("Agreement starting at instance {},  process {}, membership {}", toBeDecidedIndex, joinedInstance, membership); 
 
-        //flush
-        acceptedMessages.forEach((k, v) -> {
-            toBeDecidedIndex ++;
-            if (addReplicaInstances.containsKey(k)) {
-                Pair<Host, Boolean> h = addReplicaInstances.get(k);
-                if (!h.getLeft().equals(myself))
-                    triggerNotification(new MembershipChangedNotification(h.getLeft(), h.getRight(), k));
-            } 
-            else triggerNotification(new DecidedNotification(k, v.getLeft(), v.getRight())); 
-        });
         toBeDecidedMessages.forEach((k, v) -> {
-            membership.forEach(h -> sendMessage(new AcceptOKMessage(
-                k, v.getLeft(), v.getRight(),k-1), h));
+            if(k <= joinedInstance) {
+                toBeDecidedIndex ++;
+                acceptedMessages.put(k, v);
+                if (!addReplicaInstances.containsKey(k)) 
+                    triggerNotification(new DecidedNotification(k, v.getLeft(), v.getRight()));
+                else {
+                    Pair<Host, Boolean> h = addReplicaInstances.get(k);
+                    if (!h.getLeft().equals(myself))
+                        triggerNotification(new MembershipChangedNotification(h.getLeft(), h.getRight(), k));
+                }   
+            } else 
+                membership.forEach(h -> sendMessage(new AcceptOKMessage(k, v.getLeft(), v.getRight(),k-1), h)); 
         });
+
     }
 
     private void uponAddReplica(AddReplicaRequest request, short sourceProto) {
         logger.debug("Received Add Replica Request: " + request);
         
-        membership.forEach(h ->
-                    sendMessage(new ChangeMembershipMessage(request.getReplica(), request.getInstance(), false, true), h));
+        membership.forEach(h -> sendMessage(
+            new ChangeMembershipMessage(request.getReplica(), request.getInstance(), false, true), h));
     }
 
     //TODO
@@ -238,17 +239,12 @@ public class ClassicPaxos extends GenericProtocol {
             if(addReplicaInstances.size() < msg.AddReplicaInstancesSize())
                 addReplicaInstances = msg.getAddReplicaInstances();
 
-            msg.getToBeDecidedMessages().forEach((key, value) -> { 
-                if(key <= toBeDecidedIndex + 1)
-                    acceptedMessages.put(key, value);
-                else toBeDecidedMessages.put(key, value);
-            });
-            
+            toBeDecidedMessages.putAll(msg.getToBeDecidedMessages());
             return;
         }
         
         membership.add(msg.getReplica());
-        triggerNotification(new MembershipChangedNotification(msg.getReplica(), true, channelId)); 
+        triggerNotification(new MembershipChangedNotification(msg.getReplica(), true, msg.getInstance())); 
 
         instanceStateMap.put(msg.getInstance(), new AgreementInstanceState());
         AcceptOKMessage m = new AcceptOKMessage(msg.getInstance(), UUID.randomUUID(), new byte[0], msg.getInstance() -1);
