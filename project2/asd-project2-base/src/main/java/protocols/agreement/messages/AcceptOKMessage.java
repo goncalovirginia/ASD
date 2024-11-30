@@ -18,14 +18,14 @@ public class AcceptOKMessage extends ProtoMessage {
     private final UUID opId;
     private final int instance;
     private final byte[] op;
-    private final int missingIndex;
+    private final int lastFound;
 
     public AcceptOKMessage(int instance, UUID opId, byte[] op, int index) {
         super(MSG_ID);
         this.instance = instance;
         this.op = op;
         this.opId = opId;
-        this.missingIndex = index;
+        this.lastFound = index;
     }
 
     public AcceptOKMessage(AcceptMessage msg) {
@@ -33,7 +33,7 @@ public class AcceptOKMessage extends ProtoMessage {
         this.instance = msg.getInstance();
         this.op = msg.getOp();
         this.opId = msg.getOpId();
-        this.missingIndex = -1;
+        this.lastFound = -1;
     }
 
     public int getInstance() {
@@ -48,8 +48,8 @@ public class AcceptOKMessage extends ProtoMessage {
         return op;
     }
 
-    public int getMissingIndex() {
-        return missingIndex;
+    public int getLastFound() {
+        return lastFound;
     }
 
     @Override
@@ -69,7 +69,7 @@ public class AcceptOKMessage extends ProtoMessage {
             out.writeLong(msg.opId.getLeastSignificantBits());
             out.writeInt(msg.op.length);
             out.writeBytes(msg.op);
-            out.writeInt(msg.missingIndex);
+            out.writeInt(msg.lastFound);
         }
 
         @Override

@@ -1,6 +1,7 @@
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import protocols.abd.ABD;
+import protocols.agreement.ClassicPaxos;
 import protocols.agreement.PaxosAgreement;
 import protocols.app.HashApp;
 import protocols.app.HashApp.ReplicationStrategy;
@@ -29,6 +30,7 @@ public class Main {
 
 	//Default babel configuration file (can be overridden by the "-config" launch argument)
 	private static final String DEFAULT_CONF = "config.properties";
+	public static final String DISTINGUISHED_LEARNER = "Distinguished";
 
 	public static void main(String[] args) throws Exception {
 
@@ -51,6 +53,9 @@ public class Main {
 		StateMachine sm = null;
 		ABD abd = null;
 		PaxosAgreement agreement = null;
+		ClassicPaxos classicPaxos = null;
+
+		String PAXOS_IMPLEMENTATION = props.getProperty("paxos_strategy", DISTINGUISHED_LEARNER);
 
 		if (hashApp.getReplicationStrategy() == ReplicationStrategy.SMR) {
 			System.err.println("Loading SMR/Paxos protocol stack");
@@ -58,8 +63,13 @@ public class Main {
 			sm = new StateMachine(props);
 			babel.registerProtocol(sm);
 			// Agreement Protocol
-			agreement = new PaxosAgreement(props);
-			babel.registerProtocol(agreement);
+			if (PAXOS_IMPLEMENTATION.equals(DISTINGUISHED_LEARNER)) {
+				agreement = new PaxosAgreement(props);
+				babel.registerProtocol(agreement);
+			} else {
+				classicPaxos = new ClassicPaxos(props);
+				babel.registerProtocol(classicPaxos);
+			}
 		} else {
 			System.err.println("Loading ABD protocol stack");
 			abd = new ABD(props);
@@ -71,7 +81,11 @@ public class Main {
 		hashApp.init(props);
 		if (hashApp.getReplicationStrategy() == ReplicationStrategy.SMR) {
 			sm.init(props);
-			agreement.init(props);
+
+			if (PAXOS_IMPLEMENTATION.equals(DISTINGUISHED_LEARNER))
+				agreement.init(props);
+			else
+				classicPaxos.init(props);
 		} else {
 			abd.init(props);
 		}

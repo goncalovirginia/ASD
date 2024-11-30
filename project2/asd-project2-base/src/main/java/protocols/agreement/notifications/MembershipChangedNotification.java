@@ -34,7 +34,8 @@ public class MembershipChangedNotification extends ProtoNotification {
     @Override
     public String toString() {
         return "MembershipChangedNotification{" +
-                "adding=" + adding +
+                "instance=" + instance +
+                ", adding=" + adding +
                 ", replica=" + replica +
                 '}';
     }
