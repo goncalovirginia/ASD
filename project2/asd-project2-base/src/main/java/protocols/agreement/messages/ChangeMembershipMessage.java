@@ -21,6 +21,7 @@ public class ChangeMembershipMessage extends ProtoMessage {
     private final boolean adding;
     private final boolean ok;
     private final Map<Integer, Pair<UUID, byte[]>> toBeDecidedMessages;
+    private final Map<Integer, Pair<Host, Boolean>> addReplicaInstances;
 
     public ChangeMembershipMessage(Host newReplica, int instance, boolean ok, boolean adding) {
         super(MSG_ID);
@@ -29,16 +30,19 @@ public class ChangeMembershipMessage extends ProtoMessage {
         this.ok = ok;
         this.adding = adding;
         this.toBeDecidedMessages = new TreeMap<>();
+        this.addReplicaInstances = new TreeMap<>();
     }
 
     public ChangeMembershipMessage(Host newReplica, int instance, boolean ok, boolean adding,
-                                   Map<Integer, Pair<UUID, byte[]>> toBeDecidedMessages) {
+                                   Map<Integer, Pair<UUID, byte[]>> toBeDecidedMessages,
+                                   Map<Integer, Pair<Host, Boolean>> addReplicaInstances) {
         super(MSG_ID);
         this.replica = newReplica;
         this.instance = instance;
         this.ok = ok;
         this.adding = adding;
         this.toBeDecidedMessages = new TreeMap<>(toBeDecidedMessages);
+        this.addReplicaInstances = new TreeMap<>(addReplicaInstances);
     }
 
     public Host getReplica() {
@@ -61,12 +65,17 @@ public class ChangeMembershipMessage extends ProtoMessage {
         return toBeDecidedMessages;
     }
 
+    public Map<Integer, Pair<Host, Boolean>> getAddReplicaInstances() {
+        return addReplicaInstances;
+    }
+
     @Override
     public String toString() {
         return "ChangeMembershipMessage{" +
                 "replica=" + replica +
                 ", instance=" + instance +
                 ", adding=" + adding +
+                ", ok=" + ok +
                 '}';
     }
 
@@ -90,6 +99,14 @@ public class ChangeMembershipMessage extends ProtoMessage {
                 out.writeInt(data.length);
                 out.writeBytes(data);
             }
+
+            Map<Integer, Pair<Host, Boolean>> replicas = msg.getAddReplicaInstances();
+            out.writeInt(replicas.size());
+            for (Map.Entry<Integer, Pair<Host, Boolean>> entry : replicas.entrySet()) {
+                out.writeInt(entry.getKey());
+                Host.serializer.serialize(entry.getValue().getLeft(), out);
+                out.writeBoolean(entry.getValue().getRight());
+            }
         }
 
         @Override
@@ -99,9 +116,9 @@ public class ChangeMembershipMessage extends ProtoMessage {
             boolean ok = in.readBoolean();
             boolean add = in.readBoolean();
 
-            int size = in.readInt();
+            int messageSize = in.readInt();
             TreeMap<Integer, Pair<UUID, byte[]>> messages = new TreeMap<>();
-            for (int i = 0; i < size; i++) {
+            for (int i = 0; i < messageSize; i++) {
                 int key = in.readInt();
                 long mostSigBits = in.readLong();
                 long leastSigBits = in.readLong();
@@ -113,7 +130,17 @@ public class ChangeMembershipMessage extends ProtoMessage {
 
                 messages.put(key, Pair.of(uuid, data));
             }
-            return new ChangeMembershipMessage(nReplica, instance, ok, add, new HashMap<>(messages));
+
+            int replicaSize = in.readInt();
+            TreeMap<Integer, Pair<Host, Boolean>> replicas = new TreeMap<>();
+            for (int i = 0; i < replicaSize; i++) {
+                int key = in.readInt();
+                Host host = Host.serializer.deserialize(in);
+                boolean flag = in.readBoolean();
+                replicas.put(key, Pair.of(host, flag));
+            }
+
+            return new ChangeMembershipMessage(nReplica, instance, ok, add, new HashMap<>(messages), new HashMap<>(replicas));
         }
     };
 }
