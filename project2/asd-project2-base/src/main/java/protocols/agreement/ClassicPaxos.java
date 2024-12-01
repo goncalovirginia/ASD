@@ -82,7 +82,7 @@ public class ClassicPaxos extends GenericProtocol {
         membership = null;
         prepare_ok_count = 0;
         highest_prepare = new Tag(-1, -1);
-        toBeDecidedIndex = 0; //
+        toBeDecidedIndex = 1; //
 
         toBeDecidedMessages = new TreeMap<>();
         acceptedMessages = new TreeMap<>();
@@ -169,7 +169,6 @@ public class ClassicPaxos extends GenericProtocol {
         }
     }
 
-    //Prepare_OK messages with accepted values for any instance >= n.
     private void uponPrepareOKMessage(PrepareOKMessage msg, Host host, short sourceProto, int channelId) {
         if (msg.getSeqNumber().greaterOrEqualThan(highest_prepare)) {
             prepare_ok_count ++;
@@ -191,7 +190,7 @@ public class ClassicPaxos extends GenericProtocol {
         logger.info("Agreement starting at instance {},  process {}, membership {}", toBeDecidedIndex, joinedInstance, membership); 
 
         toBeDecidedMessages.forEach((k, v) -> {
-            membership.forEach(h -> sendMessage(new AcceptOKMessage(k, v.getLeft(), v.getRight(),k-1), h)); 
+            membership.forEach(h -> sendMessage(new AcceptOKMessage(k, v.getLeft(), v.getRight(), k-1), h)); 
         });
     }
 
@@ -203,14 +202,16 @@ public class ClassicPaxos extends GenericProtocol {
 
     //TODO
     private void uponRemoveReplica(RemoveReplicaRequest request, short sourceProto) {
-        logger.debug("Received Remove Replica Request: " + request);
-        membership.forEach(h -> 
-            sendMessage(new ChangeMembershipMessage(request.getReplica(), request.getInstance(), false, false), h));
+        logger.info("Received Remove Replica Request: " + request);
+        membership.forEach(h -> {
+            if(!h.equals(request.getReplica())) 
+                sendMessage(new ChangeMembershipMessage(request.getReplica(), request.getInstance(), false, false), h);
+        });
     }
-
+    //TODO remove LastChosen
     private void uponProposeRequest(ProposeRequest request, short sourceProto) {
         logger.info("Received Propose Request: instance {} opId {}", request.getInstance(), request.getOpId());
-        AcceptMessage msg = new AcceptMessage(request.getInstance(), highest_prepare, request.getOpId(), request.getOperation(), request.getInstance() - 1);
+        AcceptMessage msg = new AcceptMessage(request.getInstance(), highest_prepare, request.getOpId(), request.getOperation(), request.getInstance()-1);
         membership.forEach(h -> sendMessage(msg, h));          
     }
 
@@ -223,7 +224,8 @@ public class ClassicPaxos extends GenericProtocol {
             toBeDecidedMessages.putAll(msg.getToBeDecidedMessages());
             return;
         }
-        
+
+        if(!msg.isAdding()) membership.remove(msg.getReplica());
         
         instanceStateMap.put(msg.getInstance(), new AgreementInstanceState());
         AcceptOKMessage m = new AcceptOKMessage(msg.getInstance(), UUID.randomUUID(), new byte[0], msg.getInstance() -1);
@@ -233,15 +235,14 @@ public class ClassicPaxos extends GenericProtocol {
     }
 
     private void uponAcceptMessage(AcceptMessage msg, Host host, short sourceProto, int channelId) {
-        if( !(msg.getSeqNumber()).greaterOrEqualThan(highest_prepare))
+        if( !(msg.getSeqNumber()).greaterOrEqualThan(highest_prepare) || toBeDecidedIndex > msg.getInstance())
             return;
-        highest_prepare = msg.getSeqNumber();
 
+        highest_prepare = msg.getSeqNumber();
         toBeDecidedMessages.put(msg.getInstance(), Pair.of(msg.getOpId(), msg.getOp()));
         if(joinedInstance >= 0) {
             instanceStateMap.put(msg.getInstance(), new AgreementInstanceState()); 
-            membership.forEach(h -> sendMessage(
-                new AcceptOKMessage(msg.getInstance(), msg.getOpId(), msg.getOp(), msg.getLastChosen()), h));  
+            membership.forEach(h -> sendMessage(new AcceptOKMessage(msg), h));  
         } 
     }
 
@@ -257,7 +258,7 @@ public class ClassicPaxos extends GenericProtocol {
         if (state.getAcceptokCount() >= (membership.size() / 2) + 1 && !state.decided()) {
             state.decide();
             
-            for(; toBeDecidedIndex <= msg.getLastFound(); toBeDecidedIndex++) {
+            for(; toBeDecidedIndex <= msg.getInstance(); toBeDecidedIndex++) {
                 Pair<UUID, byte[]> pair = toBeDecidedMessages.remove(toBeDecidedIndex);
                 if(pair != null) {
                     acceptedMessages.put(toBeDecidedIndex, pair);
@@ -277,7 +278,6 @@ public class ClassicPaxos extends GenericProtocol {
                             membership.add(replica.getLeft());
                             triggerNotification(new MembershipChangedNotification(replica.getLeft(), true, toBeDecidedIndex));
                         } else {
-                            membership.remove(replica.getLeft());
                             triggerNotification(new MembershipChangedNotification(replica.getLeft(), false, toBeDecidedIndex));
                         }   
                     }

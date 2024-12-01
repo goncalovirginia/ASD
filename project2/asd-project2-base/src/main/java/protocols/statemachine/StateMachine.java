@@ -209,27 +209,26 @@ public class StateMachine extends GenericProtocol {
         
         leader = notification.getLeader();
         if (leader.equals(self)) {
-            logger.info("Leader flushing pendingRemoves... " + pendingRemoves);
-            pendingRemoves.forEach(m -> 
-                sendRequest(new RemoveReplicaRequest(membership.indexOf(m), m), PAXOS_PROTOCOL_ID));
-
             List<Pair<UUID, byte[]>> prepareOKMsgs = notification.getMessages();  
             pendingToLeader.forEach((key, value) -> {
                 pendingOrders.put(key, value);
             });
-
             
-            logger.info("Leader flushing prepare_ok messages..." + notification.getMessages());
-            //if (prepareOKMsgs.size() > 0) nextInstance --;    
+            logger.info("Leadah flushing prepare_ok messages..." + notification.getMessages());
             prepareOKMsgs.forEach(m -> {
                 pendingOrders.remove(m.getLeft());
                 sendRequest(new ProposeRequest(nextInstance++, m.getLeft(), m.getRight()), PAXOS_PROTOCOL_ID); 
             });
+
+            logger.info("Leadah flushing pendingRemoves... " + pendingRemoves);
+            pendingRemoves.forEach(m -> 
+                sendRequest(new RemoveReplicaRequest(nextInstance++, m), PAXOS_PROTOCOL_ID));
             
-            logger.info("Leader flushing pending orders:" + pendingOrders);
+            logger.info("Leadah flushing pending orders:" + pendingOrders);
             pendingOrders.forEach((key, value) -> 
                 sendRequest(new ProposeRequest(nextInstance++, key, value), PAXOS_PROTOCOL_ID));
 
+            //TODO
             //flush the adds last, since they dont have time out and the new replica can wait for the system to be stable.
         } else {
             logger.debug("non leader yet -> sending to {}", leader);
@@ -372,7 +371,7 @@ public class StateMachine extends GenericProtocol {
         }
 
         if(self.equals(leader)) {
-            sendRequest(new RemoveReplicaRequest(membership.indexOf(node), node), PAXOS_PROTOCOL_ID);
+            sendRequest(new RemoveReplicaRequest(nextInstance++, node), PAXOS_PROTOCOL_ID);
         }
             
     }
