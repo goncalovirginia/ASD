@@ -18,27 +18,30 @@ public class ChangeMembershipMessage extends ProtoMessage {
 
     private final Host replica;
     private final int instance;
+    private final int sequenceNumber;
     private final boolean adding;
     private final boolean ok;
     private final Map<Integer, Pair<UUID, byte[]>> toBeDecidedMessages;
     private final Map<Integer, Pair<Host, Boolean>> addReplicaInstances;
 
-    public ChangeMembershipMessage(Host newReplica, int instance, boolean ok, boolean adding) {
+    public ChangeMembershipMessage(Host newReplica, int instance, int sn, boolean ok, boolean adding) {
         super(MSG_ID);
         this.replica = newReplica;
         this.instance = instance;
+        this.sequenceNumber = sn;
         this.ok = ok;
         this.adding = adding;
         this.toBeDecidedMessages = new TreeMap<>();
         this.addReplicaInstances = new TreeMap<>();
     }
 
-    public ChangeMembershipMessage(Host newReplica, int instance, boolean ok, boolean adding,
+    public ChangeMembershipMessage(Host newReplica, int instance, int sn, boolean ok, boolean adding,
                                    Map<Integer, Pair<UUID, byte[]>> toBeDecidedMessages,
                                    Map<Integer, Pair<Host, Boolean>> addReplicaInstances) {
         super(MSG_ID);
         this.replica = newReplica;
         this.instance = instance;
+        this.sequenceNumber = sn;
         this.ok = ok;
         this.adding = adding;
         this.toBeDecidedMessages = new TreeMap<>(toBeDecidedMessages);
@@ -51,6 +54,10 @@ public class ChangeMembershipMessage extends ProtoMessage {
 
     public int getInstance() {
         return instance;
+    }
+
+    public int getSequenceNumber() {
+        return sequenceNumber;
     }
 
     public boolean isOK() {
@@ -88,6 +95,7 @@ public class ChangeMembershipMessage extends ProtoMessage {
         public void serialize(ChangeMembershipMessage msg, ByteBuf out) throws IOException {
             Host.serializer.serialize(msg.replica, out);
             out.writeInt(msg.instance);
+            out.writeInt(msg.sequenceNumber);
             out.writeBoolean(msg.ok);
             out.writeBoolean(msg.adding);
 
@@ -117,6 +125,7 @@ public class ChangeMembershipMessage extends ProtoMessage {
         public ChangeMembershipMessage deserialize(ByteBuf in) throws IOException {
             Host nReplica = Host.serializer.deserialize(in);
             int instance = in.readInt();
+            int sn = in.readInt();
             boolean ok = in.readBoolean();
             boolean add = in.readBoolean();
 
@@ -144,7 +153,7 @@ public class ChangeMembershipMessage extends ProtoMessage {
                 replicas.put(key, Pair.of(host, flag));
             }
 
-            return new ChangeMembershipMessage(nReplica, instance, ok, add, new HashMap<>(messages), new HashMap<>(replicas));
+            return new ChangeMembershipMessage(nReplica, instance, sn, ok, add, new HashMap<>(messages), new HashMap<>(replicas));
         }
     };
 }

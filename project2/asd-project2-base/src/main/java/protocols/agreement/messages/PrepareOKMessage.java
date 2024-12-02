@@ -7,29 +7,26 @@ import java.util.UUID;
 import org.apache.commons.lang3.tuple.Pair;
 
 import io.netty.buffer.ByteBuf;
-import protocols.abd.utils.Tag;
 import pt.unl.fct.di.novasys.babel.generic.ProtoMessage;
 import pt.unl.fct.di.novasys.network.ISerializer;
 
-//ADD MESSAGES OF INSTANCES > CURR LEADER OPSEQ
 public class PrepareOKMessage extends ProtoMessage {
 
     public final static short MSG_ID = 107;
 
-    private final Tag sequenceNumber;
+    private final int sequenceNumber;
     private final List<Pair<UUID, byte[]>> prepareOKMessages;
 
-    
-    public PrepareOKMessage(Tag highest_prepare, List<Pair<UUID, byte[]>> msgs) {
+    public PrepareOKMessage(int sequenceNumber, List<Pair<UUID, byte[]>> msgs) {
         super(MSG_ID);
-        this.sequenceNumber = highest_prepare;
+        this.sequenceNumber = sequenceNumber;
         prepareOKMessages = msgs;
     }
 
-    public Tag getSeqNumber() {
+    public int getSequenceNumber() {
         return sequenceNumber;
     }
-    
+
     public List<Pair<UUID, byte[]>> getPrepareOKMsgs() {
         return prepareOKMessages;
     }
@@ -37,15 +34,15 @@ public class PrepareOKMessage extends ProtoMessage {
     @Override
     public String toString() {
         return "PrepareOKMessage{" +
-                "seqNumber=" + sequenceNumber +
+                "sequenceNumber=" + sequenceNumber +
+                ", prepareOKMessages=" + prepareOKMessages +
                 '}';
     }
 
     public static ISerializer<PrepareOKMessage> serializer = new ISerializer<PrepareOKMessage>() {
         @Override
         public void serialize(PrepareOKMessage msg, ByteBuf out) {
-            out.writeInt(msg.sequenceNumber.getOpSeq());
-            out.writeInt(msg.sequenceNumber.getProcessId());
+            out.writeInt(msg.sequenceNumber);
 
             List<Pair<UUID, byte[]>> messages = msg.getPrepareOKMsgs();
             out.writeInt(messages.size());
@@ -62,9 +59,7 @@ public class PrepareOKMessage extends ProtoMessage {
 
         @Override
         public PrepareOKMessage deserialize(ByteBuf in) {
-            int opSeq = in.readInt();
-            int processId = in.readInt();
-            Tag sequenceNumber = new Tag(opSeq, processId);
+            int sequenceNumber = in.readInt();
 
             int size = in.readInt();
             List<Pair<UUID, byte[]>> messages = new LinkedList<>();
@@ -83,5 +78,4 @@ public class PrepareOKMessage extends ProtoMessage {
             return new PrepareOKMessage(sequenceNumber, messages);
         }
     };
-
 }

@@ -15,28 +15,46 @@ public class AcceptMessage extends ProtoMessage {
     private final UUID opId;
     private final int instance;
     private final byte[] op;
-    private final Tag sequenceNumber;
+    private final int sequenceNumber;
     private final int lastChosen;
 
-    public AcceptMessage(int instance, Tag highest_prepare, UUID opId, byte[] op, int last) {
+    public AcceptMessage(int instance, int highest_prepare, UUID opId, byte[] op, int lastChosen) {
         super(MSG_ID);
         this.instance = instance;
+        this.sequenceNumber = highest_prepare;
         this.op = op;
         this.opId = opId;
+        this.lastChosen = lastChosen;
+    }
+
+    public AcceptMessage(int instance, int highest_prepare, UUID opId, byte[] op) {
+        super(MSG_ID);
+        this.instance = instance;
         this.sequenceNumber = highest_prepare;
-        this.lastChosen = last;
+        this.op = op;
+        this.opId = opId;
+        this.lastChosen = -1;
     }
     
+    public AcceptMessage(AcceptOKMessage msg) {
+        super(MSG_ID);
+        this.instance = msg.getInstance();
+        this.sequenceNumber = msg.getSequenceNumber();
+        this.opId = msg.getOpId();
+        this.op = msg.getOp();
+        this.lastChosen = -1;
+    }
+
     public int getInstance() {
         return instance;
     }
 
-    public Tag getSeqNumber() {
-        return sequenceNumber;
-    }
-
     public int getLastChosen() {
         return lastChosen;
+    }
+
+    public int getSequenceNumber() {
+        return sequenceNumber;
     }
 
     public UUID getOpId() {
@@ -46,8 +64,6 @@ public class AcceptMessage extends ProtoMessage {
     public byte[] getOp() {
         return op;
     }
-
-
 
     @Override
     public String toString() {
@@ -62,32 +78,28 @@ public class AcceptMessage extends ProtoMessage {
         @Override
         public void serialize(AcceptMessage msg, ByteBuf out) throws IOException {
             out.writeInt(msg.instance);
-            out.writeInt(msg.sequenceNumber.getOpSeq());
-            out.writeInt(msg.sequenceNumber.getProcessId());
-
+            out.writeInt(msg.sequenceNumber);
             out.writeLong(msg.opId.getMostSignificantBits());
             out.writeLong(msg.opId.getLeastSignificantBits());
             out.writeInt(msg.op.length);
             out.writeBytes(msg.op);
-            out.writeInt(msg.lastChosen);
-            
+            out.writeInt(msg.lastChosen);      
         }
 
         @Override
         public AcceptMessage deserialize(ByteBuf in) throws IOException {
             int instance = in.readInt();
-            int opSeq = in.readInt();
-            int processId = in.readInt();
-            Tag sequenceNumber = new Tag(opSeq, processId);
-
+            int sn = in.readInt();
 
             long highBytes = in.readLong();
             long lowBytes = in.readLong();
             UUID opId = new UUID(highBytes, lowBytes);
             byte[] op = new byte[in.readInt()];
             in.readBytes(op);
-            int last = in.readInt();
-            return new AcceptMessage(instance, sequenceNumber, opId, op, last);
+
+            int ls = in.readInt();
+            
+            return new AcceptMessage(instance, sn, opId, op, ls);
              
         }
     };

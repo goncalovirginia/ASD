@@ -18,14 +18,14 @@ public class AcceptOKMessage extends ProtoMessage {
     private final UUID opId;
     private final int instance;
     private final byte[] op;
-    private final int lastFound;
+    private final int sequenceNumber;
 
-    public AcceptOKMessage(int instance, UUID opId, byte[] op, int index) {
+    public AcceptOKMessage(int instance, int sn, UUID opId, byte[] op) {
         super(MSG_ID);
         this.instance = instance;
+        this.sequenceNumber = sn;
         this.op = op;
         this.opId = opId;
-        this.lastFound = index;
     }
 
     public AcceptOKMessage(AcceptMessage msg) {
@@ -33,7 +33,7 @@ public class AcceptOKMessage extends ProtoMessage {
         this.instance = msg.getInstance();
         this.op = msg.getOp();
         this.opId = msg.getOpId();
-        this.lastFound = -1;
+        this.sequenceNumber = msg.getSequenceNumber();
     }
 
     public int getInstance() {
@@ -48,8 +48,8 @@ public class AcceptOKMessage extends ProtoMessage {
         return op;
     }
 
-    public int getLastFound() {
-        return lastFound;
+    public int getSequenceNumber() {
+        return sequenceNumber;
     }
 
     @Override
@@ -65,23 +65,24 @@ public class AcceptOKMessage extends ProtoMessage {
         @Override
         public void serialize(AcceptOKMessage msg, ByteBuf out) {
             out.writeInt(msg.instance);
+            out.writeInt(msg.sequenceNumber);
             out.writeLong(msg.opId.getMostSignificantBits());
             out.writeLong(msg.opId.getLeastSignificantBits());
             out.writeInt(msg.op.length);
             out.writeBytes(msg.op);
-            out.writeInt(msg.lastFound);
         }
 
         @Override
         public AcceptOKMessage deserialize(ByteBuf in) {
             int instance = in.readInt();
+            int sn = in.readInt();
             long highBytes = in.readLong();
             long lowBytes = in.readLong();
             UUID opId = new UUID(highBytes, lowBytes);
             byte[] op = new byte[in.readInt()];
             in.readBytes(op);
-            int missingIndex = in.readInt();
-            return new AcceptOKMessage(instance, opId, op, missingIndex);
+            
+            return new AcceptOKMessage(instance, sn, opId, op);
         }
     };
 

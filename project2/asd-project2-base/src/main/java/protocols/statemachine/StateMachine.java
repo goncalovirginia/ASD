@@ -371,7 +371,10 @@ public class StateMachine extends GenericProtocol {
         }
 
         if(self.equals(leader)) {
-            sendRequest(new RemoveReplicaRequest(nextInstance++, node), PAXOS_PROTOCOL_ID);
+            if(PAXOS_IMPLEMENTATION.equals(DISTINGUISHED_LEARNER))
+                sendRequest(new RemoveReplicaRequest(membership.indexOf(node), node), PaxosAgreement.PROTOCOL_ID);
+            else
+                sendRequest(new RemoveReplicaRequest(nextInstance++, node), PAXOS_PROTOCOL_ID);
         }
             
     }
