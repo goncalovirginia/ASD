@@ -3,7 +3,6 @@ protocols\abd\requests\ReadRequest.class
 protocols\abd\messages\WriteMessage.class
 protocols\statemachine\messages\ReplicaAddedMessage$1.class
 protocols\statemachine\messages\AddReplicaMessage$1.class
-protocols\statemachine\timers\SendMessageTimer.class
 protocols\app\HashApp$ReplicationStrategy.class
 protocols\agreement\PaxosAgreement$AgreementInstanceState.class
 protocols\agreement\messages\ChangeMembershipMessage.class
@@ -16,6 +15,7 @@ protocols\abd\messages\QuorumMessage.class
 protocols\abd\messages\ReadReplyMessage$1.class
 protocols\abd\messages\WriteMessage$1.class
 protocols\app\messages\RequestMessage$1.class
+protocols\statemachine\timers\LeaderCandidateTimer.class
 protocols\app\messages\ResponseMessage$1.class
 protocols\abd\messages\QuorumMessage$1.class
 protocols\agreement\messages\ChangeMembershipOKMessage.class

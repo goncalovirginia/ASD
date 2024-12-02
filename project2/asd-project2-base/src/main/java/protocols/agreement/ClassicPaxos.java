@@ -134,7 +134,6 @@ public class ClassicPaxos extends GenericProtocol {
 
     }
 
-    //highest joinedInstance wins
     private void uponPrepareRequest(PrepareRequest request, short sourceProto) {
         prepare_ok_count = 0; 
         highest_prepare++;

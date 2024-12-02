@@ -31,6 +31,7 @@ import protocols.app.requests.CurrentStateRequest;
 import protocols.app.requests.InstallStateRequest;
 import protocols.statemachine.notifications.ExecuteNotification;
 import protocols.statemachine.requests.OrderRequest;
+import protocols.statemachine.timers.LeaderCandidateTimer;
 
 import java.io.IOException;
 import java.net.InetAddress;
@@ -60,11 +61,13 @@ public class StateMachine extends GenericProtocol {
     private List<Host> membership;
     private int nextInstance;
     private Host leader;
+    private Host previousLeader;
+
     private final String PAXOS_IMPLEMENTATION;
     private final Short PAXOS_PROTOCOL_ID;
 
     private Map<UUID, byte[]> pendingOrders;
-    private List<Host> pendingRemoves; 
+    private Map<Host, Boolean> pendingAddRemoves; 
     private Map<UUID, byte[]> pendingToLeader; //Client Operations pending to be executed by the leader
 
     public StateMachine(Properties props) throws IOException, HandlerRegistrationException {
@@ -114,7 +117,8 @@ public class StateMachine extends GenericProtocol {
         subscribeNotification(DecidedNotification.NOTIFICATION_ID, this::uponDecidedNotification);
         subscribeNotification(NewLeaderNotification.NOTIFICATION_ID, this::uponNewLeaderNotification);
         subscribeNotification(MembershipChangedNotification.NOTIFICATION_ID, this::uponMembershipChangeNotification);
-    
+        
+        registerTimerHandler(LeaderCandidateTimer.TIMER_ID, this::uponLeaderCandidateTimer);
     }
 
     @Override
@@ -127,7 +131,7 @@ public class StateMachine extends GenericProtocol {
 
         pendingToLeader = new HashMap<>(); 
         pendingOrders = new HashMap<>(); //Pending Orders the Leader has to Propose
-        pendingRemoves = new LinkedList<>(); //Removes that occur on a re-election, like the previous leader
+        pendingAddRemoves = new HashMap<>(); //Removes that occur on a re-election, like the previous leader
 
         String host = props.getProperty("initial_membership");
         String[] hosts = host.split(",");
@@ -209,37 +213,35 @@ public class StateMachine extends GenericProtocol {
         
         leader = notification.getLeader();
         if (leader.equals(self)) {
+            pendingToLeader.forEach((key, value) -> pendingOrders.put(key, value));
+
             List<Pair<UUID, byte[]>> prepareOKMsgs = notification.getMessages();  
-            pendingToLeader.forEach((key, value) -> {
-                pendingOrders.put(key, value);
-            });
-            
-            logger.info("Leadah flushing prepare_ok messages..." + notification.getMessages());
             prepareOKMsgs.forEach(m -> {
                 pendingOrders.remove(m.getLeft());
                 sendRequest(new ProposeRequest(nextInstance++, m.getLeft(), m.getRight()), PAXOS_PROTOCOL_ID); 
             });
-
-            logger.info("Leadah flushing pendingRemoves... " + pendingRemoves);
-            pendingRemoves.forEach(m -> 
-                sendRequest(new RemoveReplicaRequest(nextInstance++, m), PAXOS_PROTOCOL_ID));
-            
-            logger.info("Leadah flushing pending orders:" + pendingOrders);
+            pendingAddRemoves.forEach((k, v) -> {
+                if(v == true)
+                    sendRequest(new AddReplicaRequest(nextInstance++, k), PAXOS_PROTOCOL_ID);
+                else 
+                    sendRequest(new RemoveReplicaRequest(nextInstance++, k), PAXOS_PROTOCOL_ID);
+            });
             pendingOrders.forEach((key, value) -> 
                 sendRequest(new ProposeRequest(nextInstance++, key, value), PAXOS_PROTOCOL_ID));
 
-            //TODO
-            //flush the adds last, since they dont have time out and the new replica can wait for the system to be stable.
+            logger.info("Leadah flushing PREPAREOK - {} // PENDINGADDREMOVES - {} // PENDINGORDERS - {}", 
+                prepareOKMsgs, pendingAddRemoves, pendingOrders);
         } else {
             logger.debug("non leader yet -> sending to {}", leader);
-            pendingToLeader.forEach((key, value) -> sendMessage(new LeaderOrderMessage(0, key, value), leader));
+            pendingToLeader.forEach((key, value) -> 
+                sendMessage(new LeaderOrderMessage(0, key, value), leader));
             
             pendingOrders.forEach((key, value) -> 
                 sendMessage(new LeaderOrderMessage(0, key, value), leader));
         }
         pendingOrders = new HashMap<>();
         pendingToLeader = new HashMap<>();
-        pendingRemoves = new LinkedList<>();
+        pendingAddRemoves = new HashMap<>();
     }
 
     private void uponMembershipChangeNotification(MembershipChangedNotification notification, short sourceProto) {
@@ -280,11 +282,11 @@ public class StateMachine extends GenericProtocol {
     private void uponAddReplicaMessage(AddReplicaMessage msg, Host host, short sourceProto, int channelId) {
         logger.info("Received Add Replica Message: " + msg);
 
-        if (leader == null) {
-            sendRequest(new PrepareRequest(nextInstance), PAXOS_PROTOCOL_ID);
-            return;
-        }
-        
+        //TODO
+        //Timer on replica that wants to join, if after 2 seconds state is still joining, retry.
+        //If msg fails/openOutConnection fails -> select another
+        if (leader == null) return;
+
         if (self.equals(msg.getContact())) {
             openConnection(msg.getNewReplica());
             membership.add(msg.getNewReplica());
@@ -295,7 +297,6 @@ public class StateMachine extends GenericProtocol {
             return;
         }
 
-        
         openConnection(msg.getNewReplica());
         if (PAXOS_IMPLEMENTATION.equals(DISTINGUISHED_LEARNER)) 
             sendRequest(new AddReplicaRequest(nextInstance, msg.getNewReplica()), PAXOS_PROTOCOL_ID);  
@@ -319,57 +320,52 @@ public class StateMachine extends GenericProtocol {
 
     private void uponLeaderMsgFail(LeaderOrderMessage msg, Host host, short destProto, Throwable throwable, int channelId) {
         logger.info("Message {} to {} failed, reason: {}", msg, host, throwable);
-        //pendingOrders.add(new ProposeRequest(msg.getInstance(), msg.getOpId(), msg.getOp()));
-        //TODO -> IF LEADER == NULL -> PEND ELSE DO  IT AGAIN (NEW LEADER ORDER MESSAGE)
+        if (leader == null)
+            pendingOrders.put(msg.getOpId(), msg.getOp());
+        else sendMessage(msg, host);
     }
 
     //same thing for addReplica
     private void uponMsgFail(ProtoMessage msg, Host host, short destProto, Throwable throwable, int channelId) {
         logger.info("Message {} to {} failed, reason: {}", msg, host, throwable);
-
     }
     //in the case of replicaAddedMessage, if it fails after X tries we remove the new replica
+
+    private void nextLeaderCandidate() {
+        int idx = membership.size() -1;
+        for(int i = idx; i >= 0; i--) {
+            Host h = membership.get(i);
+            if (!pendingAddRemoves.containsKey(h) || !h.equals(previousLeader)) {
+                if(h.equals(self)) {
+                    previousLeader = h;
+                    sendRequest(new PrepareRequest(nextInstance), PAXOS_PROTOCOL_ID);
+                } else break;
+            }
+        }
+
+        setupTimer(new LeaderCandidateTimer(), 1000);
+    }
 
     /* --------------------------------- TCPChannel Events ---------------------------- */
     private void uponOutConnectionUp(OutConnectionUp event, int channelId) {
         logger.info("Connection to {} is up", event.getNode());
     }
 
-/*     private int selectNextLeaderCandidate() {
-        for(int i = membership.size() -1; i >= 0; i --) {
-            if(!pendingRemoves.contains(membership.get(i))) 
-                return i;
-        }   
-        return -1;
-    } */
-
     private void uponOutConnectionDown(OutConnectionDown event, int channelId) {
         logger.info("Connection to {} is down, cause {}", event.getNode(), event.getCause());
  
         Host node = event.getNode();
-        int leaderIdx = -1;
-        if(node.equals(leader)) {
-            leaderIdx = membership.indexOf(leader);
+
+        if(leader == null || node.equals(leader)) 
+            pendingAddRemoves.put(node, false); 
+
+        if(node.equals(leader)) { 
+            previousLeader = leader;           
             leader = null;
-            closeConnection(node);
+            nextLeaderCandidate();
         }
 
-/*         if(node.equals(leaderCandidate))
-            leaderCandidate = null;
-         */
-        //To implement this correctly:
-        // --> toBeLeader = selectNextHighest (candidate)
-        // --> if this toBeLeader gets disconnected, it gets set to null and the nextHighest tries to become Leader
-        // --> This process is recursive and will end when we find a new Leader
-        if (leader == null) {
-            int idx = (leaderIdx == membership.size()-1) ? membership.size()-2 : membership.size()-1;
-            if(membership.indexOf(self) == idx) {
-                logger.info("ONLY I TRY TO BECOME THE LEADAH {}", self);
-                pendingRemoves.add(node); 
-                sendRequest(new PrepareRequest(nextInstance), PAXOS_PROTOCOL_ID);
-            }    
-        }
-
+        closeConnection(node);
         if(self.equals(leader)) {
             if(PAXOS_IMPLEMENTATION.equals(DISTINGUISHED_LEARNER))
                 sendRequest(new RemoveReplicaRequest(membership.indexOf(node), node), PaxosAgreement.PROTOCOL_ID);
@@ -383,27 +379,6 @@ public class StateMachine extends GenericProtocol {
         logger.debug("Connection to {} failed, cause: {}", event.getNode(), event.getCause());
         if (membership.contains(event.getNode()))
             openConnection(event.getNode());
-
-        //Maybe we don't want to do this forever. At some point we assume he is no longer there.
-        //Also, maybe wait a little bit before retrying, or else you'll be trying 1000s of times per second
-/*         Host node = event.getNode();
-        if (!membership.contains(node)) return;
-
-        Integer retries = retryHosts.putIfAbsent(node, nRetries);
-        retries = (retries == null) ? nRetries : retries -1;
-
-        if (retries > 0) {
-            //Add Timer for retry
-            //remove Replica after X
-            retryHosts.put(node, retries);
-            logger.info("Retrying connection to {}, retries left: {}", node, retries);
-            openConnection(node);
-        } else {
-            logger.info("Removing {} from membership after {} failed retries", node, nRetries);
-            retryHosts.remove(node);
-            membership.remove(node);
-            closeConnection(node); 
-        } */
     }
 
     private void uponInConnectionUp(InConnectionUp event, int channelId) {
@@ -413,4 +388,11 @@ public class StateMachine extends GenericProtocol {
     private void uponInConnectionDown(InConnectionDown event, int channelId) {
         logger.trace("Connection from {} is down, cause: {}", event.getNode(), event.getCause());
     }
+
+    private void uponLeaderCandidateTimer(LeaderCandidateTimer timer, long timerId) {
+		logger.info("Leader Candidate Timer");
+        if(leader == null) 
+            nextLeaderCandidate();
+        else previousLeader = null;
+	}
 }
