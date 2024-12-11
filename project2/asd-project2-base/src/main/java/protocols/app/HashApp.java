@@ -219,13 +219,12 @@ public class HashApp extends GenericProtocol {
 	 * ***/
 
 	private void uponWriteCompleteNotification(WriteCompleteNotification not, short sourceProto) {
-		logger.info("Writting in App and returning op to client...: opSeq={} -> {}", executedOps +1 ,not);
-
 		String key = new String(not.getKey());
 		this.data.put(key, not.getValue());
 
 		Pair<Host, Long> pair = clientIdMapper.remove(not.getOpId());
 
+		logger.info("Writting in App and returning op to client...: opSeq={}, key={}, opId={}", executedOps +1 ,key, not.getOpId());
 		sendMessage(new ResponseMessage(pair.getRight(), new byte[0]), pair.getLeft());
 
 		this.updateOperationCountAndPrintHash();
@@ -233,13 +232,12 @@ public class HashApp extends GenericProtocol {
 
 	//The following 3 handlers are are executed only for the abd stack
 	private void uponReadCompleteNotification(ReadCompleteNotification not, short sourceProto) {
-		logger.info("Reading in App and returning op to client...: opSeq={} -> {}", executedOps +1 ,not);
-
 		String key = new String(not.getKey());
 		this.data.put(key, not.getValue());
 
 		Pair<Host, Long> pair = clientIdMapper.remove(not.getOpId());
 
+		logger.info("Reading in App and returning op to client...: opSeq={}, key={}, opId={}", executedOps +1 ,key, not.getOpId());
 		sendMessage(new ResponseMessage(pair.getRight(), data.getOrDefault(key, new byte[0])), pair.getLeft());
 
 		this.updateOperationCountAndPrintHash();
@@ -247,7 +245,9 @@ public class HashApp extends GenericProtocol {
 
 
 	private void uponUpdateValueNotification(UpdateValueNotification not, short sourceProto) {
-		logger.info("Updating key due to a remote update: opSeq={} -> {}", executedOps +1 ,not);
+		logger.info("Updating key due to a remote update: opSeq={}, key={}", executedOps +1 , new String(not.getKey()));
+
+
 		//logger.debug("Updating key due to a remote update.");
 		data.put(new String(not.getKey()), not.getValue());
 
