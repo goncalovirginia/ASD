@@ -156,7 +156,6 @@ public class HashApp extends GenericProtocol {
 			if (msg.getOpType() == RequestMessage.READ) {
 				sendRequest(new ReadRequest(opUUID, msg.getKey().getBytes()), ABD.PROTOCOL_ID);
 			} else if (msg.getOpType() == RequestMessage.WRITE) {
-				logger.info("REQUESTING...");
 				sendRequest(new WriteRequest(opUUID, msg.getKey().getBytes(), msg.getData()), ABD.PROTOCOL_ID);
 			} else {
 				System.err.println("Invalid client operation");
@@ -220,7 +219,7 @@ public class HashApp extends GenericProtocol {
 	 * ***/
 
 	private void uponWriteCompleteNotification(WriteCompleteNotification not, short sourceProto) {
-		logger.info("Writing in App and returning op to client...: {}", not);
+		logger.info("Writting in App and returning op to client...: opSeq={} -> {}", executedOps +1 ,not);
 
 		String key = new String(not.getKey());
 		this.data.put(key, not.getValue());
@@ -234,7 +233,7 @@ public class HashApp extends GenericProtocol {
 
 	//The following 3 handlers are are executed only for the abd stack
 	private void uponReadCompleteNotification(ReadCompleteNotification not, short sourceProto) {
-		logger.info("Reading in App and returning op to client...: {}", not);
+		logger.info("Reading in App and returning op to client...: opSeq={} -> {}", executedOps +1 ,not);
 
 		String key = new String(not.getKey());
 		this.data.put(key, not.getValue());
@@ -248,7 +247,7 @@ public class HashApp extends GenericProtocol {
 
 
 	private void uponUpdateValueNotification(UpdateValueNotification not, short sourceProto) {
-		logger.info("Updating key due to a remote update: {}", not);
+		logger.info("Updating key due to a remote update: opSeq={} -> {}", executedOps +1 ,not);
 		//logger.debug("Updating key due to a remote update.");
 		data.put(new String(not.getKey()), not.getValue());
 

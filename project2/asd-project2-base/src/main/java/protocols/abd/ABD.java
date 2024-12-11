@@ -2,6 +2,9 @@ package protocols.abd;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+
+import io.netty.buffer.ByteBuf;
+import io.netty.buffer.Unpooled;
 import protocols.abd.messages.*;
 import protocols.abd.renotifications.ReadCompleteNotification;
 import protocols.abd.renotifications.UpdateValueNotification;
@@ -116,7 +119,7 @@ public class ABD extends GenericProtocol {
 	/*--------------------------------- Requests ---------------------------------------- */
 
 	private void uponWriteRequest(WriteRequest request, short sourceProto) {
-		logger.info("Received WRITE request: {}", request);
+		logger.debug("Received WRITE request: {}", request);
 
 		opSeq++;
 		quorumReplies = new LinkedList<>();
@@ -130,7 +133,7 @@ public class ABD extends GenericProtocol {
 	}
 
 	private void uponReadRequest(ReadRequest request, short sourceProto) {
-		logger.info("Received ReadRequest: {}", request);
+		logger.debug("Received ReadRequest: {}", request);
 
 		opSeq++;
 		quorumReplies = new LinkedList<>();
@@ -162,7 +165,7 @@ public class ABD extends GenericProtocol {
 
 		if (opSeq != msg.getOpId()) return;
 
-		if (pending != null) //after majority decision, no more adds, or it can mess up ACKs
+		if (pending == null) //after majority decision, no more adds, or it can mess up ACKs
 			quorumReplies.add(new QuorumReply(msg.getTag(), msg.getValue()));
 
 		if (quorumReplies.size() == (membership.size() / 2) + 1) {
@@ -179,16 +182,16 @@ public class ABD extends GenericProtocol {
 		logger.debug("Received ReadTagReplyMessage: {}", msg);
 
 		if (opSeq != msg.getOpId()) return;
-
-		if (pending == null) //after majority decision, no more adds, or it can mess up ACKs
+		
+		if (pending != null) //after majority decision, no more adds, or it can mess up ACKs
 			quorumReplies.add(new QuorumReply(msg.getTag(), null));
 
 		if (quorumReplies.size() == (membership.size() / 2) + 1) {
 			int maxTagOpSeq = maxTagQuorumReply(quorumReplies).getTag().getOpSeq();
-			pending = null;
 			opSeq++;
 			quorumReplies = new LinkedList<>();
 			membership.forEach(h -> sendMessage(new WriteMessage(opSeq, msg.getKey(), new Tag(maxTagOpSeq + 1, thisProcessId), pending), h));
+			pending = null;
 		}
 	}
 
@@ -202,7 +205,7 @@ public class ABD extends GenericProtocol {
 			values.put(msg.getKey(), msg.getValue());
 
 			if (!host.equals(thisHost)) {
-				logger.info("Updated -> message: MSG: {} TAGMsg {} PrevTag {} ", msg, msg.getTag(), tag);
+				logger.debug("Updated -> message: MSG: {} TAGMsg {} PrevTag {} ", msg, msg.getTag(), tag);
 				triggerNotification(new UpdateValueNotification(msg.getOpId(), msg.getKey().getBytes(), msg.getValue()));
 			}
 		}
@@ -217,7 +220,7 @@ public class ABD extends GenericProtocol {
 
 		if (quorumReplies.size() != (membership.size() / 2) + 1) return;
 
-		logger.info("NEW {}: opSeq {} - key {} - opId {}", (pending == null) ? "WRITE" : "READ", msg.getOpId(), msg.getKey(), operations.get(msg.getKey()));
+		logger.debug("NEW {}: opSeq {} - key {} - opId {}", (pending == null) ? "WRITE" : "READ", msg.getOpId(), msg.getKey().getBytes(), operations.get(msg.getKey()));
 		quorumReplies = new LinkedList<>();
 
 		if (pending == null) {

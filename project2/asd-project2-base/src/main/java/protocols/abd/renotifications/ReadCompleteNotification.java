@@ -40,9 +40,8 @@ public class ReadCompleteNotification extends ProtoNotification {
 
 	@Override
 	public String toString() {
-		return "WriteCompletedNotification{" +
+		return "ReadCompletedNotification{" +
 				"opId=" + opId +
-				", opSeq=" + opSeq +
 				", key=" + key +
 				'}';
 	}

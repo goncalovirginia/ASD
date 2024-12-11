@@ -171,6 +171,8 @@ public class StateMachine extends GenericProtocol {
             Host target = initialMembership.get(0);
             openConnection(target);
             sendMessage(new AddReplicaMessage(self, 0, target), target);
+
+            //TODO -> AddTimer (Retry after 1s if state is still JOINING)
         }
     }
 

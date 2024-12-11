@@ -32,8 +32,7 @@ public class UpdateValueNotification extends ProtoNotification {
 	@Override
 	public String toString() {
 		return "UpdateValueNotification{" +
-				"opSeq=" + opSeq +
-				", key=" + key +
+				"key=" + key +
 				'}';
 	}
 }

@@ -42,7 +42,6 @@ public class WriteCompleteNotification extends ProtoNotification {
 	public String toString() {
 		return "WriteCompletedNotification{" +
 				"opId=" + opId +
-				", opSeq=" + opSeq +
 				", key=" + key +
 				'}';
 	}
