@@ -253,32 +253,30 @@ public class ClassicPaxos extends GenericProtocol {
         state.incrementAcceptCount();
         if (state.getAcceptokCount() >= (membership.size() / 2) + 1 && !state.decided()) {
             state.decide();
-            
-            for(; toBeDecidedIndex <= msg.getInstance(); toBeDecidedIndex++) {
-                Pair<UUID, byte[]> pair = toBeDecidedMessages.remove(toBeDecidedIndex);
-                if(pair != null) {
-                    acceptedMessages.put(toBeDecidedIndex, pair);
+            Pair<UUID, byte[]> pair = toBeDecidedMessages.remove(toBeDecidedIndex);
+            if(pair != null) {
+                acceptedMessages.put(toBeDecidedIndex, pair);
 
-                    if(!addReplicaInstances.containsKey(toBeDecidedIndex)) {
-                        triggerNotification(
-                            new DecidedNotification(toBeDecidedIndex, pair.getLeft(), pair.getRight()));
-                    } else {
-                        Pair<Host, Boolean> replica = addReplicaInstances.get(toBeDecidedIndex);
-                        if(replica.getRight() == true) {
-                            Map<Integer, Pair<UUID, byte[]>> relevantMessages = new TreeMap<>();
-                            relevantMessages.putAll(((TreeMap<Integer, Pair<UUID, byte[]>>) toBeDecidedMessages).tailMap(toBeDecidedIndex+1, true));
-                            
-                            sendMessage(new ChangeMembershipMessage(
-                                replica.getLeft(), toBeDecidedIndex, msg.getSequenceNumber(), true, true, relevantMessages, addReplicaInstances), replica.getLeft());
+                if(!addReplicaInstances.containsKey(toBeDecidedIndex)) {
+                    triggerNotification(
+                        new DecidedNotification(toBeDecidedIndex, pair.getLeft(), pair.getRight()));
+                } else {
+                    Pair<Host, Boolean> replica = addReplicaInstances.get(toBeDecidedIndex);
+                    if(replica.getRight() == true) {
+                        Map<Integer, Pair<UUID, byte[]>> relevantMessages = new TreeMap<>();
+                        relevantMessages.putAll(((TreeMap<Integer, Pair<UUID, byte[]>>) toBeDecidedMessages).tailMap(toBeDecidedIndex+1, true));
                         
-                            membership.add(replica.getLeft());
-                            triggerNotification(new MembershipChangedNotification(replica.getLeft(), true, toBeDecidedIndex));
-                        } else {
-                            triggerNotification(new MembershipChangedNotification(replica.getLeft(), false, toBeDecidedIndex));
-                        }   
-                    }
-                } 
-            }   
+                        sendMessage(new ChangeMembershipMessage(
+                            replica.getLeft(), toBeDecidedIndex, msg.getSequenceNumber(), true, true, relevantMessages, addReplicaInstances), replica.getLeft());
+                    
+                        membership.add(replica.getLeft());
+                        triggerNotification(new MembershipChangedNotification(replica.getLeft(), true, toBeDecidedIndex));
+                    } else {
+                        triggerNotification(new MembershipChangedNotification(replica.getLeft(), false, toBeDecidedIndex));
+                    }   
+                }
+            } 
+            toBeDecidedIndex++;
         }
     }
     

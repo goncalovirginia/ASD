@@ -261,11 +261,8 @@ public class StateMachine extends GenericProtocol {
             membership.remove(notification.getReplica());
         }
 
-        //CLASSIC
-        if (!PAXOS_IMPLEMENTATION.equals(DISTINGUISHED_LEARNER)) { 
-            if(!self.equals(leader))
-                nextInstance ++;
-        }    
+        if(!self.equals(leader))
+            nextInstance ++; 
     }
 
     /*--------------------------------- Messages ---------------------------------------- */
@@ -300,10 +297,7 @@ public class StateMachine extends GenericProtocol {
         }
 
         openConnection(msg.getNewReplica());
-        if (PAXOS_IMPLEMENTATION.equals(DISTINGUISHED_LEARNER)) 
-            sendRequest(new AddReplicaRequest(nextInstance, msg.getNewReplica()), PAXOS_PROTOCOL_ID);  
-        else
-            sendRequest(new AddReplicaRequest(nextInstance++, msg.getNewReplica()), PAXOS_PROTOCOL_ID);
+        sendRequest(new AddReplicaRequest(nextInstance++, msg.getNewReplica()), PAXOS_PROTOCOL_ID);
     }
 
     private void uponReplicaAddedMessage(ReplicaAddedMessage msg, Host host, short sourceProto, int channelId) {
@@ -369,10 +363,7 @@ public class StateMachine extends GenericProtocol {
 
         closeConnection(node);
         if(self.equals(leader)) {
-            if(PAXOS_IMPLEMENTATION.equals(DISTINGUISHED_LEARNER))
-                sendRequest(new RemoveReplicaRequest(membership.indexOf(node), node), PaxosAgreement.PROTOCOL_ID);
-            else
-                sendRequest(new RemoveReplicaRequest(nextInstance++, node), PAXOS_PROTOCOL_ID);
+            sendRequest(new RemoveReplicaRequest(nextInstance++, node), PAXOS_PROTOCOL_ID);
         }
             
     }

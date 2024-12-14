@@ -330,8 +330,6 @@ public class HashApp extends GenericProtocol {
 		dos.write(cumulativeHash);
 		dos.writeInt(data.size());
 
-		logger.info("RIGHT HERE....: " + data);
-
 		for (Map.Entry<String, byte[]> entry : data.entrySet()) {
 			dos.writeUTF(entry.getKey());
 			dos.writeInt(entry.getValue().length);

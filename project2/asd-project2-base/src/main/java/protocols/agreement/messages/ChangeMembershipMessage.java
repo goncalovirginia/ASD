@@ -16,6 +16,11 @@ public class ChangeMembershipMessage extends ProtoMessage {
 
     public final static short MSG_ID = 192;
 
+    public final static byte ADD = 0;
+    public final static byte REMOVE = 1;
+    public final static byte ADDCOMMIT = 2;
+    public final static byte REMOVECOMMIT = 3;
+
     private final Host replica;
     private final int instance;
     private final int sequenceNumber;

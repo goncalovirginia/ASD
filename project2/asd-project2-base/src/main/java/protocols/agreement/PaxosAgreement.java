@@ -21,15 +21,12 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.apache.commons.lang3.tuple.Pair;
 
-import protocols.abd.utils.Tag;
-
 import protocols.statemachine.notifications.ChannelReadyNotification;
 import protocols.agreement.notifications.DecidedNotification;
 import protocols.agreement.requests.ProposeRequest;
 
 import java.io.IOException;
 import java.util.*;
-import java.util.stream.Collectors;
 
 public class PaxosAgreement extends GenericProtocol {
 
@@ -157,19 +154,15 @@ public class PaxosAgreement extends GenericProtocol {
 
                 List<Pair<UUID, byte[]>> relevantMessages = new LinkedList<>();
                 if(!myself.equals(host)) {
-
                     int n = msg.getInstance();
                     relevantMessages.addAll((((TreeMap<Integer, Pair<UUID, byte[]>>) acceptedMessages)
                                             .tailMap((n), true)
                                             .values()));
 
-                    logger.info("WHAT I GET ON ACCEPT: " + relevantMessages);
                     relevantMessages.addAll((((TreeMap<Integer, Pair<UUID, byte[]>>) toBeDecidedMessages)
                             .tailMap((n + relevantMessages.size()), true)
                             .values()));
                     toBeDecidedMessages = new TreeMap<>();
-
-                    logger.info("WHAT I GET ON TO BE DECIDED: " + relevantMessages);
                  }   
                 PrepareOKMessage prepareOK = new PrepareOKMessage(highest_prepare, relevantMessages);
                 sendMessage(prepareOK, host);
@@ -199,56 +192,48 @@ public class PaxosAgreement extends GenericProtocol {
     }
 
     private void uponJoinedNotification(JoinedNotification notification, short sourceProto) {
+        logger.info("Agreement starting at INSTANCE {} -- MEMBERSHIP: {}", joinedInstance, membership);
+        
         joinedInstance = notification.getJoinInstance();
         membership = new LinkedList<>(notification.getMembership());
-        logger.info("Agreement starting at INSTANCE {},  PROCESS: {}, MEMBERSHIP: {}", toBeDecidedIndex, joinedInstance, membership); 
+        toBeDecidedIndex = joinedInstance;
     }
 
     private void uponAddReplica(AddReplicaRequest request, short sourceProto) {
         logger.debug("Received Add Replica Request: " + request);
-        instanceStateMap.put(0, new AgreementInstanceState());
         
-        sendMessage(new ChangeMembershipMessage(request.getReplica(), request.getInstance(), highest_prepare, true, true), request.getReplica());
-
+        instanceStateMap.put(request.getInstance(), new AgreementInstanceState());
         membership.forEach(h -> 
             sendMessage(new ChangeMembershipMessage(request.getReplica(), request.getInstance(), highest_prepare, false, true), h));
     }
 
     private void uponRemoveReplica(RemoveReplicaRequest request, short sourceProto) {
         logger.debug("Received Remove Replica Request: " + request);
+        
         membership.remove(request.getReplica()); 
-        if(joinedInstance > request.getInstance())
-            joinedInstance--;
-
-        instanceStateMap.put(0, new AgreementInstanceState());
+        instanceStateMap.put(request.getInstance(), new AgreementInstanceState());
         membership.forEach(h -> 
             sendMessage(new ChangeMembershipMessage(request.getReplica(), request.getInstance(), highest_prepare, false, false), h));
     }
 
     private void uponProposeRequest(ProposeRequest request, short sourceProto) {
-        logger.info("Received Propose Request: instance {} opId {}", request.getInstance(), request.getOpId());
+        logger.debug("Received Propose Request: instance {} opId {}", request.getInstance(), request.getOpId());
 
         instanceStateMap.put(request.getInstance(), new AgreementInstanceState());
-       AcceptMessage msg = new AcceptMessage(request.getInstance(), highest_prepare, request.getOpId(), request.getOperation(), request.getInstance()-1);
-       membership.forEach(h -> sendMessage(msg, h));          
+        AcceptMessage msg = new AcceptMessage(request.getInstance(), highest_prepare, request.getOpId(), request.getOperation(), request.getInstance()-1);
+        membership.forEach(h -> sendMessage(msg, h));          
     }
 
     private void uponChangeMembershipMessage(ChangeMembershipMessage msg, Host host, short sourceProto, int channelId) {        
-        if (msg.isOK()) {
-            if(msg.getReplica().equals(myself)) { //obviously, when removing this is impossible to trigger
-                toBeDecidedIndex = msg.getInstance();
-                return;
-            }
+        logger.debug("Received ChangeMembershipMessage: " + msg);
 
+        if (msg.isOK()) {
             if(msg.isAdding()) {
                 membership.add(msg.getReplica());
-                triggerNotification(new MembershipChangedNotification(msg.getReplica(), true, channelId));
+                triggerNotification(new MembershipChangedNotification(msg.getReplica(), true, toBeDecidedIndex));
             } else {
                 membership.remove(msg.getReplica());
-                if(joinedInstance > msg.getInstance())
-                    joinedInstance --;
-
-                triggerNotification(new MembershipChangedNotification(msg.getReplica(), false, channelId));
+                triggerNotification(new MembershipChangedNotification(msg.getReplica(), false, toBeDecidedIndex));
             }
             return;
         }
@@ -258,24 +243,23 @@ public class PaxosAgreement extends GenericProtocol {
     }
 
     private void uponChangeMembershipOKMessage(ChangeMembershipOKMessage msg, Host host, short sourceProto, int channelId) {        
-        AgreementInstanceState state = instanceStateMap.get(0);
+        logger.debug("Received ChangeMembershipOKMessage: " + msg);
+
+        AgreementInstanceState state = instanceStateMap.get(msg.getInstance());
         if (state != null) {
             state.incrementAcceptCount();
             if (state.getAcceptokCount() >= (membership.size() / 2) + 1 && !state.decided()) {
                 state.decide();
 
                 membership.forEach(h ->  { 
-                    if (!h.equals(myself)) {
+                    if (!h.equals(myself)) 
                             sendMessage(new ChangeMembershipMessage(msg.getReplica(), msg.getInstance(), highest_prepare, true, msg.isAdding()), h);
-                        }
-                    });
+                });
 
-                if(msg.isAdding()) {
-                    membership.add(msg.getReplica());
-                    triggerNotification(new MembershipChangedNotification(msg.getReplica(), true, channelId));              
-                } else {//the leader removed the replica before broadcasting
-                    triggerNotification(new MembershipChangedNotification(msg.getReplica(), false, channelId));  
-                }
+                if(msg.isAdding()) membership.add(msg.getReplica());
+
+                triggerNotification(new MembershipChangedNotification(msg.getReplica(), msg.isAdding(), toBeDecidedIndex));  
+
             }
         }
     }
