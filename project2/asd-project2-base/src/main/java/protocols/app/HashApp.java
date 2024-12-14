@@ -245,7 +245,7 @@ public class HashApp extends GenericProtocol {
 
 
 	private void uponUpdateValueNotification(UpdateValueNotification not, short sourceProto) {
-		logger.info("Updating key due to a remote update: opSeq={}, key={}", executedOps +1 , new String(not.getKey()));
+		logger.debug("Updating key due to a remote update: opSeq={}, key={}", executedOps +1 , new String(not.getKey()));
 
 
 		//logger.debug("Updating key due to a remote update.");
@@ -329,6 +329,9 @@ public class HashApp extends GenericProtocol {
 		dos.writeInt(cumulativeHash.length);
 		dos.write(cumulativeHash);
 		dos.writeInt(data.size());
+
+		logger.info("RIGHT HERE....: " + data);
+
 		for (Map.Entry<String, byte[]> entry : data.entrySet()) {
 			dos.writeUTF(entry.getKey());
 			dos.writeInt(entry.getValue().length);

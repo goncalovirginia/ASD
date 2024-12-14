@@ -10,11 +10,13 @@ public class AckMessage extends ProtoMessage {
 
 	private final int opSeq;
 	private final String key;
+	private final byte[] value;
 
-	public AckMessage(int opSeq, String key) {
+	public AckMessage(int opSeq, String key, byte[] value) {
 		super(MSG_ID);
 		this.opSeq = opSeq;
 		this.key = key;
+		this.value = value;
 	}
 
 	public int getOpId() {
@@ -23,6 +25,10 @@ public class AckMessage extends ProtoMessage {
 
 	public String getKey() {
 		return key;
+	}
+
+	public byte[] getValue() {
+		return value;
 	}
 
 	@Override
@@ -41,6 +47,9 @@ public class AckMessage extends ProtoMessage {
 			byte[] keyBytes = msg.key.getBytes();
 			out.writeInt(keyBytes.length);
 			out.writeBytes(keyBytes);
+
+			out.writeInt(msg.value.length);
+			out.writeBytes(msg.value);
 		}
 
 		@Override
@@ -51,7 +60,10 @@ public class AckMessage extends ProtoMessage {
 			in.readBytes(keyBytes);
 			String key = new String(keyBytes);
 
-			return new AckMessage(instance, key);
+			byte[] dt = new byte[in.readInt()];
+			in.readBytes(dt);
+
+			return new AckMessage(instance, key, dt);
 		}
 	};
 

@@ -55,5 +55,5 @@ For instance, to start YCSB for a system with:
 you can use the following command:
 
 ```bash
-./exec.sh 3 1024 127.0.0.1:35000,127.0.0.1:35001,127.0.0.1:35002 0 100
+./exec.sh 3 1024 127.0.0.1:35000,127.0.0.1:35001,127.0.0.1:35002 50 50
 ```
