@@ -57,7 +57,6 @@ public class AcceptOKMessage extends ProtoMessage {
         return "AcceptOKMessage{" +
                 "opId=" + opId +
                 ", instance=" + instance +
-                ", op=" + Hex.encodeHexString(op) +
                 '}';
     }
 

@@ -153,7 +153,7 @@ public class StateMachine extends GenericProtocol {
             //I'm part of the initial membership, so I'm assuming the system is bootstrapping
             membership = new LinkedList<>(initialMembership);
             membership.forEach(this::openConnection);
-            triggerNotification(new JoinedNotification(membership, initialMembership.indexOf(self), true));
+            triggerNotification(new JoinedNotification(membership, 0, true));
 
             Host firstLeader = initialMembership.get(initialMembership.size() - 1);
             if (firstLeader.equals(self)) {
