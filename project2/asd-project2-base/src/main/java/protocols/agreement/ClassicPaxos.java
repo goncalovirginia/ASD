@@ -181,10 +181,6 @@ public class ClassicPaxos extends GenericProtocol {
         joinedInstance = notification.getJoinInstance();
         membership = new LinkedList<>(notification.getMembership());
         logger.info("Agreement starting at instance {},  process {}, membership {}", toBeDecidedIndex, joinedInstance, membership); 
-
-        toBeDecidedMessages.forEach((k, v) -> {
-            membership.forEach(h -> sendMessage(new AcceptOKMessage(k, highest_prepare, v.getLeft(), v.getRight()), h)); 
-        });
     }
 
     private void uponAddReplica(AddReplicaRequest request, short sourceProto) {
@@ -208,12 +204,13 @@ public class ClassicPaxos extends GenericProtocol {
     }
 
     private void uponChangeMembershipMessage(ChangeMembershipMessage msg, Host host, short sourceProto, int channelId) {   
-        if( !(msg.getSequenceNumber() >= highest_prepare) || toBeDecidedIndex > msg.getInstance()) {
+        if( !(msg.getSequenceNumber() >= highest_prepare) /* || toBeDecidedIndex > msg.getInstance() */) {
             return;
         }
 
         highest_prepare = msg.getSequenceNumber();
         if (msg.isOK()) {
+            logger.info(msg.getInstance() + " " + host);
             toBeDecidedIndex = msg.getInstance();
             if(addReplicaInstances.size() < msg.AddReplicaInstancesSize())
                 addReplicaInstances = msg.getAddReplicaInstances();
@@ -232,7 +229,7 @@ public class ClassicPaxos extends GenericProtocol {
     }
 
     private void uponAcceptMessage(AcceptMessage msg, Host host, short sourceProto, int channelId) {
-        if( !(msg.getSequenceNumber() >= highest_prepare) || toBeDecidedIndex > msg.getInstance())
+        if( !(msg.getSequenceNumber() >= highest_prepare) /* || toBeDecidedIndex > msg.getInstance() */)
             return;
 
         highest_prepare = msg.getSequenceNumber();
