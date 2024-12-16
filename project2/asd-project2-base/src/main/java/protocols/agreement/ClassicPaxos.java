@@ -268,7 +268,7 @@ public class ClassicPaxos extends GenericProtocol {
                         }
                         triggerNotification(new MembershipChangedNotification(r.getLeft(), r.getRight(), toBeDecidedIndex));   
                     }
-                } else logger.info(msg);
+                }
             }   
         }
     }
