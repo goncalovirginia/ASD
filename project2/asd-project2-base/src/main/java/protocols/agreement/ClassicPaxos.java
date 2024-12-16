@@ -66,8 +66,8 @@ public class ClassicPaxos extends GenericProtocol {
     private List<Host> membership;
     private int toBeDecidedIndex;
     private Map<Integer, AgreementInstanceState> instanceStateMap; 
-    private TreeMap<Integer, Pair<UUID, byte[]>> toBeDecidedMessages;
-    private TreeMap<Integer, Pair<UUID, byte[]>> acceptedMessages;
+    private Map<Integer, Pair<UUID, byte[]>> toBeDecidedMessages;
+    private Map<Integer, Pair<UUID, byte[]>> acceptedMessages;
 
     private Map<Integer, Pair<Host, Boolean>> addReplicaInstances;
 
@@ -147,8 +147,9 @@ public class ClassicPaxos extends GenericProtocol {
 
             List<Pair<UUID, byte[]>> relevantMessages = new LinkedList<>();
             if(!myself.equals(host)) {
-                relevantMessages.addAll(((acceptedMessages).tailMap((msg.getInstance()), true)
-                                .values()));
+                relevantMessages.addAll((((TreeMap<Integer, Pair<UUID, byte[]>>) acceptedMessages)
+                                        .tailMap((msg.getInstance()), true)
+                                        .values()));
                 
                 triggerNotification(new NewLeaderNotification(host));
                 toBeDecidedMessages = new TreeMap<>();
@@ -177,17 +178,9 @@ public class ClassicPaxos extends GenericProtocol {
     private void uponJoinedNotification(JoinedNotification notification, short sourceProto) {
         joinedInstance = notification.getJoinInstance();
         membership = new LinkedList<>(notification.getMembership());
-        logger.info("Agreement starting at instance {} with membership {}", joinedInstance, membership); 
-        toBeDecidedIndex = joinedInstance +1;
-        
-        if (!toBeDecidedMessages.isEmpty()) { 
-            acceptedMessages.headMap(toBeDecidedMessages.firstKey()).forEach((k, v) -> {
-                Pair<Host, Boolean> r = addReplicaInstances.get(toBeDecidedIndex);
-                if(r != null) triggerNotification(new MembershipChangedNotification(r.getLeft(), r.getRight(), toBeDecidedIndex++));
-                else triggerNotification(new DecidedNotification(toBeDecidedIndex++, v.getLeft(), v.getRight()));
-            });
-        }
-        acceptedMessages = new TreeMap<>();
+        logger.info("Agreement starting at instance {},  process {}, membership {}", toBeDecidedIndex, joinedInstance, membership); 
+
+        toBeDecidedIndex = joinedInstance;
     }
 
     private void uponAddReplica(AddReplicaRequest request, short sourceProto) {
@@ -211,15 +204,16 @@ public class ClassicPaxos extends GenericProtocol {
     }
 
     private void uponChangeMembershipMessage(ChangeMembershipMessage msg, Host host, short sourceProto, int channelId) {   
-        if( !(msg.getSequenceNumber() >= highest_prepare))
+        if( !(msg.getSequenceNumber() >= highest_prepare)) {
             return;
+        }
 
         highest_prepare = msg.getSequenceNumber();
         if (msg.isOK()) {
             if(addReplicaInstances.size() < msg.AddReplicaInstancesSize())
                 addReplicaInstances = msg.getAddReplicaInstances();
 
-            acceptedMessages.putAll(msg.getToBeDecidedMessages());
+            toBeDecidedMessages.putAll(msg.getToBeDecidedMessages());
             return;
         }
 
@@ -254,26 +248,28 @@ public class ClassicPaxos extends GenericProtocol {
         state.incrementAcceptCount();
         if (state.getAcceptokCount() >= (membership.size() / 2) + 1 && !state.decided()) {
             state.decide();
-            Pair<UUID, byte[]> pair = toBeDecidedMessages.remove(toBeDecidedIndex);
-            if(pair == null) return;
-
-            acceptedMessages.put(toBeDecidedIndex, pair);
-            if(!addReplicaInstances.containsKey(toBeDecidedIndex)) {
-                triggerNotification(new DecidedNotification(toBeDecidedIndex, pair.getLeft(), pair.getRight()));
-            } else {
-                Pair<Host, Boolean> r = addReplicaInstances.get(toBeDecidedIndex);
-                if(r.getRight() == true) {
-                    Map<Integer, Pair<UUID, byte[]>> relevantMessages = new TreeMap<>(toBeDecidedMessages
-                    .tailMap(toBeDecidedIndex+1, true));
-
-                    sendMessage(new ChangeMembershipMessage(r.getLeft(), toBeDecidedIndex, msg.getSequenceNumber(), 
-                    true, true, relevantMessages, addReplicaInstances), r.getLeft());
-
-                    membership.add(r.getLeft());
-                }   
-                triggerNotification(new MembershipChangedNotification(r.getLeft(), r.getRight(), toBeDecidedIndex));
-            }
-            toBeDecidedIndex++;    
+            
+            for(; toBeDecidedIndex <= msg.getInstance(); toBeDecidedIndex++) {
+                Pair<UUID, byte[]> pair = toBeDecidedMessages.remove(toBeDecidedIndex);
+                if(pair != null) {
+                    acceptedMessages.put(toBeDecidedIndex, pair);
+                    if(!addReplicaInstances.containsKey(toBeDecidedIndex)) {
+                        triggerNotification(new DecidedNotification(toBeDecidedIndex, pair.getLeft(), pair.getRight()));
+                    } else {
+                        Pair<Host, Boolean> r = addReplicaInstances.get(toBeDecidedIndex);
+                        if(r.getRight() == true) {
+                            Map<Integer, Pair<UUID, byte[]>> relevantMessages = new TreeMap<>();
+                            relevantMessages.putAll(((TreeMap<Integer, Pair<UUID, byte[]>>) toBeDecidedMessages).tailMap(toBeDecidedIndex+1, true));
+                            
+                            sendMessage(new ChangeMembershipMessage(r.getLeft(), toBeDecidedIndex, msg.getSequenceNumber(), true, true, 
+                            relevantMessages, addReplicaInstances), r.getLeft());
+                        
+                            membership.add(r.getLeft()); 
+                        }
+                        triggerNotification(new MembershipChangedNotification(r.getLeft(), r.getRight(), toBeDecidedIndex));   
+                    }
+                } else logger.info(msg);
+            }   
         }
     }
     

@@ -67,7 +67,8 @@ public class AcceptMessage extends ProtoMessage {
 
     @Override
     public String toString() {
-        return "AcceptAddRemoveMessage{" +
+        return "AcceptMessage{" +
+                "opId=" + opId +
                 ", instance=" + instance +
                 ", sequenceNumber=" + sequenceNumber +
                 '}';
