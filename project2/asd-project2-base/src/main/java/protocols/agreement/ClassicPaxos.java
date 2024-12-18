@@ -204,9 +204,7 @@ public class ClassicPaxos extends GenericProtocol {
     }
 
     private void uponChangeMembershipMessage(ChangeMembershipMessage msg, Host host, short sourceProto, int channelId) {   
-        if( !(msg.getSequenceNumber() >= highest_prepare)) {
-            return;
-        }
+        if (msg.getSequenceNumber() < highest_prepare) return;
 
         highest_prepare = msg.getSequenceNumber();
         if (msg.isOK()) {
@@ -227,12 +225,12 @@ public class ClassicPaxos extends GenericProtocol {
     }
 
     private void uponAcceptMessage(AcceptMessage msg, Host host, short sourceProto, int channelId) {
-        if( !(msg.getSequenceNumber() >= highest_prepare))
-            return;
+        if (msg.getSequenceNumber() < highest_prepare) return;
 
         highest_prepare = msg.getSequenceNumber();
         toBeDecidedMessages.put(msg.getInstance(), Pair.of(msg.getOpId(), msg.getOp()));
-        if(joinedInstance >= 0) {
+
+        if (joinedInstance >= 0) {
             instanceStateMap.put(msg.getInstance(), new AgreementInstanceState()); 
             membership.forEach(h -> sendMessage(new AcceptOKMessage(msg), h));  
         } 
