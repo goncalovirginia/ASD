@@ -240,7 +240,7 @@ public class ClassicPaxos extends GenericProtocol {
         AgreementInstanceState state = instanceStateMap.get(msg.getInstance());
         if (state == null) return;
         
-        if(msg.getSequenceNumber() > highest_prepare)
+        if (msg.getSequenceNumber() > highest_prepare)
             state.resetAcceptOk();
             
         state.incrementAcceptCount();
@@ -255,7 +255,7 @@ public class ClassicPaxos extends GenericProtocol {
                         triggerNotification(new DecidedNotification(toBeDecidedIndex, pair.getLeft(), pair.getRight()));
                     } else {
                         Pair<Host, Boolean> r = addReplicaInstances.get(toBeDecidedIndex);
-                        if(r.getRight() == true) {
+                        if (r.getRight()) {
                             Map<Integer, Pair<UUID, byte[]>> relevantMessages = new TreeMap<>();
                             relevantMessages.putAll(((TreeMap<Integer, Pair<UUID, byte[]>>) toBeDecidedMessages).tailMap(toBeDecidedIndex+1, true));
                             
