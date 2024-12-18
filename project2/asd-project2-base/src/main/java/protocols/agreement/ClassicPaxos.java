@@ -142,36 +142,36 @@ public class ClassicPaxos extends GenericProtocol {
     }
 
     private void uponPrepareMessage(PrepareMessage msg, Host host, short sourceProto, int channelId) {
-        if(msg.getSequenceNumber() >= highest_prepare) {
-            highest_prepare = msg.getSequenceNumber();
+        if (msg.getSequenceNumber() < highest_prepare) return;
 
-            List<Pair<UUID, byte[]>> relevantMessages = new LinkedList<>();
-            if(!myself.equals(host)) {
-                relevantMessages.addAll((((TreeMap<Integer, Pair<UUID, byte[]>>) acceptedMessages)
-                                        .tailMap((msg.getInstance()), true)
-                                        .values()));
+        highest_prepare = msg.getSequenceNumber();
+
+        List<Pair<UUID, byte[]>> relevantMessages = new LinkedList<>();
+        if (!myself.equals(host)) {
+            relevantMessages.addAll((((TreeMap<Integer, Pair<UUID, byte[]>>) acceptedMessages)
+                    .tailMap((msg.getInstance()), true)
+                    .values()));
                 
-                triggerNotification(new NewLeaderNotification(host));
-                toBeDecidedMessages = new TreeMap<>();
-            }   
-
-            PrepareOKMessage prepareOK = new PrepareOKMessage(highest_prepare, relevantMessages);
-            sendMessage(prepareOK, host);
+            triggerNotification(new NewLeaderNotification(host));
+            toBeDecidedMessages = new TreeMap<>();
         }
+
+        PrepareOKMessage prepareOK = new PrepareOKMessage(highest_prepare, relevantMessages);
+        sendMessage(prepareOK, host);
     }
 
     private void uponPrepareOKMessage(PrepareOKMessage msg, Host host, short sourceProto, int channelId) {
-        if (msg.getSequenceNumber() >= highest_prepare) {
-            prepare_ok_count ++;
-            if (msg.getPrepareOKMsgs().size() > prepareOkMessages.size())
-                prepareOkMessages = msg.getPrepareOKMsgs();
-                
-            if (prepare_ok_count >= (membership.size() / 2) + 1) {
-                prepare_ok_count = -1;
+        if (msg.getSequenceNumber() < highest_prepare) return;
 
-                triggerNotification(new NewLeaderNotification(myself, prepareOkMessages));
-                prepareOkMessages = new LinkedList<>();
-            }
+        prepare_ok_count ++;
+
+        if (msg.getPrepareOKMsgs().size() > prepareOkMessages.size())
+            prepareOkMessages = msg.getPrepareOKMsgs();
+                
+        if (prepare_ok_count >= (membership.size() / 2) + 1) {
+            prepare_ok_count = -1;
+            triggerNotification(new NewLeaderNotification(myself, prepareOkMessages));
+            prepareOkMessages = new LinkedList<>();
         }
     }
 
