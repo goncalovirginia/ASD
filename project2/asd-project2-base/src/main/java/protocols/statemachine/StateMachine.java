@@ -31,6 +31,7 @@ import protocols.app.requests.CurrentStateRequest;
 import protocols.app.requests.InstallStateRequest;
 import protocols.statemachine.notifications.ExecuteNotification;
 import protocols.statemachine.requests.OrderRequest;
+import protocols.statemachine.timers.AddReplicaTimer;
 import protocols.statemachine.timers.LeaderCandidateTimer;
 
 import java.io.IOException;
@@ -41,6 +42,9 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
+import java.util.Set;
+import java.util.TreeMap;
+import java.util.TreeSet;
 import java.util.UUID;
 
 public class StateMachine extends GenericProtocol {
@@ -70,6 +74,9 @@ public class StateMachine extends GenericProtocol {
     private Map<UUID, byte[]> executedOperations;
     private Map<Host, Boolean> pendingAddRemoves;
     private Map<Integer, Pair<Host, Boolean>> executedAddRemoves;
+
+    private Set<Host> replicaIdSet;
+    private Host contact;
 
     public StateMachine(Properties props) throws IOException, HandlerRegistrationException {
         super(PROTOCOL_NAME, PROTOCOL_ID);
@@ -120,6 +127,7 @@ public class StateMachine extends GenericProtocol {
         subscribeNotification(MembershipChangedNotification.NOTIFICATION_ID, this::uponMembershipChangeNotification);
         
         registerTimerHandler(LeaderCandidateTimer.TIMER_ID, this::uponLeaderCandidateTimer);
+        registerTimerHandler(AddReplicaTimer.TIMER_ID, this::uponAddReplicaTimer);
     }
 
     @Override
@@ -130,10 +138,14 @@ public class StateMachine extends GenericProtocol {
         nextInstance = 1;
         leader = null;
 
+        contact = null;
+
         pendingOrders = new HashMap<>(); //Pending Orders the Leader has to Propose
         pendingAddRemoves = new HashMap<>(); //Removes that occur on a re-election, like the previous leader
         executedOperations = new HashMap<>();
-        executedAddRemoves = new HashMap<>();
+        executedAddRemoves = new TreeMap<>();
+        replicaIdSet = new TreeSet<>();
+
         
         String host = props.getProperty("initial_membership");
         String[] hosts = host.split(",");
@@ -170,11 +182,11 @@ public class StateMachine extends GenericProtocol {
             membership.forEach(this::openConnection);
             membership.add(self);
 
-            Host target = initialMembership.get(0);
-            openConnection(target);
-            sendMessage(new AddReplicaMessage(self, 0, target), target);
-
-            //TODO -> AddTimer (Retry after 1s if state is still JOINING)
+            contact = initialMembership.get(0);
+            openConnection(contact);
+            sendMessage(new AddReplicaMessage(self, 0, contact), contact);
+            
+            setupTimer(new AddReplicaTimer(), 3000);
         }
     }
 
@@ -201,7 +213,6 @@ public class StateMachine extends GenericProtocol {
     private void uponCurrentStateReply(CurrentStateReply reply, short protoID) {
 		logger.info("Received Current State Reply: {}", reply.toString());
 
-        //Host newReplica = membership.get(membership.size()-1);
         Host newReplica = executedAddRemoves.get(reply.getInstance()).getLeft();
         sendMessage(new ReplicaAddedMessage(reply.getInstance(), reply.getState(), membership), newReplica);
 	}
@@ -253,12 +264,11 @@ public class StateMachine extends GenericProtocol {
         executedAddRemoves.put(notification.getInstance(), Pair.of(notification.getReplica(), notification.isAdding()));
 
         if (notification.isAdding()) {
-            if(membership.contains(notification.getReplica())) 
-                sendRequest(new CurrentStateRequest(notification.getInstance()), HashApp.PROTO_ID);
-            else { 
-                openConnection(notification.getReplica());
-                membership.add(notification.getReplica());
-            }            
+            openConnection(notification.getReplica());
+            membership.add(notification.getReplica());
+
+            if(replicaIdSet.remove(notification.getReplica())) 
+                sendRequest(new CurrentStateRequest(notification.getInstance()), HashApp.PROTO_ID);   
         } else {
             closeConnection(notification.getReplica());
             membership.remove(notification.getReplica());
@@ -286,10 +296,7 @@ public class StateMachine extends GenericProtocol {
 
         if (leader == null || pendingAddRemoves.containsKey(msg.getNewReplica())) return;
 
-        if (self.equals(msg.getContact())) {
-            openConnection(msg.getNewReplica());
-            membership.add(msg.getNewReplica());
-        }
+        if (self.equals(msg.getContact())) replicaIdSet.add(msg.getNewReplica());
 
         executedAddRemoves.forEach((k, v) -> {
             if(v.getLeft().equals(msg.getNewReplica()) && v.getRight()) {
@@ -309,6 +316,7 @@ public class StateMachine extends GenericProtocol {
 
     private void uponReplicaAddedMessage(ReplicaAddedMessage msg, Host host, short sourceProto, int channelId) {
         logger.info("Replica Added Message: {}", self);
+        if(!host.equals(contact)) return;
 
         nextInstance = msg.getInstance();
         membership = new LinkedList<>(msg.getMembership());
@@ -394,5 +402,17 @@ public class StateMachine extends GenericProtocol {
         if(leader == null) 
             nextLeaderCandidate();
         else previousLeader = null;
+	}
+
+    private void uponAddReplicaTimer(AddReplicaTimer timer, long timerId) {
+        if (state == State.ACTIVE) return;
+
+        logger.info("Add Replica Timer");
+
+        contact = membership.get(0);
+        openConnection(contact);
+        sendMessage(new AddReplicaMessage(self, 0, contact), contact);
+
+        setupTimer(new AddReplicaTimer(), 3000);
 	}
 }
