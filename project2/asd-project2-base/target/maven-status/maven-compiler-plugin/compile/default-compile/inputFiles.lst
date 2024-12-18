@@ -17,6 +17,7 @@ C:\ASD-main\ASD\project2\asd-project2-base\src\main\java\protocols\statemachine\
 C:\ASD-main\ASD\project2\asd-project2-base\src\main\java\protocols\statemachine\messages\AddReplicaMessage.java
 C:\ASD-main\ASD\project2\asd-project2-base\src\main\java\protocols\statemachine\messages\ReplicaAddedMessage.java
 C:\ASD-main\ASD\project2\asd-project2-base\src\main\java\protocols\agreement\messages\AcceptOKMessage.java
+C:\ASD-main\ASD\project2\asd-project2-base\src\main\java\protocols\statemachine\timers\AddReplicaTimer.java
 C:\ASD-main\ASD\project2\asd-project2-base\src\main\java\protocols\abd\renotifications\UpdateValueNotification.java
 C:\ASD-main\ASD\project2\asd-project2-base\src\main\java\protocols\abd\utils\QuorumReply.java
 C:\ASD-main\ASD\project2\asd-project2-base\src\main\java\protocols\agreement\notifications\NewLeaderNotification.java

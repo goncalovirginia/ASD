@@ -27,6 +27,7 @@ protocols\agreement\messages\ChangeMembershipOKMessage.class
 protocols\statemachine\StateMachine.class
 protocols\agreement\messages\PrepareMessage$1.class
 protocols\abd\messages\ReadTagReplyMessage$1.class
+protocols\statemachine\timers\AddReplicaTimer.class
 protocols\agreement\messages\AcceptOKMessage.class
 protocols\statemachine\notifications\ExecuteNotification.class
 protocols\abd\messages\AckAddRemoveMessage.class

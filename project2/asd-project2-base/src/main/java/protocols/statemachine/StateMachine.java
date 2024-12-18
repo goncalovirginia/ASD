@@ -67,8 +67,9 @@ public class StateMachine extends GenericProtocol {
     private final Short PAXOS_PROTOCOL_ID;
 
     private Map<UUID, byte[]> pendingOrders;
-    private Map<Host, Boolean> pendingAddRemoves; 
-    private Map<UUID, byte[]> pendingToLeader; //Client Operations pending to be executed by the leader
+    private Map<UUID, byte[]> executedOperations;
+    private Map<Host, Boolean> pendingAddRemoves;
+    private Map<Integer, Pair<Host, Boolean>> executedAddRemoves;
 
     public StateMachine(Properties props) throws IOException, HandlerRegistrationException {
         super(PROTOCOL_NAME, PROTOCOL_ID);
@@ -129,10 +130,11 @@ public class StateMachine extends GenericProtocol {
         nextInstance = 1;
         leader = null;
 
-        pendingToLeader = new HashMap<>(); 
         pendingOrders = new HashMap<>(); //Pending Orders the Leader has to Propose
         pendingAddRemoves = new HashMap<>(); //Removes that occur on a re-election, like the previous leader
-
+        executedOperations = new HashMap<>();
+        executedAddRemoves = new HashMap<>();
+        
         String host = props.getProperty("initial_membership");
         String[] hosts = host.split(",");
         List<Host> initialMembership = new LinkedList<>();
@@ -189,7 +191,7 @@ public class StateMachine extends GenericProtocol {
                 sendRequest(new ProposeRequest(nextInstance++, request.getOpId(), request.getOperation()),
                     PAXOS_PROTOCOL_ID); 
             } else {
-                pendingToLeader.put(request.getOpId(), request.getOperation());
+                pendingOrders.put(request.getOpId(), request.getOperation());
                 sendMessage(new LeaderOrderMessage(nextInstance, request.getOpId(), request.getOperation()), leader);
             }
         }
@@ -199,14 +201,19 @@ public class StateMachine extends GenericProtocol {
     private void uponCurrentStateReply(CurrentStateReply reply, short protoID) {
 		logger.info("Received Current State Reply: {}", reply.toString());
 
-        Host newReplica = membership.get(membership.size()-1);
+        //Host newReplica = membership.get(membership.size()-1);
+        Host newReplica = executedAddRemoves.get(reply.getInstance()).getLeft();
         sendMessage(new ReplicaAddedMessage(reply.getInstance(), reply.getState(), membership), newReplica);
 	}
 
 
-    private void uponDecidedNotification(DecidedNotification notification, short sourceProto) {
-        pendingToLeader.remove(notification.getOpId());
+    private void uponDecidedNotification(DecidedNotification notification, short sourceProto) {   
         if(!self.equals(leader)) nextInstance ++;
+        
+        UUID opId = notification.getOpId();
+        pendingOrders.remove(notification.getOpId());
+        executedOperations.put(opId, notification.getOperation());
+        
         triggerNotification(new ExecuteNotification(notification.getOpId(), notification.getOperation()));        
     }
 
@@ -215,8 +222,6 @@ public class StateMachine extends GenericProtocol {
         
         leader = notification.getLeader();
         if (leader.equals(self)) {
-            pendingToLeader.forEach((key, value) -> pendingOrders.put(key, value));
-
             List<Pair<UUID, byte[]>> prepareOKMsgs = notification.getMessages();  
             prepareOKMsgs.forEach(m -> {
                 pendingOrders.remove(m.getLeft());
@@ -235,20 +240,18 @@ public class StateMachine extends GenericProtocol {
                 prepareOKMsgs, pendingAddRemoves, pendingOrders);
         } else {
             logger.debug("non leader yet -> sending to {}", leader);
-            pendingToLeader.forEach((key, value) -> 
-                sendMessage(new LeaderOrderMessage(0, key, value), leader));
-            
             pendingOrders.forEach((key, value) -> 
                 sendMessage(new LeaderOrderMessage(0, key, value), leader));
         }
         pendingOrders = new HashMap<>();
-        pendingToLeader = new HashMap<>();
         pendingAddRemoves = new HashMap<>();
     }
 
     private void uponMembershipChangeNotification(MembershipChangedNotification notification, short sourceProto) {
         logger.info("Membership changed notification: " + notification);
         
+        executedAddRemoves.put(notification.getInstance(), Pair.of(notification.getReplica(), notification.isAdding()));
+
         if (notification.isAdding()) {
             if(membership.contains(notification.getReplica())) 
                 sendRequest(new CurrentStateRequest(notification.getInstance()), HashApp.PROTO_ID);
@@ -281,15 +284,19 @@ public class StateMachine extends GenericProtocol {
     private void uponAddReplicaMessage(AddReplicaMessage msg, Host host, short sourceProto, int channelId) {
         logger.info("Received Add Replica Message: " + msg);
 
-        //TODO
-        //Timer on replica that wants to join, if after 2 seconds state is still joining, retry.
-        //If msg fails/openOutConnection fails -> select another
-        if (leader == null) return;
+        if (leader == null || pendingAddRemoves.containsKey(msg.getNewReplica())) return;
 
         if (self.equals(msg.getContact())) {
             openConnection(msg.getNewReplica());
             membership.add(msg.getNewReplica());
         }
+
+        executedAddRemoves.forEach((k, v) -> {
+            if(v.getLeft().equals(msg.getNewReplica()) && v.getRight()) {
+                sendRequest(new CurrentStateRequest(k), HashApp.PROTO_ID);
+                return;
+            }
+        });
 
         if(!self.equals(leader)) {
             sendMessage(new AddReplicaMessage(msg.getNewReplica(), nextInstance, msg.getContact()), leader);

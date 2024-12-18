@@ -186,7 +186,6 @@ public class HashApp extends GenericProtocol {
 			//Check if the operation was issued by me
 			Pair<Host, Long> pair = clientIdMapper.remove(not.getOpId());
 			if (pair != null) {
-				//logger.info("Generating response to the client: instance - {}, opId - {}", pair.getRight(), not.getOpId());
 				//Generate a response to the client
 				ResponseMessage resp;
 				if (op.getOpType() == RequestMessage.WRITE)
@@ -203,20 +202,6 @@ public class HashApp extends GenericProtocol {
 		}
 
 	}
-
-	/***
-	 * To test Add Replica:
-	 * add a config property, on the state machine, based on that config property we either do a normal join
-	 * or a addReplica, where the process is similar to normal join but with a state transfer 
-	 * also, unlike normal join, addReplica is a Operation
-	 *
-	 * To test Remove Replica:
-	 * Simply manufacture a operation on a random host to do this
-	 *
-	 * In both these operations, since the client does not send them, we simply execute them at the 
-	 * App Layer without replying to any client
-	 * ----> Check if there is any issues in executedOps but it should be fine.
-	 * ***/
 
 	private void uponWriteCompleteNotification(WriteCompleteNotification not, short sourceProto) {
 		String key = new String(not.getKey());
