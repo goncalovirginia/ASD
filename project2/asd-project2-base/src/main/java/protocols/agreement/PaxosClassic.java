@@ -26,7 +26,7 @@ import protocols.agreement.requests.ProposeRequest;
 import java.io.IOException;
 import java.util.*;
 
-public class ClassicPaxos extends GenericProtocol {
+public class PaxosClassic extends GenericProtocol {
 
     private static class AgreementInstanceState {
         private int acceptOkCount;
@@ -53,7 +53,7 @@ public class ClassicPaxos extends GenericProtocol {
         }
     }
 
-    private static final Logger logger = LogManager.getLogger(ClassicPaxos.class);
+    private static final Logger logger = LogManager.getLogger(PaxosClassic.class);
 
     public final static short PROTOCOL_ID = 600;
     public final static String PROTOCOL_NAME = "ClassicPaxos";
@@ -71,7 +71,7 @@ public class ClassicPaxos extends GenericProtocol {
 
     private Map<Integer, Pair<Host, Boolean>> addReplicaInstances;
 
-    public ClassicPaxos(Properties props) throws IOException, HandlerRegistrationException {
+    public PaxosClassic(Properties props) throws IOException, HandlerRegistrationException {
         super(PROTOCOL_NAME, PROTOCOL_ID);
         joinedInstance = -1; //-1 means we have not yet joined the system
         membership = null;

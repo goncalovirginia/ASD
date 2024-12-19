@@ -1,8 +1,8 @@
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import protocols.abd.ABD;
-import protocols.agreement.ClassicPaxos;
-import protocols.agreement.PaxosAgreement;
+import protocols.agreement.PaxosClassic;
+import protocols.agreement.PaxosDistinguishedLearner;
 import protocols.app.HashApp;
 import protocols.app.HashApp.ReplicationStrategy;
 import protocols.statemachine.StateMachine;
@@ -52,8 +52,8 @@ public class Main {
 		// Replication
 		StateMachine sm = null;
 		ABD abd = null;
-		PaxosAgreement agreement = null;
-		ClassicPaxos classicPaxos = null;
+		PaxosDistinguishedLearner agreement = null;
+		PaxosClassic paxosClassic = null;
 
 		String PAXOS_IMPLEMENTATION = props.getProperty("paxos_strategy", DISTINGUISHED_LEARNER);
 
@@ -64,11 +64,11 @@ public class Main {
 			babel.registerProtocol(sm);
 			// Agreement Protocol
 			if (PAXOS_IMPLEMENTATION.equals(DISTINGUISHED_LEARNER)) {
-				agreement = new PaxosAgreement(props);
+				agreement = new PaxosDistinguishedLearner(props);
 				babel.registerProtocol(agreement);
 			} else {
-				classicPaxos = new ClassicPaxos(props);
-				babel.registerProtocol(classicPaxos);
+				paxosClassic = new PaxosClassic(props);
+				babel.registerProtocol(paxosClassic);
 			}
 		} else {
 			System.err.println("Loading ABD protocol stack");
@@ -85,7 +85,7 @@ public class Main {
 			if (PAXOS_IMPLEMENTATION.equals(DISTINGUISHED_LEARNER))
 				agreement.init(props);
 			else
-				classicPaxos.init(props);
+				paxosClassic.init(props);
 		} else {
 			abd.init(props);
 		}

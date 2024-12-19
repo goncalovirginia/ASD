@@ -14,8 +14,8 @@ import org.apache.commons.lang3.tuple.Pair;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-import protocols.agreement.ClassicPaxos;
-import protocols.agreement.PaxosAgreement;
+import protocols.agreement.PaxosClassic;
+import protocols.agreement.PaxosDistinguishedLearner;
 import protocols.statemachine.messages.AddReplicaMessage;
 import protocols.statemachine.messages.LeaderOrderMessage;
 import protocols.statemachine.messages.ReplicaAddedMessage;
@@ -86,9 +86,9 @@ public class StateMachine extends GenericProtocol {
 
         PAXOS_IMPLEMENTATION = props.getProperty("paxos_strategy", DISTINGUISHED_LEARNER);
         if (PAXOS_IMPLEMENTATION.equals(DISTINGUISHED_LEARNER))
-            PAXOS_PROTOCOL_ID = PaxosAgreement.PROTOCOL_ID;
+            PAXOS_PROTOCOL_ID = PaxosDistinguishedLearner.PROTOCOL_ID;
         else    
-            PAXOS_PROTOCOL_ID = ClassicPaxos.PROTOCOL_ID;
+            PAXOS_PROTOCOL_ID = PaxosClassic.PROTOCOL_ID;
 
         logger.info("Listening on {}:{}", address, port);
         this.self = new Host(InetAddress.getByName(address), Integer.parseInt(port));
