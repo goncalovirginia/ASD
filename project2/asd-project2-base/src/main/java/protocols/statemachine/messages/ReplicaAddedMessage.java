@@ -16,12 +16,14 @@ public class ReplicaAddedMessage extends ProtoMessage {
     private final byte[] state;
     private final int instance;
     private final List<Host> membership;
+    private final Host leader;
 
-    public ReplicaAddedMessage(int instance, byte[] state, List<Host> membership) {
+    public ReplicaAddedMessage(int instance, byte[] state, List<Host> membership, Host leader) {
         super(MSG_ID);
         this.instance = instance;
         this.state = state;
         this.membership = membership;
+        this.leader = leader;
     }
 
     public int getInstance() {
@@ -34,6 +36,10 @@ public class ReplicaAddedMessage extends ProtoMessage {
 
     public List<Host> getMembership() {
         return membership;
+    }
+
+    public Host getLeader() {
+        return leader;
     }
 
     @Override
@@ -55,6 +61,8 @@ public class ReplicaAddedMessage extends ProtoMessage {
             for (Host host : msg.membership) {
                 Host.serializer.serialize(host, out); 
             }
+
+            Host.serializer.serialize(msg.leader, out);
         }
 
         @Override
@@ -67,11 +75,13 @@ public class ReplicaAddedMessage extends ProtoMessage {
             int size = in.readInt();
             List<Host> members = new LinkedList<>();
             for (int i = 0; i < size; i++) {
-            Host host = Host.serializer.deserialize(in); 
-            members.add(host);
-        }
+                Host host = Host.serializer.deserialize(in); 
+                members.add(host);
+            }
+
+            Host cReplica = Host.serializer.deserialize(in);
             
-            return new ReplicaAddedMessage(instance, st, members);
+            return new ReplicaAddedMessage(instance, st, members, cReplica);
         }
     };
 

@@ -167,7 +167,7 @@ public class StateMachine extends GenericProtocol {
             //I'm part of the initial membership, so I'm assuming the system is bootstrapping
             membership = new LinkedList<>(initialMembership);
             membership.forEach(this::openConnection);
-            triggerNotification(new JoinedNotification(membership, nextInstance, true));
+            triggerNotification(new JoinedNotification(membership, nextInstance, leader));
 
             Host firstLeader = initialMembership.get(initialMembership.size() - 1);
             if (firstLeader.equals(self)) {
@@ -214,7 +214,7 @@ public class StateMachine extends GenericProtocol {
 		logger.info("Received Current State Reply: {}", reply.toString());
 
         Host newReplica = executedAddRemoves.get(reply.getInstance()).getLeft();
-        sendMessage(new ReplicaAddedMessage(reply.getInstance(), reply.getState(), membership), newReplica);
+        sendMessage(new ReplicaAddedMessage(reply.getInstance(), reply.getState(), membership, leader), newReplica);
 	}
 
 
@@ -322,7 +322,7 @@ public class StateMachine extends GenericProtocol {
         membership = new LinkedList<>(msg.getMembership());
         membership.forEach(this::openConnection);
         sendRequest(new InstallStateRequest(msg.getState()), HashApp.PROTO_ID);        
-        triggerNotification(new JoinedNotification(membership, nextInstance, false));
+        triggerNotification(new JoinedNotification(membership, nextInstance, msg.getLeader()));
         state = State.ACTIVE;
 
         pendingOrders.forEach((key, value) -> 

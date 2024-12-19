@@ -6,6 +6,7 @@ C:\ASD-main\ASD\project2\asd-project2-base\src\main\java\protocols\agreement\not
 C:\ASD-main\ASD\project2\asd-project2-base\src\main\java\protocols\abd\messages\AckMessage.java
 C:\ASD-main\ASD\project2\asd-project2-base\src\main\java\protocols\agreement\ClassicPaxos.java
 C:\ASD-main\ASD\project2\asd-project2-base\src\main\java\protocols\abd\requests\RemoveReplicaRequest.java
+C:\ASD-main\ASD\project2\asd-project2-base\src\main\java\protocols\agreement\messages\LogWriteMessage.java
 C:\ASD-main\ASD\project2\asd-project2-base\src\main\java\protocols\app\requests\CurrentStateReply.java
 C:\ASD-main\ASD\project2\asd-project2-base\src\main\java\protocols\agreement\messages\PrepareMessage.java
 C:\ASD-main\ASD\project2\asd-project2-base\src\main\java\protocols\abd\ABD.java
@@ -47,6 +48,7 @@ C:\ASD-main\ASD\project2\asd-project2-base\src\main\java\protocols\agreement\not
 C:\ASD-main\ASD\project2\asd-project2-base\src\main\java\protocols\statemachine\StateMachine.java
 C:\ASD-main\ASD\project2\asd-project2-base\src\main\java\protocols\app\messages\ResponseMessage.java
 C:\ASD-main\ASD\project2\asd-project2-base\src\main\java\protocols\agreement\messages\ChangeMembershipOKMessage.java
+C:\ASD-main\ASD\project2\asd-project2-base\src\main\java\protocols\agreement\messages\LogReadMessage.java
 C:\ASD-main\ASD\project2\asd-project2-base\src\main\java\protocols\agreement\PaxosAgreement.java
 C:\ASD-main\ASD\project2\asd-project2-base\src\main\java\protocols\agreement\requests\RemoveReplicaRequest.java
 C:\ASD-main\ASD\project2\asd-project2-base\src\main\java\protocols\statemachine\timers\LeaderCandidateTimer.java

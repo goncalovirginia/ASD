@@ -5,6 +5,8 @@ import protocols.agreement.messages.AcceptOKMessage;
 import protocols.agreement.messages.BroadcastMessage;
 import protocols.agreement.messages.ChangeMembershipMessage;
 import protocols.agreement.messages.ChangeMembershipOKMessage;
+import protocols.agreement.messages.LogReadMessage;
+import protocols.agreement.messages.LogWriteMessage;
 import protocols.agreement.messages.PrepareMessage;
 import protocols.agreement.messages.PrepareOKMessage;
 import protocols.agreement.notifications.JoinedNotification;
@@ -117,8 +119,10 @@ public class PaxosClassic extends GenericProtocol {
         registerMessageSerializer(cId, AcceptMessage.MSG_ID, AcceptMessage.serializer);
         registerMessageSerializer(cId, AcceptOKMessage.MSG_ID, AcceptOKMessage.serializer);
 
+
+        registerMessageSerializer(cId, LogReadMessage.MSG_ID, LogReadMessage.serializer);
+        registerMessageSerializer(cId, LogWriteMessage.MSG_ID, LogWriteMessage.serializer);
         registerMessageSerializer(cId, ChangeMembershipMessage.MSG_ID, ChangeMembershipMessage.serializer);
-        registerMessageSerializer(cId, ChangeMembershipOKMessage.MSG_ID, ChangeMembershipOKMessage.serializer);
 
         /*---------------------- Register Message Handlers -------------------------- */
         try {
@@ -126,6 +130,9 @@ public class PaxosClassic extends GenericProtocol {
               registerMessageHandler(cId, PrepareOKMessage.MSG_ID, this::uponPrepareOKMessage, this::uponMsgFail);
               registerMessageHandler(cId, AcceptMessage.MSG_ID, this::uponAcceptMessage, this::uponMsgFail);
               registerMessageHandler(cId, AcceptOKMessage.MSG_ID, this::uponAcceptOKMessage, this::uponMsgFail);
+
+              registerMessageHandler(cId, LogReadMessage.MSG_ID, this::uponLogCatchUpRead, this::uponMsgFail);
+              registerMessageHandler(cId, LogWriteMessage.MSG_ID, this::uponLogCatchUpWrite, this::uponMsgFail);
 
               registerMessageHandler(cId, ChangeMembershipMessage.MSG_ID, this::uponChangeMembershipMessage, this::uponMsgFail);
         } catch (HandlerRegistrationException e) {
@@ -176,11 +183,44 @@ public class PaxosClassic extends GenericProtocol {
     }
 
     private void uponJoinedNotification(JoinedNotification notification, short sourceProto) {
-        joinedInstance = notification.getJoinInstance();
         membership = new LinkedList<>(notification.getMembership());
-        logger.info("Agreement starting at instance {},  process {}, membership {}", toBeDecidedIndex, joinedInstance, membership); 
+        logger.info("Agreement starting at instance {} with membership {}", notification.getJoinInstance(), membership); 
+        toBeDecidedIndex = notification.getJoinInstance();
+        // b4 first instance, there is no need for log catch up -- != null is a safety check
+        if (notification.getContact() != null && toBeDecidedIndex > 1) 
+            sendMessage(new LogReadMessage(toBeDecidedIndex), notification.getContact());
+        else joinedInstance = toBeDecidedIndex;
+    }
 
-        toBeDecidedIndex = joinedInstance;
+    private void uponLogCatchUpRead(LogReadMessage msg, Host host, short sourceProto, int channelId) {
+        logger.info("Received Log Read: " + msg);
+
+        Map<Integer, Pair<UUID, byte[]>> accMsgs = (((TreeMap<Integer, Pair<UUID, byte[]>>) acceptedMessages)
+                                                    .tailMap(msg.getInstance(), true));
+
+        sendMessage(new LogWriteMessage(msg.getInstance(), highest_prepare, accMsgs, toBeDecidedMessages, addReplicaInstances), host);
+    }
+
+    private void uponLogCatchUpWrite(LogWriteMessage msg, Host host, short sourceProto, int channelId) {
+        logger.info("Received Log Read: " + msg);
+
+        toBeDecidedIndex = msg.getInstance();
+        joinedInstance = toBeDecidedIndex;
+        highest_prepare = msg.getHighestPrepare();
+
+        acceptedMessages = msg.getAcceptedMessages();
+        toBeDecidedMessages.putAll(msg.getToBeDecidedMessages());
+        addReplicaInstances = msg.getAddReplicaInstances();
+         
+        acceptedMessages.forEach( (k, v) -> { 
+            if(!addReplicaInstances.containsKey(k))
+                triggerNotification(new DecidedNotification(k, v.getLeft(), v.getRight()));
+            else {
+                Pair<Host, Boolean> r = addReplicaInstances.get(k);
+                triggerNotification(new MembershipChangedNotification(r.getLeft(), r.getRight(), k));   
+            }
+            toBeDecidedIndex ++;
+        }); 
     }
 
     private void uponAddReplica(AddReplicaRequest request, short sourceProto) {
@@ -207,13 +247,6 @@ public class PaxosClassic extends GenericProtocol {
         if (msg.getSequenceNumber() < highest_prepare) return;
 
         highest_prepare = msg.getSequenceNumber();
-        if (msg.isOK()) {
-            if(addReplicaInstances.size() < msg.AddReplicaInstancesSize())
-                addReplicaInstances = msg.getAddReplicaInstances();
-
-            toBeDecidedMessages.putAll(msg.getToBeDecidedMessages());
-            return;
-        }
 
         if(!msg.isAdding()) membership.remove(msg.getReplica());
         
@@ -249,23 +282,17 @@ public class PaxosClassic extends GenericProtocol {
             
             for(; toBeDecidedIndex <= msg.getInstance(); toBeDecidedIndex++) {
                 Pair<UUID, byte[]> pair = toBeDecidedMessages.remove(toBeDecidedIndex);
-                if(pair != null) {
-                    acceptedMessages.put(toBeDecidedIndex, pair);
-                    if(!addReplicaInstances.containsKey(toBeDecidedIndex)) {
-                        triggerNotification(new DecidedNotification(toBeDecidedIndex, pair.getLeft(), pair.getRight()));
-                    } else {
-                        Pair<Host, Boolean> r = addReplicaInstances.get(toBeDecidedIndex);
-                        if (r.getRight()) {
-                            Map<Integer, Pair<UUID, byte[]>> relevantMessages = new TreeMap<>();
-                            relevantMessages.putAll(((TreeMap<Integer, Pair<UUID, byte[]>>) toBeDecidedMessages).tailMap(toBeDecidedIndex+1, true));
-                            
-                            sendMessage(new ChangeMembershipMessage(r.getLeft(), toBeDecidedIndex, msg.getSequenceNumber(), true, true, 
-                            relevantMessages, addReplicaInstances), r.getLeft());
-                        
-                            membership.add(r.getLeft()); 
-                        }
-                        triggerNotification(new MembershipChangedNotification(r.getLeft(), r.getRight(), toBeDecidedIndex));   
-                    }
+
+                if(pair == null) break;
+
+                acceptedMessages.put(toBeDecidedIndex, pair);
+                if(!addReplicaInstances.containsKey(toBeDecidedIndex))
+                    triggerNotification(new DecidedNotification(toBeDecidedIndex, pair.getLeft(), pair.getRight()));
+                else {
+                    Pair<Host, Boolean> r = addReplicaInstances.get(toBeDecidedIndex);
+                    if (r.getRight()) membership.add(r.getLeft()); 
+
+                    triggerNotification(new MembershipChangedNotification(r.getLeft(), r.getRight(), toBeDecidedIndex));   
                 }
             }   
         }

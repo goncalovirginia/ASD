@@ -1,5 +1,6 @@
 protocols\agreement\requests\ProposeRequest.class
 protocols\abd\messages\AddReplicaMessage.class
+protocols\agreement\messages\LogReadMessage.class
 protocols\abd\requests\ReadRequest.class
 protocols\abd\messages\WriteMessage.class
 protocols\abd\messages\AddReplicaMessage$1.class
@@ -13,7 +14,9 @@ protocols\agreement\messages\ChangeMembershipMessage.class
 protocols\app\requests\InstallStateRequest.class
 protocols\agreement\messages\PrepareMessage.class
 protocols\statemachine\messages\AddReplicaMessage.class
+protocols\agreement\messages\LogWriteMessage.class
 protocols\agreement\notifications\MembershipChangedNotification.class
+protocols\agreement\messages\LogReadMessage$1.class
 protocols\app\HashApp.class
 protocols\abd\messages\AckAddRemoveMessage$1.class
 protocols\abd\messages\QuorumMessage.class
@@ -49,6 +52,7 @@ protocols\statemachine\messages\ReplicaAddedMessage.class
 protocols\app\requests\CurrentStateRequest.class
 protocols\agreement\requests\RemoveReplicaRequest.class
 protocols\agreement\messages\AcceptMessage.class
+protocols\agreement\messages\LogWriteMessage$1.class
 protocols\agreement\notifications\DecidedNotification.class
 protocols\abd\messages\AddRemoveMessage.class
 protocols\agreement\PaxosAgreement.class
