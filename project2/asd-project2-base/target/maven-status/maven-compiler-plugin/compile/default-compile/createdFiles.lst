@@ -8,12 +8,12 @@ protocols\statemachine\messages\ReplicaAddedMessage$1.class
 protocols\statemachine\messages\AddReplicaMessage$1.class
 protocols\abd\messages\ReplicaAddedMessage$1.class
 protocols\app\HashApp$ReplicationStrategy.class
-protocols\agreement\PaxosAgreement$AgreementInstanceState.class
 protocols\abd\requests\RemoveReplicaRequest.class
 protocols\agreement\messages\ChangeMembershipMessage.class
 protocols\app\requests\InstallStateRequest.class
 protocols\agreement\messages\PrepareMessage.class
 protocols\statemachine\messages\AddReplicaMessage.class
+protocols\statemachine\timers\ConnectionRetryTimer.class
 protocols\agreement\messages\LogWriteMessage.class
 protocols\agreement\notifications\MembershipChangedNotification.class
 protocols\agreement\messages\LogReadMessage$1.class
@@ -29,11 +29,13 @@ protocols\abd\messages\QuorumMessage$1.class
 protocols\agreement\messages\ChangeMembershipOKMessage.class
 protocols\statemachine\StateMachine.class
 protocols\agreement\messages\PrepareMessage$1.class
+protocols\agreement\PaxosClassic$AgreementInstanceState.class
 protocols\abd\messages\ReadTagReplyMessage$1.class
 protocols\statemachine\timers\AddReplicaTimer.class
 protocols\agreement\messages\AcceptOKMessage.class
 protocols\statemachine\notifications\ExecuteNotification.class
 protocols\abd\messages\AckAddRemoveMessage.class
+protocols\agreement\PaxosDistinguishedLearner$AgreementInstanceState.class
 protocols\abd\utils\Tag.class
 protocols\agreement\messages\BroadcastMessage$1.class
 protocols\abd\messages\AckMessage.class
@@ -55,11 +57,10 @@ protocols\agreement\messages\AcceptMessage.class
 protocols\agreement\messages\LogWriteMessage$1.class
 protocols\agreement\notifications\DecidedNotification.class
 protocols\abd\messages\AddRemoveMessage.class
-protocols\agreement\PaxosAgreement.class
 protocols\statemachine\requests\OrderRequest.class
 protocols\agreement\requests\AddReplicaRequest.class
 protocols\statemachine\messages\LeaderOrderMessage.class
-protocols\agreement\ClassicPaxos.class
+protocols\agreement\PaxosClassic.class
 protocols\agreement\messages\PrepareOKMessage.class
 protocols\abd\utils\QuorumReply.class
 protocols\abd\messages\ReadTagReplyMessage.class
@@ -69,6 +70,7 @@ protocols\agreement\requests\PrepareRequest.class
 protocols\statemachine\messages\LeaderOrderMessage$1.class
 protocols\agreement\messages\PrepareOKMessage$1.class
 protocols\agreement\notifications\NewLeaderNotification.class
+protocols\agreement\PaxosDistinguishedLearner.class
 protocols\abd\renotifications\ReadCompleteNotification.class
 protocols\agreement\messages\ChangeMembershipMessage$1.class
 protocols\agreement\notifications\JoinedNotification.class
@@ -76,7 +78,6 @@ protocols\agreement\messages\AcceptOKMessage$1.class
 protocols\app\utils\Operation.class
 protocols\app\messages\ResponseMessage.class
 protocols\abd\messages\AddRemoveMessage$1.class
-protocols\agreement\ClassicPaxos$AgreementInstanceState.class
 protocols\app\messages\RequestMessage.class
 protocols\abd\messages\AckMessage$1.class
 protocols\abd\renotifications\WriteCompleteNotification.class

@@ -126,15 +126,15 @@ public class PaxosClassic extends GenericProtocol {
 
         /*---------------------- Register Message Handlers -------------------------- */
         try {
-              registerMessageHandler(cId, PrepareMessage.MSG_ID, this::uponPrepareMessage, this::uponMsgFail);
-              registerMessageHandler(cId, PrepareOKMessage.MSG_ID, this::uponPrepareOKMessage, this::uponMsgFail);
-              registerMessageHandler(cId, AcceptMessage.MSG_ID, this::uponAcceptMessage, this::uponMsgFail);
-              registerMessageHandler(cId, AcceptOKMessage.MSG_ID, this::uponAcceptOKMessage, this::uponMsgFail);
+            registerMessageHandler(cId, PrepareMessage.MSG_ID, this::uponPrepareMessage, this::uponMsgFail);
+            registerMessageHandler(cId, PrepareOKMessage.MSG_ID, this::uponPrepareOKMessage, this::uponMsgFail);
+            registerMessageHandler(cId, AcceptMessage.MSG_ID, this::uponAcceptMessage, this::uponMsgFail);
+            registerMessageHandler(cId, AcceptOKMessage.MSG_ID, this::uponAcceptOKMessage, this::uponMsgFail);
 
-              registerMessageHandler(cId, LogReadMessage.MSG_ID, this::uponLogCatchUpRead, this::uponMsgFail);
-              registerMessageHandler(cId, LogWriteMessage.MSG_ID, this::uponLogCatchUpWrite, this::uponMsgFail);
+            registerMessageHandler(cId, LogReadMessage.MSG_ID, this::uponLogCatchUpRead, this::uponMsgFail);
+            registerMessageHandler(cId, LogWriteMessage.MSG_ID, this::uponLogCatchUpWrite, this::uponMsgFail);
 
-              registerMessageHandler(cId, ChangeMembershipMessage.MSG_ID, this::uponChangeMembershipMessage, this::uponMsgFail);
+            registerMessageHandler(cId, ChangeMembershipMessage.MSG_ID, this::uponChangeMembershipMessage, this::uponMsgFail);
         } catch (HandlerRegistrationException e) {
             throw new AssertionError("Error registering message handler.", e);
         }
@@ -154,7 +154,7 @@ public class PaxosClassic extends GenericProtocol {
         highest_prepare = msg.getSequenceNumber();
 
         List<Pair<UUID, byte[]>> relevantMessages = new LinkedList<>();
-        if (!myself.equals(host)) {
+        if (!myself.equals(host) && joinedInstance >= 0) {
             relevantMessages.addAll((((TreeMap<Integer, Pair<UUID, byte[]>>) acceptedMessages)
                     .tailMap((msg.getInstance()), true)
                     .values()));

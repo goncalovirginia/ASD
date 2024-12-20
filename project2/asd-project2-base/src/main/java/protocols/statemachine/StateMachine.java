@@ -32,6 +32,7 @@ import protocols.app.requests.InstallStateRequest;
 import protocols.statemachine.notifications.ExecuteNotification;
 import protocols.statemachine.requests.OrderRequest;
 import protocols.statemachine.timers.AddReplicaTimer;
+import protocols.statemachine.timers.ConnectionRetryTimer;
 import protocols.statemachine.timers.LeaderCandidateTimer;
 
 import java.io.IOException;
@@ -69,6 +70,7 @@ public class StateMachine extends GenericProtocol {
 
     private final String PAXOS_IMPLEMENTATION;
     private final Short PAXOS_PROTOCOL_ID;
+    private final int CONNECTION_RETRIES;
 
     private Map<UUID, byte[]> pendingOrders;
     private Map<UUID, byte[]> executedOperations;
@@ -77,6 +79,9 @@ public class StateMachine extends GenericProtocol {
 
     private Set<Host> replicaIdSet;
     private Host contact;
+
+    private Map<Host, Integer> hostRetries;
+    private Map<Long, Host> hostTimers;
 
     public StateMachine(Properties props) throws IOException, HandlerRegistrationException {
         super(PROTOCOL_NAME, PROTOCOL_ID);
@@ -89,6 +94,9 @@ public class StateMachine extends GenericProtocol {
             PAXOS_PROTOCOL_ID = PaxosDistinguishedLearner.PROTOCOL_ID;
         else    
             PAXOS_PROTOCOL_ID = PaxosClassic.PROTOCOL_ID;
+
+        String retries = props.getProperty("connection_retries", "50").trim();
+        CONNECTION_RETRIES = Integer.parseInt(retries);
 
         logger.info("Listening on {}:{}", address, port);
         this.self = new Host(InetAddress.getByName(address), Integer.parseInt(port));
@@ -128,6 +136,7 @@ public class StateMachine extends GenericProtocol {
         
         registerTimerHandler(LeaderCandidateTimer.TIMER_ID, this::uponLeaderCandidateTimer);
         registerTimerHandler(AddReplicaTimer.TIMER_ID, this::uponAddReplicaTimer);
+        registerTimerHandler(ConnectionRetryTimer.TIMER_ID, this::uponConnectionRetryTimer);
     }
 
     @Override
@@ -146,7 +155,9 @@ public class StateMachine extends GenericProtocol {
         executedAddRemoves = new TreeMap<>();
         replicaIdSet = new TreeSet<>();
 
-        
+        hostTimers = new HashMap<>();
+        hostRetries = new HashMap<>();
+
         String host = props.getProperty("initial_membership");
         String[] hosts = host.split(",");
         List<Host> initialMembership = new LinkedList<>();
@@ -212,6 +223,7 @@ public class StateMachine extends GenericProtocol {
     /*--------------------------------- Notifications ---------------------------------------- */
     private void uponCurrentStateReply(CurrentStateReply reply, short protoID) {
 		logger.info("Received Current State Reply: {}", reply.toString());
+        if(leader == null) return; //AddReplica timer will retry
 
         Host newReplica = executedAddRemoves.get(reply.getInstance()).getLeft();
         sendMessage(new ReplicaAddedMessage(reply.getInstance(), reply.getState(), membership, leader), newReplica);
@@ -230,7 +242,7 @@ public class StateMachine extends GenericProtocol {
 
     private void uponNewLeaderNotification(NewLeaderNotification notification, short sourceProto) {
         logger.debug("Received New Leader Notification: " + notification);
-        
+        //replicaInstances --> 
         leader = notification.getLeader();
         if (leader.equals(self)) {
             List<Pair<UUID, byte[]>> prepareOKMsgs = notification.getMessages();  
@@ -279,7 +291,6 @@ public class StateMachine extends GenericProtocol {
     }
 
     /*--------------------------------- Messages ---------------------------------------- */
-
     private void uponLeaderOrderMessage(LeaderOrderMessage msg, Host host, short sourceProto, int channelId) {
         logger.debug("Received Leader Order Message: " + msg.getOpId());
         if (leader == null) {
@@ -318,6 +329,7 @@ public class StateMachine extends GenericProtocol {
         logger.info("Replica Added Message: {}", self);
         if(!host.equals(contact)) return;
 
+        leader = msg.getLeader();
         nextInstance = msg.getInstance();
         membership = new LinkedList<>(msg.getMembership());
         membership.forEach(this::openConnection);
@@ -340,14 +352,13 @@ public class StateMachine extends GenericProtocol {
     private void uponMsgFail(ProtoMessage msg, Host host, short destProto, Throwable throwable, int channelId) {
         logger.info("Message {} to {} failed, reason: {}", msg, host, throwable);
     }
-    //in the case of replicaAddedMessage, if it fails after X tries we remove the new replica
-
+    
     private void nextLeaderCandidate() {
         int idx = membership.size() -1;
         for(int i = idx; i >= 0; i--) {
             Host h = membership.get(i);
             if (!pendingAddRemoves.containsKey(h) || !h.equals(previousLeader)) {
-                if(h.equals(self)) {
+                if(h.equals(self) && state != State.JOINING) { 
                     previousLeader = h;
                     sendRequest(new PrepareRequest(nextInstance), PAXOS_PROTOCOL_ID);
                 } else break;
@@ -366,7 +377,6 @@ public class StateMachine extends GenericProtocol {
         logger.info("Connection to {} is down, cause {}", event.getNode(), event.getCause());
  
         Host node = event.getNode();
-
         if(leader == null || node.equals(leader)) 
             pendingAddRemoves.put(node, false); 
 
@@ -377,16 +387,19 @@ public class StateMachine extends GenericProtocol {
         }
 
         closeConnection(node);
-        if(self.equals(leader)) {
+        if(self.equals(leader))
             sendRequest(new RemoveReplicaRequest(nextInstance++, node), PAXOS_PROTOCOL_ID);
-        }
-            
+
+        if(state == State.JOINING) membership.remove(node);
     }
 
     private void uponOutConnectionFailed(OutConnectionFailed<ProtoMessage> event, int channelId) {
         logger.debug("Connection to {} failed, cause: {}", event.getNode(), event.getCause());
-        if (membership.contains(event.getNode()))
-            openConnection(event.getNode());
+
+        Host node = event.getNode();
+        Long tid = setupTimer(new ConnectionRetryTimer(), 50);
+        hostTimers.put(tid, node);
+        hostRetries.computeIfAbsent(node, v -> CONNECTION_RETRIES);
     }
 
     private void uponInConnectionUp(InConnectionUp event, int channelId) {
@@ -406,6 +419,8 @@ public class StateMachine extends GenericProtocol {
 
     private void uponAddReplicaTimer(AddReplicaTimer timer, long timerId) {
         if (state == State.ACTIVE) return;
+        
+        if (membership.size() == 0) System.exit(1);
 
         logger.info("Add Replica Timer");
 
@@ -414,5 +429,24 @@ public class StateMachine extends GenericProtocol {
         sendMessage(new AddReplicaMessage(self, 0, contact), contact);
 
         setupTimer(new AddReplicaTimer(), 3000);
+	}
+
+    private void uponConnectionRetryTimer(ConnectionRetryTimer timer, long timerId) {
+        Host node = hostTimers.remove(timerId);
+        Integer retries = hostRetries.computeIfPresent(node, (key, value) -> value - 1);
+
+        if (retries != null && retries > 0 && membership.contains(node)) {
+            openConnection(node);
+            return;
+        }
+
+        hostRetries.remove(node);
+        if(state == State.JOINING) 
+            membership.remove(node);
+        else if(leader == null) 
+            pendingAddRemoves.put(node, false);
+        else if(self.equals(leader))
+            sendRequest(new RemoveReplicaRequest(nextInstance++, node), PAXOS_PROTOCOL_ID);
+
 	}
 }
